@@ -384,7 +384,19 @@ void plat_cond_broadcast(PlatCond *c) { WakeAllConditionVariable((PCONDITION_VAR
 
 static int widen(const char *s, wchar_t *w, int cap) {
     int n = MultiByteToWideChar(CP_UTF8, 0, s, -1, w, cap);
-    if (!n) w[0] = 0;
+    if (!n) {
+        w[0] = 0;
+        return 0;
+    }
+    if (cap >= 260 && n >= 240 && n + 4 < cap &&
+        ((w[0] >= L'A' && w[0] <= L'Z') || (w[0] >= L'a' && w[0] <= L'z')) &&
+        w[1] == L':' && (w[2] == L'\\' || w[2] == L'/')) {
+        for (int i = 0; i < n; i++)
+            if (w[i] == L'/') w[i] = L'\\';
+        memmove(w + 4, w, (size_t)n * sizeof(wchar_t));
+        memcpy(w, L"\\\\?\\", 4 * sizeof(wchar_t));
+        n += 4;
+    }
     return n;
 }
 

@@ -1077,3 +1077,19 @@ site cascade main 6fabb8 52a83408 @page:x8 b9404108   # mov w8, #20.0  -> ldr w8
 site cascade main 6fac40 52a84408 @page:x8 b9404508   # mov w8, #40.0  -> ldr w8, [page+68]
 site cascade main 6facc8 52a85408 @page:x8 b9404908   # mov w8, #80.0  -> ldr w8, [page+72]
 site cascade main 6fad4c 52a86408 @page:x8 b9404d08   # mov w8, #160.0 -> ldr w8, [page+76]
+
+# WiiXLaunch (.wxlm) 1.4.3 mod sets
+set wxlm_acq143       TOTK_WXLM_ACQ143         1
+set wxlm_arrow143     TOTK_WXLM_ARROW143       1
+set wxlm_bp42probe    TOTK_WXLM_BP42PROBE      1
+set wxlm_eqcat143     TOTK_WXLM_EQCAT143       1
+set wxlm_foodbuff143  TOTK_WXLM_FOODBUFF143    1
+set wxlm_horsestats143 TOTK_WXLM_HORSESTATS143  1
+set wxlm_map143       TOTK_WXLM_MAP143         1
+set wxlm_guide143     TOTK_WXLM_GUIDE143       1
+set wxlm_qol143       TOTK_WXLM_QOL143         1
+set wxlm_heropath143  TOTK_WXLM_HEROPATH143    1
+
+# qol143 inline instruction patches (stub == None)
+site wxlm_qol143 main 1b78cd0 12800001 2a1f03e1
+site wxlm_qol143 main 20b2a1c 12800001 2a1f03e1

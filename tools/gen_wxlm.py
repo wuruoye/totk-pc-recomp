@@ -505,6 +505,179 @@ def main():
         mod_spans.append((name, mod_base, spans))
         print(f"Lifted {name} @ {hex(mod_base)}: {len(fn_list)} funcs, {len(spans)} payload spans, {len(p_recs)} patches")
 
+    # Add ultrahand (Dream Home Limit++ 2.0 - Parts 42) 5 inline patches
+    mod_names.append("ultrahand")
+    ultrahand_sites = [
+        (0x01D6712C, 0x7100591F, 0x7100AD1F),
+        (0x01C09FBC, 0x7100591F, 0x7100AD1F),
+        (0x00272584, 0x7100591F, 0x7100AD1F),
+        (0x01915668, 0x7100591F, 0x7100AD1F),
+        (0x01915D90, 0x51005515, 0x5100A915),
+    ]
+    for rva, ow, pw in ultrahand_sites:
+        inline_sites.append(f"site wxlm_ultrahand main {rva:x} {ow:08x} {pw:08x}")
+    mod_patch_records.append(("ultrahand", 0x7005C00000, ultrahand_sites))
+
+    # Add ascend143 (infinite-ascend 1.4.3) 7 hooks
+    mod_names.append("ascend143")
+    ascend_hooks = [
+        (0x01D4C7F0, 0xBD42B70A, 0x7005C01000, [0x7001D4C7F4], False),
+        (0x01D4CA14, 0x5283EEBC, 0x7005C01010, [0x7001D4CA18], False),
+        (0x01D4C200, 0x1E269000, 0x7005C01020, [], False),
+        (0x0085E460, 0x794283E8, 0x7005C01030, [0x700085E464], False),
+        (0x01D4C788, 0xD10483FF, 0x7005C01040, [], True),
+        (0x0085DFF8, 0xA9BE7BFD, 0x7005C01050, [], True),
+        (0x006D25F4, 0x79800408, 0x7005C01060, [], True),
+    ]
+    ascend_p_recs = []
+    for rva, orig_w, stub_addr, targets, is_tramp in ascend_hooks:
+        hook_addr = 0x7000000000 + rva
+        delta = stub_addr - hook_addr
+        patched_w = 0x14000000 | ((delta >> 2) & 0x3FFFFFF)
+        hooks_json[f"0x{hook_addr:x}"] = {
+            "set": "wxlm_ascend143",
+            "stub": stub_addr,
+            "targets": targets,
+        }
+        ascend_p_recs.append((rva, orig_w, patched_w))
+        all_fn_addrs.append(stub_addr)
+        all_protos.append(f"void f_{stub_addr:x}(Cpu *c);")
+        if is_tramp:
+            all_main_refs.add(hook_addr)
+            all_tramp_entries.add(hook_addr)
+    all_main_refs.add(0x70024382C4)
+    mod_patch_records.append(("ascend143", 0x7005C01000, ascend_p_recs))
+    all_bodies.append(
+        """static uint64_t g_ascend_owner = 0;
+static float g_ascend_player_pos[3] = {0.0f, 0.0f, 0.0f};
+static int g_ascend_player_valid = 0;
+
+static int wxlm_ascend_plausible(float v) {
+    return (v == v) && (v > -100000.0f) && (v < 100000.0f);
+}
+
+static float wxlm_ascend_read_f32(uint64_t addr) {
+    uint32_t bits = LD32(addr);
+    float f = 0.0f;
+    __builtin_memcpy(&f, &bits, sizeof(f));
+    return f;
+}
+
+static uint32_t wxlm_ascend_f32_bits(float f) {
+    uint32_t bits = 0;
+    __builtin_memcpy(&bits, &f, sizeof(bits));
+    return bits;
+}
+
+void f_7005c01000(Cpu *c) {
+    c->x[8] = 0x461c3e00ull;
+    { uint64_t ea = c->x[24] + 0x2b4ull; c->v[10] = LD32(ea); }
+    c->pc = 0x7001d4c7f4ull; return;
+}
+
+void f_7005c01010(Cpu *c) {
+    c->x[27] = 0x461c3e00ull;
+    c->x[28] = 0x1f75ull;
+    c->pc = 0x7001d4ca18ull; return;
+}
+
+void f_7005c01020(Cpu *c) {
+    c->v[0] = 0x461c4000ull;
+    c->pc = 0; return;
+}
+
+void f_7005c01030(Cpu *c) {
+    c->v[3] = 0x461c38ccull;
+    { uint64_t ea = c->sp + 0x140ull; uint64_t v = LD16(ea); c->x[8] = (uint64_t)(v); }
+    c->pc = 0x700085e464ull; return;
+}
+
+void f_7005c01040(Cpu *c) {
+    uint64_t mgr = c->x[0];
+    c->sp = (uint64_t)(c->sp - 0x120ull);
+    c->pc = 0x7001d4c78cull;
+    f_7001d4c788(c);
+    c->pc = 0;
+    if ((c->x[0] & 0xffu) == 0 && mgr) {
+        uint16_t reason = LD16(mgr + 0x7cull);
+        uint16_t rejection = (uint16_t)(reason & ~0x0040u);
+        if ((rejection & 0x0408u) != 0 && (rejection & ~0x0408u) == 0) {
+            ST16(mgr + 0x7cull, (uint16_t)(reason & ~0x0408u));
+            c->x[0] = 1ull;
+        }
+    }
+}
+
+void f_7005c01050(Cpu *c) {
+    uint64_t mgr = c->x[0];
+    uint64_t uctx = c->x[1];
+    g_ascend_owner = 0;
+    g_ascend_player_valid = 0;
+    if (mgr && uctx) {
+        uint64_t actor = LD64(uctx + 8ull);
+        if (actor) {
+            float px = wxlm_ascend_read_f32(actor + 0x2b4ull);
+            float py = wxlm_ascend_read_f32(actor + 0x2b8ull);
+            float pz = wxlm_ascend_read_f32(actor + 0x2bcull);
+            if (wxlm_ascend_plausible(px) && wxlm_ascend_plausible(py) && wxlm_ascend_plausible(pz)) {
+                g_ascend_player_pos[0] = px;
+                g_ascend_player_pos[1] = py;
+                g_ascend_player_pos[2] = pz;
+                g_ascend_player_valid = 1;
+                g_ascend_owner = mgr;
+            }
+        }
+    }
+    { uint64_t ea = c->sp - 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+    c->pc = 0x700085dffcull;
+    f_700085dff8(c);
+    c->pc = 0;
+    if (g_ascend_owner == mgr) {
+        g_ascend_owner = 0;
+    }
+    g_ascend_player_valid = 0;
+}
+
+void f_7005c01060(Cpu *c) {
+    uint64_t handle = c->x[0];
+    uint64_t pos = c->x[1];
+    { uint64_t ea = c->x[0] + 0x2ull; uint64_t v = (uint64_t)(int64_t)(int16_t)LD16(ea); c->x[8] = (uint64_t)(v); }
+    c->pc = 0x70006d25f8ull;
+    f_70006d25f4(c);
+    c->pc = 0;
+    uint64_t ret_x0 = c->x[0];
+    if (handle && pos && g_ascend_player_valid && g_ascend_owner) {
+        if (handle == g_ascend_owner + 0x3cull || handle == g_ascend_owner + 0x4cull ||
+            handle == g_ascend_owner + 0x5cull || handle == g_ascend_owner + 0x6cull) {
+            float dx = wxlm_ascend_read_f32(pos) - g_ascend_player_pos[0];
+            float dy = wxlm_ascend_read_f32(pos + 4ull) - g_ascend_player_pos[1];
+            float dz = wxlm_ascend_read_f32(pos + 8ull) - g_ascend_player_pos[2];
+            if (wxlm_ascend_plausible(dx) && wxlm_ascend_plausible(dy) && wxlm_ascend_plausible(dz)) {
+                float dist = __builtin_sqrtf(dx * dx + dy * dy + dz * dz);
+                float scale = 1.0f;
+                if ((dist == dist) && dist > 40.0f && dist <= 10000.0f) {
+                    scale = 1.0f + (dist - 40.0f) / 240.0f;
+                    if (scale > 4.0f) scale = 4.0f;
+                }
+                uint32_t sbits = wxlm_ascend_f32_bits(scale);
+                uint64_t scale_ea = c->sp - 16ull;
+                c->sp = scale_ea;
+                ST32(scale_ea, sbits);
+                ST32(scale_ea + 4ull, sbits);
+                ST32(scale_ea + 8ull, sbits);
+                c->x[0] = handle;
+                c->x[1] = pos;
+                c->x[2] = scale_ea;
+                f_70024382c4(c);
+                c->sp = scale_ea + 16ull;
+                c->x[0] = ret_x0;
+                c->pc = 0;
+            }
+        }
+    }
+}"""
+    )
+
     for mr in sorted(all_main_refs):
         all_protos.append(f"__attribute__((weak)) void f_{mr:x}(Cpu *c);")
 

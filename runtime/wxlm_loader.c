@@ -577,6 +577,13 @@ void f_7005b02800(Cpu *c);
 void f_7005b03000(Cpu *c);
 void f_7005b03800(Cpu *c);
 void f_7005b04000(Cpu *c);
+void f_7005c01000(Cpu *c);
+void f_7005c01010(Cpu *c);
+void f_7005c01020(Cpu *c);
+void f_7005c01030(Cpu *c);
+void f_7005c01040(Cpu *c);
+void f_7005c01050(Cpu *c);
+void f_7005c01060(Cpu *c);
 
 static void wxlm_host_log(Cpu *c) {
     const char *msg = (const char *)(uintptr_t)c->x[0];
@@ -5968,8 +5975,24 @@ static const WxlmPatchSite wxlm_sites_heropath143[7] = {
     { 0xd96f30u, 0x885f7ea8u, 0x1535b234u },
     { 0xd96ffcu, 0x885f7e88u, 0x1535b401u },
 };
+static const WxlmPatchSite wxlm_sites_ultrahand[5] = {
+    { 0x1d6712cu, 0x7100591fu, 0x7100ad1fu },
+    { 0x1c09fbcu, 0x7100591fu, 0x7100ad1fu },
+    { 0x272584u, 0x7100591fu, 0x7100ad1fu },
+    { 0x1915668u, 0x7100591fu, 0x7100ad1fu },
+    { 0x1915d90u, 0x51005515u, 0x5100a915u },
+};
+static const WxlmPatchSite wxlm_sites_ascend143[7] = {
+    { 0x1d4c7f0u, 0xbd42b70au, 0x14fad204u },
+    { 0x1d4ca14u, 0x5283eebcu, 0x14fad17fu },
+    { 0x1d4c200u, 0x1e269000u, 0x14fad388u },
+    { 0x85e460u, 0x794283e8u, 0x154e8af4u },
+    { 0x1d4c788u, 0xd10483ffu, 0x14fad22eu },
+    { 0x85dff8u, 0xa9be7bfdu, 0x154e8c16u },
+    { 0x6d25f4u, 0x79800408u, 0x1554ba9bu },
+};
 
-static const WxlmModPatches wxlm_mod_patches[10] = {
+static const WxlmModPatches wxlm_mod_patches[12] = {
     { "wxlm_acq143", wxlm_sites_acq143, 3u },
     { "wxlm_arrow143", wxlm_sites_arrow143, 8u },
     { "wxlm_bp42probe", wxlm_sites_bp42probe, 11u },
@@ -5980,6 +6003,8 @@ static const WxlmModPatches wxlm_mod_patches[10] = {
     { "wxlm_guide143", wxlm_sites_guide143, 7u },
     { "wxlm_qol143", wxlm_sites_qol143, 40u },
     { "wxlm_heropath143", wxlm_sites_heropath143, 7u },
+    { "wxlm_ultrahand", wxlm_sites_ultrahand, 5u },
+    { "wxlm_ascend143", wxlm_sites_ascend143, 7u },
 };
 
 void wxlm_register_hosts(void) {
@@ -6557,6 +6582,13 @@ void wxlm_register_hosts(void) {
     rt_register_host(0x7005b03000ull, f_7005b03000);
     rt_register_host(0x7005b03800ull, f_7005b03800);
     rt_register_host(0x7005b04000ull, f_7005b04000);
+    rt_register_host(0x7005c01000ull, f_7005c01000);
+    rt_register_host(0x7005c01010ull, f_7005c01010);
+    rt_register_host(0x7005c01020ull, f_7005c01020);
+    rt_register_host(0x7005c01030ull, f_7005c01030);
+    rt_register_host(0x7005c01040ull, f_7005c01040);
+    rt_register_host(0x7005c01050ull, f_7005c01050);
+    rt_register_host(0x7005c01060ull, f_7005c01060);
 }
 
 static int g_wxlm_inited = 0;

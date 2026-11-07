@@ -572,14 +572,25 @@ void f_7005b02800(Cpu *c);
 void f_7005b03000(Cpu *c);
 void f_7005b03800(Cpu *c);
 void f_7005b04000(Cpu *c);
+void f_7005c01000(Cpu *c);
+void f_7005c01010(Cpu *c);
+void f_7005c01020(Cpu *c);
+void f_7005c01030(Cpu *c);
+void f_7005c01040(Cpu *c);
+void f_7005c01050(Cpu *c);
+void f_7005c01060(Cpu *c);
 __attribute__((weak)) void f_700016fdcc(Cpu *c);
 __attribute__((weak)) void f_70002b6900(Cpu *c);
+__attribute__((weak)) void f_70006d25f4(Cpu *c);
 __attribute__((weak)) void f_70007a910c(Cpu *c);
+__attribute__((weak)) void f_700085dff8(Cpu *c);
 __attribute__((weak)) void f_7001b78bb0(Cpu *c);
 __attribute__((weak)) void f_7001d23a4c(Cpu *c);
+__attribute__((weak)) void f_7001d4c788(Cpu *c);
 __attribute__((weak)) void f_70023bb4b8(Cpu *c);
 __attribute__((weak)) void f_70023bb680(Cpu *c);
 __attribute__((weak)) void f_70023bc074(Cpu *c);
+__attribute__((weak)) void f_70024382c4(Cpu *c);
 __attribute__((weak)) void f_7002a9f6f8(Cpu *c);
 
 void f_7005203800(Cpu *c) {

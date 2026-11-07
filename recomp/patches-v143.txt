@@ -1089,7 +1089,14 @@ set wxlm_map143       TOTK_WXLM_MAP143         1
 set wxlm_guide143     TOTK_WXLM_GUIDE143       1
 set wxlm_qol143       TOTK_WXLM_QOL143         1
 set wxlm_heropath143  TOTK_WXLM_HEROPATH143    1
+set wxlm_ultrahand    TOTK_WXLM_ULTRAHAND      1
+set wxlm_ascend143    TOTK_WXLM_ASCEND143      1
 
 # qol143 inline instruction patches (stub == None)
 site wxlm_qol143 main 1b78cd0 12800001 2a1f03e1
 site wxlm_qol143 main 20b2a1c 12800001 2a1f03e1
+site wxlm_ultrahand main 1d6712c 7100591f 7100ad1f
+site wxlm_ultrahand main 1c09fbc 7100591f 7100ad1f
+site wxlm_ultrahand main 272584 7100591f 7100ad1f
+site wxlm_ultrahand main 1915668 7100591f 7100ad1f
+site wxlm_ultrahand main 1915d90 51005515 5100a915

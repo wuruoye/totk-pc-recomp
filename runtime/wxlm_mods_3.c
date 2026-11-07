@@ -572,14 +572,25 @@ void f_7005b02800(Cpu *c);
 void f_7005b03000(Cpu *c);
 void f_7005b03800(Cpu *c);
 void f_7005b04000(Cpu *c);
+void f_7005c01000(Cpu *c);
+void f_7005c01010(Cpu *c);
+void f_7005c01020(Cpu *c);
+void f_7005c01030(Cpu *c);
+void f_7005c01040(Cpu *c);
+void f_7005c01050(Cpu *c);
+void f_7005c01060(Cpu *c);
 __attribute__((weak)) void f_700016fdcc(Cpu *c);
 __attribute__((weak)) void f_70002b6900(Cpu *c);
+__attribute__((weak)) void f_70006d25f4(Cpu *c);
 __attribute__((weak)) void f_70007a910c(Cpu *c);
+__attribute__((weak)) void f_700085dff8(Cpu *c);
 __attribute__((weak)) void f_7001b78bb0(Cpu *c);
 __attribute__((weak)) void f_7001d23a4c(Cpu *c);
+__attribute__((weak)) void f_7001d4c788(Cpu *c);
 __attribute__((weak)) void f_70023bb4b8(Cpu *c);
 __attribute__((weak)) void f_70023bb680(Cpu *c);
 __attribute__((weak)) void f_70023bc074(Cpu *c);
+__attribute__((weak)) void f_70024382c4(Cpu *c);
 __attribute__((weak)) void f_7002a9f6f8(Cpu *c);
 
 void f_7005204000(Cpu *c) {
@@ -12502,4 +12513,133 @@ void f_7005a1c000(Cpu *c) {
     c->sp = (uint64_t)(c->sp + 0x340ull);
     { uint64_t ea = c->sp - 112; ST64(ea, VS64(9)); ST64(ea + 8, VS64(8)); c->sp = ea; }
     c->pc = 0x7000896194ull; return;
+}
+
+static uint64_t g_ascend_owner = 0;
+static float g_ascend_player_pos[3] = {0.0f, 0.0f, 0.0f};
+static int g_ascend_player_valid = 0;
+
+static int wxlm_ascend_plausible(float v) {
+    return (v == v) && (v > -100000.0f) && (v < 100000.0f);
+}
+
+static float wxlm_ascend_read_f32(uint64_t addr) {
+    uint32_t bits = LD32(addr);
+    float f = 0.0f;
+    __builtin_memcpy(&f, &bits, sizeof(f));
+    return f;
+}
+
+static uint32_t wxlm_ascend_f32_bits(float f) {
+    uint32_t bits = 0;
+    __builtin_memcpy(&bits, &f, sizeof(bits));
+    return bits;
+}
+
+void f_7005c01000(Cpu *c) {
+    c->x[8] = 0x461c3e00ull;
+    { uint64_t ea = c->x[24] + 0x2b4ull; c->v[10] = LD32(ea); }
+    c->pc = 0x7001d4c7f4ull; return;
+}
+
+void f_7005c01010(Cpu *c) {
+    c->x[27] = 0x461c3e00ull;
+    c->x[28] = 0x1f75ull;
+    c->pc = 0x7001d4ca18ull; return;
+}
+
+void f_7005c01020(Cpu *c) {
+    c->v[0] = 0x461c4000ull;
+    c->pc = 0; return;
+}
+
+void f_7005c01030(Cpu *c) {
+    c->v[3] = 0x461c38ccull;
+    { uint64_t ea = c->sp + 0x140ull; uint64_t v = LD16(ea); c->x[8] = (uint64_t)(v); }
+    c->pc = 0x700085e464ull; return;
+}
+
+void f_7005c01040(Cpu *c) {
+    uint64_t mgr = c->x[0];
+    c->sp = (uint64_t)(c->sp - 0x120ull);
+    c->pc = 0x7001d4c78cull;
+    f_7001d4c788(c);
+    c->pc = 0;
+    if ((c->x[0] & 0xffu) == 0 && mgr) {
+        uint16_t reason = LD16(mgr + 0x7cull);
+        uint16_t rejection = (uint16_t)(reason & ~0x0040u);
+        if ((rejection & 0x0408u) != 0 && (rejection & ~0x0408u) == 0) {
+            ST16(mgr + 0x7cull, (uint16_t)(reason & ~0x0408u));
+            c->x[0] = 1ull;
+        }
+    }
+}
+
+void f_7005c01050(Cpu *c) {
+    uint64_t mgr = c->x[0];
+    uint64_t uctx = c->x[1];
+    g_ascend_owner = 0;
+    g_ascend_player_valid = 0;
+    if (mgr && uctx) {
+        uint64_t actor = LD64(uctx + 8ull);
+        if (actor) {
+            float px = wxlm_ascend_read_f32(actor + 0x2b4ull);
+            float py = wxlm_ascend_read_f32(actor + 0x2b8ull);
+            float pz = wxlm_ascend_read_f32(actor + 0x2bcull);
+            if (wxlm_ascend_plausible(px) && wxlm_ascend_plausible(py) && wxlm_ascend_plausible(pz)) {
+                g_ascend_player_pos[0] = px;
+                g_ascend_player_pos[1] = py;
+                g_ascend_player_pos[2] = pz;
+                g_ascend_player_valid = 1;
+                g_ascend_owner = mgr;
+            }
+        }
+    }
+    { uint64_t ea = c->sp - 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+    c->pc = 0x700085dffcull;
+    f_700085dff8(c);
+    c->pc = 0;
+    if (g_ascend_owner == mgr) {
+        g_ascend_owner = 0;
+    }
+    g_ascend_player_valid = 0;
+}
+
+void f_7005c01060(Cpu *c) {
+    uint64_t handle = c->x[0];
+    uint64_t pos = c->x[1];
+    { uint64_t ea = c->x[0] + 0x2ull; uint64_t v = (uint64_t)(int64_t)(int16_t)LD16(ea); c->x[8] = (uint64_t)(v); }
+    c->pc = 0x70006d25f8ull;
+    f_70006d25f4(c);
+    c->pc = 0;
+    uint64_t ret_x0 = c->x[0];
+    if (handle && pos && g_ascend_player_valid && g_ascend_owner) {
+        if (handle == g_ascend_owner + 0x3cull || handle == g_ascend_owner + 0x4cull ||
+            handle == g_ascend_owner + 0x5cull || handle == g_ascend_owner + 0x6cull) {
+            float dx = wxlm_ascend_read_f32(pos) - g_ascend_player_pos[0];
+            float dy = wxlm_ascend_read_f32(pos + 4ull) - g_ascend_player_pos[1];
+            float dz = wxlm_ascend_read_f32(pos + 8ull) - g_ascend_player_pos[2];
+            if (wxlm_ascend_plausible(dx) && wxlm_ascend_plausible(dy) && wxlm_ascend_plausible(dz)) {
+                float dist = __builtin_sqrtf(dx * dx + dy * dy + dz * dz);
+                float scale = 1.0f;
+                if ((dist == dist) && dist > 40.0f && dist <= 10000.0f) {
+                    scale = 1.0f + (dist - 40.0f) / 240.0f;
+                    if (scale > 4.0f) scale = 4.0f;
+                }
+                uint32_t sbits = wxlm_ascend_f32_bits(scale);
+                uint64_t scale_ea = c->sp - 16ull;
+                c->sp = scale_ea;
+                ST32(scale_ea, sbits);
+                ST32(scale_ea + 4ull, sbits);
+                ST32(scale_ea + 8ull, sbits);
+                c->x[0] = handle;
+                c->x[1] = pos;
+                c->x[2] = scale_ea;
+                f_70024382c4(c);
+                c->sp = scale_ea + 16ull;
+                c->x[0] = ret_x0;
+                c->pc = 0;
+            }
+        }
+    }
 }

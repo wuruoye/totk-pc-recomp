@@ -627,7 +627,15 @@ static Restbl *restbl_unpack(const void *z, size_t n) {
 // entry. A member that outgrew its entry's slack loads, then its heap runs out: TotK 1.4.3 writes through a null
 // pointer at main+0x21794c when the 0x68-byte object an .ainb member builds after its file no longer fits.
 #define PACK_MAX (256u << 20)   // the largest pack taken, decompressed (AI.Global.Product.140.pack: 24 MiB)
-typedef struct { ZSTD_DDict *dict[4]; unsigned id[4]; int n; ZSTD_DCtx *dctx; } Packs;
+typedef struct {
+    ZSTD_DDict *dict[4];
+    const uint8_t *dict_raw[4];
+    size_t dict_size[4];
+    unsigned id[4];
+    int n;
+    ZSTD_DCtx *dctx;
+    uint8_t *zsdic_raw;
+} Packs;
 
 // The bytes of zstd frame z[0..n), with the dictionary of ps its header names; malloc'd. NULL when it is not such a
 // frame with a recorded size of at most PACK_MAX.
@@ -652,8 +660,11 @@ static uint8_t *pack_unpack(Packs *ps, const void *z, size_t n, size_t *out_n) {
 
 static void pack_dict_add(const char *name, const uint8_t *data, size_t size, void *ctx) {
     Packs *ps = ctx;
-    ZSTD_DDict *dd = ps->n < 4 && ends_with(name, ".zsdic") ? ZSTD_createDDict(data, size) : NULL;   // a copy
+    if (ps->n >= 4 || !ends_with(name, ".zsdic")) return;
+    ZSTD_DDict *dd = ZSTD_createDDict(data, size);   // a copy
     if (!dd) return;
+    ps->dict_raw[ps->n] = data;
+    ps->dict_size[ps->n] = size;
     ps->dict[ps->n] = dd;
     ps->id[ps->n++] = ZSTD_getDictID_fromDDict(dd);
 }
@@ -665,16 +676,16 @@ static int packs_open(Packs *ps) {
     size_t n = 0, rn = 0;
     ps->dctx = ZSTD_createDCtx();
     void *z = read_served("Pack/ZsDic.pack.zs", &base, &n, "the members of the mods' packs keep their entries");
-    uint8_t *raw = z ? pack_unpack(ps, z, n, &rn) : NULL;
-    int ok = raw && restbl_sarc_each(raw, rn, pack_dict_add, ps) && ps->n;
+    ps->zsdic_raw = z ? pack_unpack(ps, z, n, &rn) : NULL;
+    int ok = ps->zsdic_raw && restbl_sarc_each(ps->zsdic_raw, rn, pack_dict_add, ps) && ps->n;
     free(z);
-    free(raw);
     return ok;
 }
 
 static void packs_close(Packs *ps) {
     for (int i = 0; i < ps->n; i++) ZSTD_freeDDict(ps->dict[i]);
     ZSTD_freeDCtx(ps->dctx);
+    free(ps->zsdic_raw);
 }
 
 // Overlay o (a pack) and the game's copy of it, decompressed; NULL when o cannot be read or unpacked. *orig stays NULL
@@ -862,6 +873,142 @@ static void camera_overlay(void) {
     if (ok && serve_generated(CAMPACK, base, out, out_n, "camera", "camera speed", keeps)) cam_pack_served();
 }
 
+// Moves step-keyed FLVI (visibility) keyframes at frame 1.0 to frame 0.0 on the named panes of a little-endian BFLAN.
+// At 30 fps frame 1 is the frame after the capture completes; above 30 fps the animation crosses frame 0.5 before the
+// capture finishes and the background pane shows an uninitialized black texture (tools/make_romfs_patches.py).
+static int bflan_patch_capture(uint8_t *b, size_t n, const char *const *panes, int npanes) {
+    if (n < 28 || memcmp(b, "FLAN\xff\xfe", 6) != 0) return 0;
+    uint16_t hdr = (uint16_t)(b[6] | (b[7] << 8));
+    if (hdr + 8 > n || memcmp(b + hdr, "pat1", 4) != 0) return 0;
+    uint32_t pat_sz = (uint32_t)b[hdr + 4] | ((uint32_t)b[hdr + 5] << 8) |
+                      ((uint32_t)b[hdr + 6] << 16) | ((uint32_t)b[hdr + 7] << 24);
+    size_t pai = (size_t)hdr + pat_sz;
+    if (pai + 20 > n || memcmp(b + pai, "pai1", 4) != 0) return 0;
+    uint16_t n_entries = (uint16_t)(b[pai + 12] | (b[pai + 13] << 8));
+    uint32_t entries_off = (uint32_t)b[pai + 16] | ((uint32_t)b[pai + 17] << 8) |
+                           ((uint32_t)b[pai + 18] << 16) | ((uint32_t)b[pai + 19] << 24);
+    size_t ebase = pai + entries_off;
+    int patched = 0;
+    for (uint16_t i = 0; i < n_entries; i++) {
+        size_t eo = ebase + (size_t)i * 4;
+        if (eo + 4 > n) break;
+        uint32_t rel = (uint32_t)b[eo] | ((uint32_t)b[eo + 1] << 8) |
+                       ((uint32_t)b[eo + 2] << 16) | ((uint32_t)b[eo + 3] << 24);
+        size_t e = pai + rel;
+        if (e + 32 > n || b[e + 29] != 0) continue;
+        char name[29];
+        memcpy(name, b + e, 28);
+        name[28] = 0;
+        int match = 0;
+        for (int p = 0; p < npanes; p++)
+            if (!strcmp(name, panes[p])) { match = 1; break; }
+        if (!match) continue;
+        uint8_t n_tags = b[e + 28];
+        for (uint8_t t = 0; t < n_tags; t++) {
+            size_t to = e + 32 + (size_t)t * 4;
+            if (to + 4 > n) break;
+            uint32_t trel = (uint32_t)b[to] | ((uint32_t)b[to + 1] << 8) |
+                            ((uint32_t)b[to + 2] << 16) | ((uint32_t)b[to + 3] << 24);
+            size_t tag = e + trel;
+            if (tag + 8 > n || memcmp(b + tag, "FLVI", 4) != 0) continue;
+            uint8_t n_entries_tag = b[tag + 4];
+            for (uint8_t te = 0; te < n_entries_tag; te++) {
+                size_t teo = tag + 8 + (size_t)te * 4;
+                if (teo + 4 > n) break;
+                uint32_t erel = (uint32_t)b[teo] | ((uint32_t)b[teo + 1] << 8) |
+                                ((uint32_t)b[teo + 2] << 16) | ((uint32_t)b[teo + 3] << 24);
+                size_t info = tag + erel;
+                if (info + 12 > n || b[info + 2] != 1) continue;   // curve_type == 1 (step)
+                uint16_t n_keys = (uint16_t)(b[info + 4] | (b[info + 5] << 8));
+                uint32_t keys_off = (uint32_t)b[info + 8] | ((uint32_t)b[info + 9] << 8) |
+                                    ((uint32_t)b[info + 10] << 16) | ((uint32_t)b[info + 11] << 24);
+                size_t kbase = info + keys_off;
+                for (uint16_t k = 0; k < n_keys; k++) {
+                    size_t ko = kbase + (size_t)k * 8;
+                    if (ko + 8 > n) break;
+                    if (memcmp(b + ko, "\x00\x00\x80\x3f", 4) == 0) {   // 1.0f in little-endian IEEE 754
+                        memset(b + ko, 0, 4);
+                        patched++;
+                    }
+                }
+            }
+        }
+    }
+    return patched;
+}
+
+static void shortcut_member(const char *name, const uint8_t *data, size_t size, void *ctx) {
+    int *patched = ctx;
+    if (!strcmp(name, "anim/ShortCutBG_00_In.bflan")) {
+        static const char *const panes[] = {"C_CaptureBG_00", "C_CaptureClearBG_00", "P_CaptureClearBG_00"};
+        *patched += bflan_patch_capture((uint8_t *)data, size, panes, 3);
+    } else if (!strcmp(name, "anim/AutoBuilder_00_In.bflan")) {
+        static const char *const panes[] = {"C_CaptureBG_00"};
+        *patched += bflan_patch_capture((uint8_t *)data, size, panes, 1);
+    }
+}
+
+// When a player mod or TOTK_ROMFS_MODS replaces UI/LayoutArchive/Common.Product.<110|140>.Nin_NX_NVN.blarc.zs,
+// overlay_contest picks the mod's archive over romfs-patches's copy. Patch the 60fps capture-pane FLVI keyframes in
+// place in the winning archive so quick-menu and AutoBuilder screen capture do not flash black above 30 fps.
+static void shortcut_overlay(void) {
+    static const char *const blarcs[] = {
+        "UI/LayoutArchive/Common.Product.110.Nin_NX_NVN.blarc.zs",
+        "UI/LayoutArchive/Common.Product.140.Nin_NX_NVN.blarc.zs",
+    };
+    static const char keeps[] = "the mod's Common.Product layout archive stays as is";
+    Packs ps = {0};
+    int opened = 0;
+    for (int b = 0; b < 2; b++) {
+        Overlay *served = NULL;
+        for (size_t k = 0; k < noverlay; k++)
+            if (!strcmp(overlays[k].name, blarcs[b])) { served = &overlays[k]; break; }
+        if (!served || served->prio < 1) continue;   // only when a mod (prio >= 1) replaced romfs-patches's copy
+        if (!opened) {
+            if (!packs_open(&ps)) {
+                packs_close(&ps);
+                return;
+            }
+            opened = 1;
+        }
+        uint64_t zn = 0;
+        void *z = plat_file_read(served->path, &zn);
+        size_t rn = 0;
+        uint8_t *raw = z ? pack_unpack(&ps, z, (size_t)zn, &rn) : NULL;
+        unsigned dict_id = z ? ZSTD_getDictID_fromFrame(z, (size_t)zn) : 0;
+        free(z);
+        if (!raw) continue;
+        int patched = 0;
+        restbl_sarc_each(raw, rn, shortcut_member, &patched);
+        if (patched > 0) {
+            const uint8_t *dict_raw = NULL;
+            size_t dict_sz = 0;
+            for (int i = 0; i < ps.n; i++)
+                if (ps.id[i] == dict_id) { dict_raw = ps.dict_raw[i]; dict_sz = ps.dict_size[i]; break; }
+            size_t cap = ZSTD_compressBound(rn);
+            void *out = malloc(cap);
+            size_t out_n = 0;
+            ZSTD_CCtx *cctx = ZSTD_createCCtx();
+            if (out && cctx) {
+                if (dict_raw)
+                    out_n = ZSTD_compress_usingDict(cctx, out, cap, raw, rn, dict_raw, dict_sz, 3);
+                else
+                    out_n = ZSTD_compressCCtx(cctx, out, cap, raw, rn, 3);
+            }
+            ZSTD_freeCCtx(cctx);
+            if (out && !ZSTD_isError(out_n) &&
+                serve_generated(blarcs[b], served, out, out_n, "mods", "60fps capture-pane fix", keeps)) {
+                rt_log("RomFS: %s (%s): patched %d capture-pane FLVI keyframes for 60fps+", blarcs[b], served->path,
+                       patched);
+            } else {
+                free(out);
+            }
+        }
+        free(raw);
+    }
+    if (opened) packs_close(&ps);
+}
+
 // The button prompts' folders (input_prompts_folder) and whether each had a manifest next to romfs-index.bin at start;
 // the one the settings asked for at start, the one overlay_init loaded (NULL: the game's own prompts) and why the first
 // did not load (ROMFS_PROMPTS_*). The menu compares them with the settings in effect (ui/menu.cpp prompts_note).
@@ -1003,6 +1150,7 @@ static void overlay_init(void) {
     restbl_overlay();
     heapdef_overlay();
     camera_overlay();
+    shortcut_overlay();
     added_init();
     if (noverlay) qsort(overlays, noverlay, sizeof *overlays, overlay_order);
     for (size_t k = 1; k < noverlay; k++)   // overlay_contest left one per file; the generated ones replace in place

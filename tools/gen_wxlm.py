@@ -489,9 +489,6 @@ def main():
                     "targets": targets,
                 }
                 p_recs.append((rva, orig_w0, patched_w0))
-                if len(actual_bytes) >= 8:
-                    orig_w1 = struct.unpack_from("<I", actual_bytes, 4)[0]
-                    p_recs.append((rva + 4, orig_w1, 0xD503201F))
             else:
                 repl_bytes = bytes.fromhex(p["repl_hex"])
                 for off_b in range(0, len(actual_bytes), 4):

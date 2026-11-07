@@ -5924,12 +5924,10 @@ static const WxlmPatchSite wxlm_sites_guide143[7] = {
     { 0x20fc9a0u, 0x2d060500u, 0x14e01198u },
     { 0x3f8f20u, 0x2d0206a0u, 0x15542138u },
 };
-static const WxlmPatchSite wxlm_sites_qol143[40] = {
+static const WxlmPatchSite wxlm_sites_qol143[38] = {
     { 0x44039cu, 0x0b090109u, 0x15570319u },
-    { 0x4403a0u, 0xb918ea69u, 0xd503201fu },
     { 0x2a9f6f8u, 0xa9bd7bfdu, 0x14bd9e42u },
     { 0x209bb98u, 0x6b090101u, 0x14e5ba5au },
-    { 0x209bb9cu, 0x5400196du, 0xd503201fu },
     { 0x209c110u, 0x5400088du, 0x14e5b9fcu },
     { 0x209c134u, 0x4b130101u, 0x14e5baf3u },
     { 0x209e088u, 0xb944f808u, 0x14e58ddeu },
@@ -6001,7 +5999,7 @@ static const WxlmModPatches wxlm_mod_patches[12] = {
     { "wxlm_horsestats143", wxlm_sites_horsestats143, 2u },
     { "wxlm_map143", wxlm_sites_map143, 11u },
     { "wxlm_guide143", wxlm_sites_guide143, 7u },
-    { "wxlm_qol143", wxlm_sites_qol143, 40u },
+    { "wxlm_qol143", wxlm_sites_qol143, 38u },
     { "wxlm_heropath143", wxlm_sites_heropath143, 7u },
     { "wxlm_ultrahand", wxlm_sites_ultrahand, 5u },
     { "wxlm_ascend143", wxlm_sites_ascend143, 7u },

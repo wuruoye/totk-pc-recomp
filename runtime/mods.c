@@ -25,7 +25,9 @@
 #include "cfg.h"
 #include "host.h"
 #include "mods.h"
+#include "patches.h"
 #include "platform/platform.h"
+#include "wxlm.h"
 
 #define TITLE "0100F2C0115B6000"
 #define MAX_MODS 512
@@ -300,6 +302,26 @@ static int exefs_check(ModInfo *m, const char *path) {
     return w.unsupported || at.unsupported;
 }
 
+static int wxlm_file_cb(const char *leaf, int kind, uint64_t size, void *ctx) {
+    (void)size;
+    ModInfo *m = ctx;
+    if (kind != PLAT_FS_FILE || !ends_with_ci(leaf, ".wxlm")) return 1;
+    size_t stem_len = strlen(leaf) - 5;
+    if (!stem_len || stem_len > 24 || m->nwxlm >= (int)(sizeof m->wxlm_sets / sizeof *m->wxlm_sets)) return 1;
+    char set_name[32];
+    memcpy(set_name, "wxlm_", 5);
+    for (size_t i = 0; i < stem_len; i++) {
+        char c = leaf[i];
+        set_name[5 + i] = (c >= 'A' && c <= 'Z') ? (char)(c - 'A' + 'a') : c;
+    }
+    set_name[5 + stem_len] = 0;
+    if (rt_patch_set(set_name) >= 0) {
+        snprintf(m->wxlm_sets[m->nwxlm++], sizeof m->wxlm_sets[0], "%s", set_name);
+        m->kind |= MOD_WXLM;
+    }
+    return 1;
+}
+
 // One mod folder of the scan.
 static int scan_cb(const char *name, int kind, uint64_t size, void *ctx) {
     (void)size;
@@ -322,17 +344,22 @@ static int scan_cb(const char *name, int kind, uint64_t size, void *ctx) {
     find_root(path, "exefs", m->exefs, sizeof m->exefs);
     find_root(path, "cheats", m->cheats, sizeof m->cheats);
     if (m->romfs[0] && has_file(m->romfs)) m->kind |= MOD_ROMFS;
-    if (m->exefs[0]) plat_fs_list(m->exefs, exefs_cb, &m->kind);
+    if (m->romfs[0]) {
+        char wxlm_dir[2200];
+        snprintf(wxlm_dir, sizeof wxlm_dir, "%s/WiiXLaunch/mods", m->romfs);
+        if (plat_dir_exists(wxlm_dir)) plat_fs_list(wxlm_dir, wxlm_file_cb, m);
+    }
+    if (m->exefs[0] && !m->nwxlm) plat_fs_list(m->exefs, exefs_cb, &m->kind);
     if (m->cheats[0]) plat_fs_list(m->cheats, cheats_cb, &m->kind);
-    int unsupported = exefs_check(m, path);
+    int unsupported = m->nwxlm ? 0 : exefs_check(m, path);
     // a mod whose code part the port cannot use is off as a whole: its RomFS files may expect that code
-    m->problem = strchr(m->name, '|')                                ? MOD_BAD_NAME
-               : m->kind & MOD_SUBSDK                                ? MOD_PLUGIN
-               : unsupported                                         ? MOD_EXEFS_UNSUPPORTED
-               : m->pending                                          ? MOD_EXEFS_LATER
-               : m->nsets || m->kind & (MOD_ROMFS | MOD_CHEATS)     ? MOD_OK
-               : m->kind & MOD_EXEFS                                 ? MOD_EXEFS_OTHER
-                                                                     : MOD_EMPTY;
+    m->problem = strchr(m->name, '|')                                           ? MOD_BAD_NAME
+               : m->kind & MOD_SUBSDK                                           ? MOD_PLUGIN
+               : unsupported                                                    ? MOD_EXEFS_UNSUPPORTED
+               : m->pending                                                     ? MOD_EXEFS_LATER
+               : m->nsets || m->nwxlm || m->kind & (MOD_ROMFS | MOD_CHEATS)     ? MOD_OK
+               : m->kind & MOD_EXEFS                                            ? MOD_EXEFS_OTHER
+                                                                                : MOD_EMPTY;
     m->enabled = !listed(disabled, m->name);
     nmods++;
     return 1;
@@ -368,8 +395,8 @@ void mods_scan(void) {
         snprintf(start_order[i], sizeof start_order[i], "%s", mods[i].name);
         start_enabled[i] = mods[i].enabled;
         const ModInfo *m = &mods[i];
-        rt_log("mods: %s: %s,%s%s%s%s%s, %s%s%s", m->name, m->enabled ? "on" : "off", m->kind & MOD_ROMFS ? " romfs" : "",
-               m->kind & MOD_EXEFS ? " exefs" : "", m->kind & MOD_SUBSDK ? " subsdk" : "",
+        rt_log("mods: %s: %s,%s%s%s%s%s%s, %s%s%s", m->name, m->enabled ? "on" : "off", m->kind & MOD_ROMFS ? " romfs" : "",
+               m->kind & MOD_EXEFS ? " exefs" : "", m->kind & MOD_WXLM ? " wxlm" : "", m->kind & MOD_SUBSDK ? " subsdk" : "",
                m->kind & MOD_CHEATS ? " cheats" : "", m->kind ? "" : " no files", problem_name(m->problem),
                m->note[0] ? ": " : "", m->note);
     }
@@ -380,6 +407,14 @@ void mods_exefs_switch(void) {
     mods_scan();
     for (int i = 0; i < nmods; i++) {
         const ModInfo *m = &mods[i];
+        if (m->nwxlm) {
+            int active = start_enabled[i] && m->problem == MOD_OK;
+            for (int k = 0; k < m->nwxlm; k++) {
+                int set = rt_patch_set(m->wxlm_sets[k]);
+                if (set >= 0) rt_patch_switch(set, active);
+            }
+            if (active) rt_log("mods: %s: %d WiiXLaunch modules on", m->name, m->nwxlm);
+        }
         if (!start_enabled[i] || m->problem != MOD_OK || !m->nsets) continue;
         for (int k = 0; k < m->nsets; k++) {
             char name[32];
@@ -397,6 +432,7 @@ void mods_exefs_switch(void) {
         }
         rt_log("mods: %s: %d ExeFS patch files on", m->name, m->nsets);
     }
+    wxlm_sync_main_patches();
 }
 
 int mods_exefs_pending(uint32_t *key) {
@@ -438,6 +474,13 @@ static void write_keys(void) {
 void mods_set_enabled(int i, int on) {
     if (i < 0 || i >= nmods) return;
     mods[i].enabled = on != 0;
+    if (mods[i].nwxlm && mods[i].problem == MOD_OK) {
+        for (int k = 0; k < mods[i].nwxlm; k++) {
+            int set = rt_patch_set(mods[i].wxlm_sets[k]);
+            if (set >= 0) rt_patch_switch(set, mods[i].enabled);
+        }
+        wxlm_sync_main_patches();
+    }
     write_keys();
 }
 

@@ -8,7 +8,7 @@
 #pragma once
 #include <stdint.h>
 
-enum { MOD_ROMFS = 1, MOD_EXEFS = 2, MOD_SUBSDK = 4, MOD_CHEATS = 8 };   // ModInfo.kind bits
+enum { MOD_ROMFS = 1, MOD_EXEFS = 2, MOD_SUBSDK = 4, MOD_CHEATS = 8, MOD_WXLM = 16 };   // ModInfo.kind bits
 typedef enum {
     MOD_OK,
     MOD_EMPTY,          // no RomFS file, no ExeFS patch, no cheat file
@@ -37,6 +37,8 @@ typedef struct {
     int nsets;
     uint32_t sets[16];                      // the built patch sets mod_<hash> of its ExeFS patch files
     char overrides[256];                    // the port's own patch sets its patches replace, comma separated
+    int nwxlm;
+    char wxlm_sets[4][32];                  // built-in wxlm_<stem> patch sets of its WiiXLaunch modules
 } ModInfo;
 
 void mods_scan(void);              // once; later calls return at once

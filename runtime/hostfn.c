@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "host.h"
+#include "wxlm.h"
 
 #define MAX_HOSTFN 4096   // dispatch.c holds HOST_CAP / 2 host functions
 #define MAX_ADDED 64
@@ -172,6 +173,7 @@ void hostfn_seal(void) {
     static RtModule mods[16];   // kept by the dispatcher
     if (sealed) return;
     rt_register_host(RT_RET_HOST, return_sentinel);
+    wxlm_register_hosts();
     sealed = 1;
     int n = rt_linked_modules(mods, 16);
     rt_dispatch_init(mods, n);

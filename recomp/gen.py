@@ -208,11 +208,14 @@ def partition(est, max_fns, max_bytes, big_fn):
 class Emitter:
     """C for the functions of one module. starts is the set of every function start of the module."""
 
-    def __init__(self, mod, starts, patched=None, reg_locals=regs.LOCALS, callee_saved=True, spins=None):
+    def __init__(self, mod, starts, patched=None, reg_locals=regs.LOCALS, callee_saved=True, spins=None,
+                 wxlm_hooks=None, wxlm_tramp_entries=None):
         self.mod = mod
         self.starts = starts
         self.patched = patched or {}   # {address: [(set index, [replacement words])]} (recomp/patches.py)
         self.spins = spins or {}       # {spin wait back-edge: its head} (recomp/patches.py `spin`)
+        self.wxlm_hooks = wxlm_hooks or {}   # {address: {'set_idx': int, 'stub': int, 'targets': [int]}}
+        self.wxlm_tramp_entries = wxlm_tramp_entries or frozenset()
         self.reg_locals = reg_locals   # recomp/regs.py: registers per function in C locals
         self.kept = regs.CALLEE_SAVED if callee_saved else frozenset()   # not reloaded after a call
         self.uses_patches = False
@@ -256,6 +259,13 @@ class Emitter:
                     r = words[-1]
                     if r.kind in ('b', 'bcond') and entry <= r.target < end:
                         labels.add(r.target)
+        if entry in self.wxlm_tramp_entries and entry + 4 < end:
+            labels.add(entry + 4)
+        for a, h in self.wxlm_hooks.items():
+            if entry <= a < end:
+                for t in h['targets']:
+                    if entry <= t < end:
+                        labels.add(t)
         return labels, tables
 
     def replacements(self, a):
@@ -356,7 +366,8 @@ class Emitter:
         # An unresolved computed br re-enters the function through fb_<entry>, a C function of its own, which local
         # flags would not survive; such functions keep NZCV in c->nzcv.
         # The same holds for registers in locals (recomp/regs.py): fb_<entry> keeps them in the Cpu too.
-        local = not all_labels
+        has_wxlm = (entry in self.wxlm_tramp_entries) or any(entry <= a < end for a in self.wxlm_hooks)
+        local = (not all_labels) and (not has_wxlm)
         spill, reload, reload_call = (regs.SPILL, regs.RELOAD, regs.RELOAD_CALL) if local else ('', '', '')
         succ = self.flow(insns, entry, end, tables) if local else None
         fp = self.flag_plan(insns, entry, end, tables, succ) if local else None
@@ -399,8 +410,10 @@ class Emitter:
         else:
             redispatch = f'{MUSTTAIL} rt_dispatch(c);'
             out = [f'void {fname(entry)}(Cpu *c) {{', f'    FN_ENTER({hx(entry)});']
-            if fp.used:
+            if fp and fp.used:
                 out.append('    ' + fp.decl())
+            if entry in self.wxlm_tramp_entries and entry + 4 < end:
+                out.append(f'    if (__builtin_expect(c->pc == {hx(entry + 4)}, 0)) {{ c->pc = 0; goto L_{entry + 4:x}; }}')
 
         def call(t, a):
             if t in starts:
@@ -448,6 +461,16 @@ class Emitter:
             a = entry + 4 * i
             if a in labels:
                 emit(None, f'L_{a:x}:;')
+            if a in self.wxlm_hooks:
+                h = self.wxlm_hooks[a]
+                stub = h['stub']
+                refs.add(stub)
+                self.uses_patches = True
+                self.stats['patched_sites'] += 1
+                gotos = ' '.join(f'if (c->pc == {hx(t)}) {{ c->pc = 0; goto L_{t:x}; }}'
+                                 for t in h['targets'] if entry <= t < end)
+                emit(i, f'    if (rt_patch_on[{h["set_idx"]}]) {{ c->pc = 0; {fname(stub)}(c); {gotos} '
+                        f'if (c->pc) {{ {MUSTTAIL} rt_dispatch(c); }} return; }}')
             k = ins.kind
             if a in self.patched:
                 emit(i, patch(i, ins, a))
@@ -572,9 +595,27 @@ def _emitter(name):
     if e is None:
         path, base = _W['mods'][name]
         mod = Module(name, path, base, 'c')
+        wxlm_hooks = {}
+        wxlm_tramp_entries = frozenset()
+        if name == 'main':
+            hooks_file = Path(__file__).resolve().parent / 'wxlm_hooks.json'
+            if hooks_file.is_file():
+                raw = json.loads(hooks_file.read_text(encoding='utf-8'))
+                set_index = {nm: idx for idx, (nm, _, _) in enumerate(_W['patches'].sets)}
+                for addr_s, h in raw.get('hooks', {}).items():
+                    if h['set'] in set_index:
+                        wxlm_hooks[int(addr_s, 16)] = {
+                            'set_idx': set_index[h['set']],
+                            'stub': h['stub'],
+                            'targets': h['targets'],
+                        }
+                if wxlm_hooks:
+                    wxlm_tramp_entries = frozenset(int(x, 16) for x in raw.get('tramp_entries', []))
         e = _W['emitters'][name] = Emitter(mod, set(_W['starts'][name].tolist()),
                                            _W['patches'].for_module(name, base),
-                                           spins=_W['patches'].spins_for(name, base), **_W['opts'])
+                                           spins=_W['patches'].spins_for(name, base),
+                                           wxlm_hooks=wxlm_hooks,
+                                           wxlm_tramp_entries=wxlm_tramp_entries, **_W['opts'])
     return e
 
 

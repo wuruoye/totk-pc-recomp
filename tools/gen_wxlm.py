@@ -375,7 +375,131 @@ def prelink_and_lift(name: str, payload: bytearray, mod_base: int, m_info: dict,
                         lines.append("    c->pc = 0; return;")
 
         lines.append("}")
-        c_funcs.append("\n".join(lines))
+        fn_body = "\n".join(lines)
+        if name == "arrow143" and s == 0x6EC0:
+            old_capture_step = (
+                "L_700530765c:;\n"
+                "    c->v[0] = 0x3f0000003f000000ull;\n"
+                "    c->x[0] = (uint64_t)(0ull | c->x[22]);\n"
+                "    c->x[1] = (uint32_t)(0x2b4ull);\n"
+                "    { uint64_t ea = c->x[29] - 120; ST64(ea, VS64(0)); }"
+            )
+            new_capture_step = (
+                "L_700530765c:;\n"
+                "    {\n"
+                "        uint32_t u = LD32(c->x[29] - 92);\n"
+                "        float dt; memcpy(&dt, &u, 4);\n"
+                "        if (!(dt >= 0.05f && dt <= 1.0f)) dt = 0.5f;\n"
+                "        memcpy(&u, &dt, 4);\n"
+                "        c->v[0] = (uint64_t)u | ((uint64_t)u << 32);\n"
+                "    }\n"
+                "    c->x[0] = (uint64_t)(0ull | c->x[22]);\n"
+                "    c->x[1] = (uint32_t)(0x2b4ull);\n"
+                "    { uint64_t ea = c->x[29] - 120; ST64(ea, VS64(0)); }"
+            )
+            assert old_capture_step in fn_body, "Failed to match L_700530765c in f_7005306ec0"
+            fn_body = fn_body.replace(old_capture_step, new_capture_step, 1)
+
+            old_publish = (
+                "L_7005307a98:;\n"
+                "    c->v[0] = 0x3f0000003f000000ull;\n"
+                "    c->x[8] = (uint32_t)(0x3f000000ull);\n"
+                "    c->x[1] = (uint64_t)(c->sp + 0x470ull);\n"
+                "    { uint64_t ea = c->x[20] + 0x21f8ull; ST32(ea, (uint32_t)c->x[8]); }\n"
+                "    c->x[8] = (uint32_t)(0x2220ull);\n"
+                "    c->x[2] = (uint32_t)(0xa60ull);\n"
+                "    c->x[0] = (uint64_t)(c->x[20] + c->x[8]);\n"
+                "    { uint64_t ea = c->x[29] - 120; ST64(ea, VS64(0)); }"
+            )
+            new_publish = (
+                "L_7005307a98:;\n"
+                "    {\n"
+                "        uint32_t r_frame = LD32(c->x[29] - 220);\n"
+                "        uint32_t last_pred_frame = LD32(c->x[20] + 0x1cull);\n"
+                "        uint32_t raw_dt_u = LD32(c->x[29] - 92);\n"
+                "        float live_dt; memcpy(&live_dt, &raw_dt_u, 4);\n"
+                "        if (!(live_dt >= 0.05f && live_dt <= 1.0f)) live_dt = 0.5f;\n"
+                "        uint32_t avg_u = LD32(c->x[20] + 0x21f8ull);\n"
+                "        float avg_dt; memcpy(&avg_dt, &avg_u, 4);\n"
+                "        if (!(avg_dt >= 0.05f && avg_dt <= 1.0f)) {\n"
+                "            avg_dt = live_dt;\n"
+                "        } else if (r_frame - last_pred_frame > 4u || live_dt < avg_dt) {\n"
+                "            avg_dt = avg_dt * 0.8f + live_dt * 0.2f;\n"
+                "        }\n"
+                "        uint32_t prev_step_u = LD32(c->x[20] + 96ull + 0x68ull);\n"
+                "        float act_dt; memcpy(&act_dt, &prev_step_u, 4);\n"
+                "        if (!(act_dt >= 0.05f && act_dt <= 1.0f) || avg_dt - act_dt > 0.012f || act_dt - avg_dt > 0.012f) {\n"
+                "            act_dt = avg_dt;\n"
+                "        }\n"
+                "        uint32_t new_avg_u, act_u;\n"
+                "        memcpy(&new_avg_u, &avg_dt, 4);\n"
+                "        memcpy(&act_u, &act_dt, 4);\n"
+                "        ST32(c->x[20] + 0x21f8ull, new_avg_u);\n"
+                "        c->v[0] = (uint64_t)act_u | ((uint64_t)act_u << 32);\n"
+                "    }\n"
+                "    c->x[1] = (uint64_t)(c->sp + 0x470ull);\n"
+                "    c->x[8] = (uint32_t)(0x2220ull);\n"
+                "    c->x[2] = (uint32_t)(0xa60ull);\n"
+                "    c->x[0] = (uint64_t)(c->x[20] + c->x[8]);\n"
+                "    { uint64_t ea = c->x[29] - 120; ST64(ea, VS64(0)); }"
+            )
+            assert old_publish in fn_body, "Failed to match L_7005307a98 in f_7005306ec0"
+            fn_body = fn_body.replace(old_publish, new_publish, 1)
+
+            old_pending = (
+                "    c->x[8] = (uint32_t)(0x1ull);\n"
+                "    { uint64_t ea = c->x[20] + 128; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }\n"
+                "    { uint64_t ea = c->x[29] - 160; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[0] = b; }\n"
+                "    { uint64_t ea = c->x[20] + 0x14ull; ST32(ea, (uint32_t)c->x[8]); }"
+            )
+            new_pending = (
+                "    {\n"
+                "        uint32_t r_frame = LD32(c->x[29] - 220);\n"
+                "        uint32_t last_pred_frame = LD32(c->x[20] + 0x1cull);\n"
+                "        uint32_t prev_step_u = LD32(c->x[20] + 96ull + 0x68ull);\n"
+                "        uint32_t act_u = LD32(c->x[29] - 120);\n"
+                "        uint32_t need_pred = 1u;\n"
+                "        if (LD32(c->x[20] + 264ull) != 0u && LD32(c->x[20] + 248ull) == (uint32_t)c->x[22] &&\n"
+                "            LD32(c->x[20] + 0x21fcull) == LD32(c->x[29] - 104) && act_u == prev_step_u &&\n"
+                "            (r_frame - last_pred_frame) < 12u) {\n"
+                "            float ox, oy, oz, cx, cy, cz, vx, vy, vz, dx, dy, dz;\n"
+                "            uint32_t u;\n"
+                "            u = LD32(c->x[29] - 172); memcpy(&ox, &u, 4);\n"
+                "            u = LD32(c->x[29] - 168); memcpy(&oy, &u, 4);\n"
+                "            u = LD32(c->x[29] - 164); memcpy(&oz, &u, 4);\n"
+                "            u = LD32(c->x[20] + 268ull); memcpy(&cx, &u, 4);\n"
+                "            u = LD32(c->x[20] + 272ull); memcpy(&cy, &u, 4);\n"
+                "            u = LD32(c->x[20] + 276ull); memcpy(&cz, &u, 4);\n"
+                "            float do2 = (ox - cx)*(ox - cx) + (oy - cy)*(oy - cy) + (oz - cz)*(oz - cz);\n"
+                "            u = LD32(c->x[29] - 160); memcpy(&vx, &u, 4);\n"
+                "            u = LD32(c->x[29] - 156); memcpy(&vy, &u, 4);\n"
+                "            u = LD32(c->x[29] - 152); memcpy(&vz, &u, 4);\n"
+                "            u = LD32(c->x[20] + 1840ull); memcpy(&dx, &u, 4);\n"
+                "            u = LD32(c->x[20] + 1844ull); memcpy(&dy, &u, 4);\n"
+                "            u = LD32(c->x[20] + 1848ull); memcpy(&dz, &u, 4);\n"
+                "            float v2 = vx*vx + vy*vy + vz*vz;\n"
+                "            float dot = vx*dx + vy*dy + vz*dz;\n"
+                "            if (do2 < 1e-4f && dot > 0.0f && (v2 - dot*dot) <= v2 * 2e-7f) {\n"
+                "                need_pred = 0u;\n"
+                "            }\n"
+                "        }\n"
+                "        if (need_pred) {\n"
+                "            ST32(c->x[20] + 0x1cull, r_frame);\n"
+                "        } else {\n"
+                "            ST32(c->x[20] + 252ull, r_frame);\n"
+                "            for (uint32_t si = 0; si < 4u; si++) {\n"
+                "                ST32(c->x[20] + 1904ull + si * 1608ull + 4ull, r_frame);\n"
+                "            }\n"
+                "        }\n"
+                "        c->x[8] = need_pred;\n"
+                "    }\n"
+                "    { uint64_t ea = c->x[20] + 128; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }\n"
+                "    { uint64_t ea = c->x[29] - 160; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[0] = b; }\n"
+                "    { uint64_t ea = c->x[20] + 0x14ull; ST32(ea, (uint32_t)c->x[8]); }"
+            )
+            assert old_pending in fn_body, "Failed to match pending store in f_7005306ec0"
+            fn_body = fn_body.replace(old_pending, new_pending, 1)
+        c_funcs.append(fn_body)
 
     # Finally write 26-bit branch instructions at fixup sites in payload so guest memory matches
     for site, dest_rva in fixup_map.items():

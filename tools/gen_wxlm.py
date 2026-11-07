@@ -157,6 +157,32 @@ def prelink_and_lift(name: str, payload: bytearray, mod_base: int, m_info: dict,
         ]
         for idx, w in enumerate(uc_stub):
             struct.pack_into("<I", payload, 0x6D44 + idx * 4, w)
+    elif name == "arrow143":
+        totk_mods = PORT_ROOT.parent.parent
+        nat_dir = totk_mods / "work" / "arrow-trajectory143" / "native-predictor-v013" / "runtime-build"
+        dev_dir = totk_mods / "work" / "arrow-trajectory143" / "development-v013" / "build"
+        nat_b = json.loads((nat_dir / "build.json").read_text(encoding="utf-8"))
+        dev_b = json.loads((dev_dir / "build.json").read_text(encoding="utf-8"))
+        nat_syms = nat_b["symbols"]
+        extra_seeds = [0x10000 + nat_syms["native_unbound"]]
+        for r in nat_b["roots"]:
+            k = f"native_{r:X}"
+            if k in nat_syms:
+                extra_seeds.append(0x10000 + nat_syms[k])
+        raw_elf = (nat_dir / "native.elf").read_bytes()
+        shoff = struct.unpack_from("<Q", raw_elf, 40)[0]
+        shsize, shnum = struct.unpack_from("<HH", raw_elf, 58)
+        sections = [struct.unpack_from("<IIQQQQIIQQ", raw_elf, shoff + i * shsize) for i in range(shnum)]
+        for section in sections:
+            if section[1] != 2:
+                continue
+            for at in range(section[4], section[4] + section[5], section[9]):
+                _, info, _, index, value, _ = struct.unpack_from("<IBBHQQ", raw_elf, at)
+                if index and (info & 0xF) == 2:
+                    extra_seeds.append(0x10000 + value)
+        for v in dev_b["symbols"].values():
+            extra_seeds.append(0x4000 + v)
+        bl_targets = sorted(set(bl_targets) | set(extra_seeds))
 
     # Pre-link imports in payload
     for imp in m_info.get("imports", []):
@@ -190,6 +216,40 @@ def prelink_and_lift(name: str, payload: bytearray, mod_base: int, m_info: dict,
     tramp_entries = set()
 
     for s in fn_list:
+        if name == "arrow143" and s == 0x137D8:
+            c_funcs.append(
+                "\n".join(
+                    [
+                        f"void f_{mod_base + s:x}(Cpu *c) {{",
+                        f"    uint64_t p_failed = LD64({hx(mod_base + 0x1C8E8)});",
+                        "    ST32(p_failed, 1u);",
+                        f"    uint64_t p_ckpt = LD64({hx(mod_base + 0x1C8E0)});",
+                        "    c->sp = LD64(p_ckpt);",
+                        "    c->x[0] = 0ull;",
+                        "    g_wxlm_arrow_unwind = 1;",
+                        "    c->pc = 0; return;",
+                        "}",
+                    ]
+                )
+            )
+            continue
+        if name == "arrow143" and s == 0x137F8:
+            c_funcs.append(
+                "\n".join(
+                    [
+                        f"void f_{mod_base + s:x}(Cpu *c) {{",
+                        f"    c->x[30] = {hx(mod_base + 0x137FC)}; f_{mod_base + 0x100F0:x}(c);",
+                        f"    uint64_t p_ckpt = LD64({hx(mod_base + 0x1C8E0)});",
+                        "    c->sp = LD64(p_ckpt);",
+                        "    c->x[0] = 1ull;",
+                        "    g_wxlm_arrow_unwind = 1;",
+                        "    c->pc = 0; return;",
+                        "}",
+                    ]
+                )
+            )
+            continue
+
         fn_offs = set()
         labels = set()
         q = [s]
@@ -218,6 +278,8 @@ def prelink_and_lift(name: str, payload: bytearray, mod_base: int, m_info: dict,
                     q.append(off + 4)
 
         sorted_offs = sorted(fn_offs)
+        if sorted_offs and sorted_offs[0] < s:
+            labels.add(s)
         for idx, off in enumerate(sorted_offs):
             if off in fixup_map:
                 continue
@@ -228,7 +290,10 @@ def prelink_and_lift(name: str, payload: bytearray, mod_base: int, m_info: dict,
                 if idx + 1 >= len(sorted_offs) or sorted_offs[idx + 1] != nxt:
                     labels.add(nxt)
 
+        is_arrow_native = name == "arrow143" and 0x10000 <= s < 0x20000 and s != 0x13760
         lines = [f"void f_{mod_base + s:x}(Cpu *c) {{"]
+        if sorted_offs and sorted_offs[0] < s:
+            lines.append(f"    goto L_{mod_base + s:x};")
         for idx, off in enumerate(sorted_offs):
             addr = mod_base + off
             if off in labels:
@@ -265,10 +330,17 @@ def prelink_and_lift(name: str, payload: bytearray, mod_base: int, m_info: dict,
                 fallthrough_needed = True
             elif ins.kind == "bl":
                 t = ins.target
-                lines.append(f"    c->x[30] = {hx(addr + 4)}; f_{t:x}(c);")
+                uw = " if (g_wxlm_arrow_unwind) { c->pc = 0; return; }" if is_arrow_native else ""
+                lines.append(f"    c->x[30] = {hx(addr + 4)}; f_{t:x}(c);{uw}")
                 fallthrough_needed = True
             elif ins.kind == "blr":
-                lines.append(f"    c->pc = {ins.target}; c->x[30] = {hx(addr + 4)}; rt_dispatch(c); c->pc = 0;")
+                if name == "arrow143" and s == 0x13760:
+                    lines.append(
+                        f"    g_wxlm_arrow_unwind = 0; c->pc = {ins.target}; c->x[30] = {hx(addr + 4)}; rt_dispatch(c); c->pc = 0; g_wxlm_arrow_unwind = 0;"
+                    )
+                else:
+                    uw = " if (g_wxlm_arrow_unwind) { c->pc = 0; return; }" if is_arrow_native else ""
+                    lines.append(f"    c->pc = {ins.target}; c->x[30] = {hx(addr + 4)}; rt_dispatch(c); c->pc = 0;{uw}")
                 fallthrough_needed = True
             elif ins.kind == "br":
                 lines.append(f"    c->pc = {ins.target}; rt_dispatch(c); c->pc = 0; return;")
@@ -466,8 +538,8 @@ void wxlm_sync_main_patches(void);
         encoding="utf-8",
     )
 
-    # Split lifted C functions into 3 files under 800 KB each
-    num_shards = 3
+    # Split lifted C functions into 4 files under 800 KB each
+    num_shards = 4
     shards = [[] for _ in range(num_shards)]
     shard_sizes = [0] * num_shards
     for body in all_bodies:
@@ -475,7 +547,11 @@ void wxlm_sync_main_patches(void);
         shards[idx].append(body)
         shard_sizes[idx] += len(body)
 
-    header_block = '#include "cpu.h"\n#include "simd.h"\n\n' + "\n".join(all_protos) + "\n\n"
+    header_block = (
+        '#include "cpu.h"\n#include "simd.h"\n\nextern int g_wxlm_arrow_unwind;\n\n'
+        + "\n".join(all_protos)
+        + "\n\n"
+    )
     for i in range(num_shards):
         c_path = REPO_DIR / "runtime" / f"wxlm_mods_{i}.c"
         content = header_block + "\n\n".join(shards[i]) + "\n"
@@ -491,6 +567,8 @@ void wxlm_sync_main_patches(void);
         '#include "platform/platform.h"',
         "#include <stdint.h>",
         "#include <string.h>",
+        "",
+        "int g_wxlm_arrow_unwind = 0;",
         "",
     ]
     for addr in all_fn_addrs:
@@ -628,6 +706,11 @@ void wxlm_init_modules(void) {
         rt_log("[wxlm] eqcat143 init: ready=%u error=%u",
                *(uint32_t *)(uintptr_t)0x7005523008ull,
                *(uint32_t *)(uintptr_t)0x700552300cull);
+        memset(&cpu, 0, sizeof(cpu));
+        cpu.sp = 0x70051fef00ull;
+        cpu.x[0] = 0x7005310000ull;
+        f_7005313694(&cpu);
+        rt_log("[wxlm] arrow143 native bind: ok=%llu", (unsigned long long)cpu.x[0]);
     }
     g_wxlm_inited = 1;
     wxlm_sync_main_patches();

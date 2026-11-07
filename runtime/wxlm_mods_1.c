@@ -1985,9 +1985,13 @@ L_7005307614:;
     c->x[27] = (uint32_t)((uint32_t)c->x[9] & (uint32_t)c->x[8]);
 L_700530765c:;
     {
-        uint32_t u = LD32(c->x[29] - 92);
+        uint32_t u = LD32(c->x[25] + 0x10ull);
         float dt; memcpy(&dt, &u, 4);
-        if (!(dt >= 0.05f && dt <= 1.0f)) dt = 0.5f;
+        if (!(dt >= 0.05f && dt <= 1.0f)) {
+            u = LD32(c->x[29] - 92);
+            memcpy(&dt, &u, 4);
+            if (!(dt >= 0.05f && dt <= 1.0f)) dt = 0.5f;
+        }
         memcpy(&u, &dt, 4);
         c->v[0] = (uint64_t)u | ((uint64_t)u << 32);
     }
@@ -2271,19 +2275,20 @@ L_7005307a98:;
     {
         uint32_t r_frame = LD32(c->x[29] - 220);
         uint32_t last_pred_frame = LD32(c->x[20] + 0x1cull);
-        uint32_t raw_dt_u = LD32(c->x[29] - 92);
+        uint32_t raw_dt_u = LD32(c->x[29] - 116);
         float live_dt; memcpy(&live_dt, &raw_dt_u, 4);
         if (!(live_dt >= 0.05f && live_dt <= 1.0f)) live_dt = 0.5f;
         uint32_t avg_u = LD32(c->x[20] + 0x21f8ull);
         float avg_dt; memcpy(&avg_dt, &avg_u, 4);
-        if (!(avg_dt >= 0.05f && avg_dt <= 1.0f)) {
+        int new_epoch = (LD32(c->x[20] + 248ull) != (uint32_t)c->x[22]) || (r_frame - last_pred_frame > 30u);
+        if (new_epoch || !(avg_dt >= 0.05f && avg_dt <= 1.0f)) {
             avg_dt = live_dt;
-        } else if (r_frame - last_pred_frame > 4u || live_dt < avg_dt) {
-            avg_dt = avg_dt * 0.8f + live_dt * 0.2f;
+        } else if (r_frame - last_pred_frame > 3u || live_dt < avg_dt) {
+            avg_dt = avg_dt * 0.65f + live_dt * 0.35f;
         }
         uint32_t prev_step_u = LD32(c->x[20] + 96ull + 0x68ull);
         float act_dt; memcpy(&act_dt, &prev_step_u, 4);
-        if (!(act_dt >= 0.05f && act_dt <= 1.0f) || avg_dt - act_dt > 0.012f || act_dt - avg_dt > 0.012f) {
+        if (new_epoch || !(act_dt >= 0.05f && act_dt <= 1.0f) || avg_dt - act_dt > 0.008f || act_dt - avg_dt > 0.008f) {
             act_dt = avg_dt;
         }
         uint32_t new_avg_u, act_u;
@@ -2344,6 +2349,10 @@ L_7005307a98:;
             }
         }
         if (need_pred) {
+            uint32_t avg_u = LD32(c->x[20] + 0x21f8ull);
+            ST64(c->x[29] - 120, (uint64_t)avg_u | ((uint64_t)avg_u << 32));
+            ST32(c->x[20] + 192ull + 0x10ull, avg_u);
+            ST32(c->x[20] + 192ull + 0x14ull, avg_u);
             ST32(c->x[20] + 0x1cull, r_frame);
         } else {
             ST32(c->x[20] + 252ull, r_frame);
@@ -4673,803 +4682,1132 @@ L_7005317af0:;
     goto L_70053179cc;
 }
 
-void f_7005317c20(Cpu *c) {
+void f_7005317cd4(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0xa0ull);
+    { uint64_t ea = c->sp + 96; ST64(ea, VS64(9)); ST64(ea + 8, VS64(8)); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[29] = (uint64_t)(c->sp + 0x70ull);
+    c->v[9] = VS32(1);
+    c->v[8] = VS32(0);
+    c->x[20] = (uint64_t)(0ull | c->x[0]);
+    c->x[30] = 0x7005317cfcull; f_700531c760(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (c->x[0] == 0) goto L_7005317e80;
+    c->x[19] = (uint64_t)(0ull | c->x[0]);
+    { uint64_t ea = c->x[20] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[30] = 0x7005317d0cull; f_700531c4a8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (c->x[0] == 0) goto L_7005317e80;
+    c->x[22] = (uint64_t)(0ull | c->x[0]);
+    { uint64_t ea = c->x[20] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(LD64(0x700531ce78ull));
+    c->x[8] = (uint64_t)(c->x[8] + 0x9dbull);
+    { uint64_t ea = c->sp + 0x8ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(LD64(0x700531ce68ull));
+    c->x[8] = (uint64_t)(c->x[8] + 0xdc2ull);
+    c->x[1] = (uint64_t)(c->sp + 0x8ull);
+    { uint64_t ea = c->x[29] - 32; ST64(ea, c->x[8]); }
+    c->x[2] = (uint64_t)(c->x[29] - 0x20ull);
+    c->x[30] = 0x7005317d3cull; f_700531c780(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (c->x[0] == 0) goto L_7005317e80;
+    c->x[21] = (uint64_t)(0ull | c->x[0]);
+    c->x[30] = 0x7005317d48ull; f_700531c070(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    fp_op_s(c, FOP_MUL, 4, 1, 1);
+    fp_fma_s(c, 0, 0, 0, 0, 0, 4);
+    { uint64_t ea = c->x[20] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    fp_op_s(c, FOP_DIV, 1, 9, 8);
+    fp_fma_s(c, 0, 0, 0, 2, 2, 0);
+    c->x[9] = (uint64_t)(c->x[8] + 0x2b4ull);
+    { uint64_t ea = c->x[8] + 0x2bcull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x40ull; ST32(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x38ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->x[20] + 0x170ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
+    fp_op_s(c, FOP_SQRT, 0, 0, 0);
+    fp_op_s(c, FOP_MUL, 0, 1, 0);
+    c->v[1] = 0x41f00000ull;
+    fp_op_s(c, FOP_DIV, 0, 0, 1);
+    fp_op_s(c, FOP_MUL, 9, 0, 8);
+    if (COND_NE(c)) goto L_7005317e98;
+    { uint64_t ea = c->x[20] + 0x1a4ull; c->v[0] = LD32(ea); }
+    c->x[1] = (uint64_t)(c->sp + 0x8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    { uint64_t ea = c->x[20] + 240; u128 a = LD32(ea), b = LD32(ea + 4); c->v[1] = a; c->v[2] = b; }
+    c->x[21] = (uint64_t)(c->x[20] + 0x1a4ull);
+    { uint64_t ea = c->x[20] + 0x1a8ull; c->v[3] = LD32(ea); }
+    fp_op_s(c, FOP_ADD, 0, 1, 0);
+    { uint64_t ea = c->x[20] + 0xf8ull; c->v[4] = LD32(ea); }
+    { uint64_t ea = c->x[20] + 0x1acull; c->v[5] = LD32(ea); }
+    fp_op_s(c, FOP_ADD, 1, 2, 3);
+    { uint64_t ea = c->sp + 8; ST32(ea, VS32(0)); ST32(ea + 4, VS32(1)); }
+    fp_op_s(c, FOP_ADD, 0, 4, 5);
+    { uint64_t ea = c->sp + 0x10ull; ST32(ea, VS32(0)); }
+    c->x[30] = 0x7005317dc8ull; f_700531c3b8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    { uint64_t ea = c->x[20] + 0xf0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(LD64(0x700531cee8ull));
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    { uint64_t ea = c->x[20] + 0x1a0ull; c->v[0] = LD32(ea); }
+    { uint64_t ea = c->sp + 0x38ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->x[20] + 0xf8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    fp_op_s(c, FOP_MUL, 0, 0, 8);
+    { uint64_t ea = c->sp + 0x40ull; ST32(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->x[1] + 0xab0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[30] = 0x7005317df0ull; f_7005315f68(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    { uint64_t ea = c->x[20] + 0x114ull; c->v[0] = LD32(ea); }
+    c->x[1] = (uint64_t)(c->x[29] - 0x20ull);
+    c->x[2] = (uint64_t)(c->x[29] - 0x2cull);
+    { uint64_t ea = c->sp + 56; u128 a = LD32(ea), b = LD32(ea + 4); c->v[2] = a; c->v[3] = b; }
+    c->x[3] = (uint64_t)(c->sp + 0x8ull);
+    { uint64_t ea = c->x[20] + 0x118ull; c->v[1] = LD32(ea); }
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    fp_fma_s(c, 0, 0, 0, 9, 0, 2);
+    { uint64_t ea = c->x[20] + 0x11cull; c->v[4] = LD32(ea); }
+    { uint64_t ea = c->sp + 0x40ull; c->v[2] = LD32(ea); }
+    fp_fma_s(c, 0, 0, 1, 9, 1, 3);
+    { uint64_t ea = c->x[20] + 0x1a4ull; c->v[3] = LD32(ea); }
+    fp_fma_s(c, 0, 0, 7, 9, 4, 2);
+    { uint64_t ea = c->x[20] + 0x1a8ull; c->v[4] = LD32(ea); }
+    { uint64_t ea = c->x[20] + 0x1acull; c->v[5] = LD32(ea); }
+    { uint64_t ea = c->x[19] + 0x98ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0xa8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x8ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->x[19] + 0xb8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x18ull; ST64(ea, c->x[9]); }
+    { uint64_t ea = c->sp + 0x28ull; ST64(ea, c->x[8]); }
+    fp_op_s(c, FOP_ADD, 0, 0, 3);
+    { uint64_t ea = c->x[19] + 0xa0ull; c->v[3] = LD32(ea); }
+    fp_op_s(c, FOP_ADD, 1, 1, 4);
+    { uint64_t ea = c->x[19] + 0xb0ull; c->v[4] = LD32(ea); }
+    fp_op_s(c, FOP_ADD, 2, 7, 5);
+    { uint64_t ea = c->sp + 16; ST32(ea, VS32(3)); ST32(ea + 4, VS32(0)); }
+    { uint64_t ea = c->x[19] + 0xc0ull; c->v[0] = LD32(ea); }
+    { uint64_t ea = c->sp + 32; ST32(ea, VS32(4)); ST32(ea + 4, VS32(1)); }
+    { uint64_t ea = c->sp + 48; ST32(ea, VS32(0)); ST32(ea + 4, VS32(2)); }
+    c->x[30] = 0x7005317e6cull; f_7005313838(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    c->x[1] = (uint64_t)(c->x[29] - 0x20ull);
+    c->x[2] = (uint64_t)(c->x[29] - 0x2cull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[3] = (uint32_t)(0u | 0u);
+    c->x[30] = 0x7005317e80ull; f_700531c378(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+L_7005317e80:;
+    { uint64_t ea = c->sp + 96; u128 a = LD64(ea), b = LD64(ea + 8); c->v[9] = a; c->v[8] = b; }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0xa0ull);
+    c->pc = 0; return;
+L_7005317e98:;
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x7005317ea0ull; f_700531c6a8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (((c->x[0] >> 0) & 1) != 0) goto L_7005317e80;
+    { uint64_t ea = c->x[20] + 0x1a0ull; c->v[0] = LD32(ea); }
+    c->x[1] = (uint64_t)(LD64(0x700531cee8ull));
+    c->x[0] = (uint64_t)(c->x[20] + 0x1a4ull);
+    { uint64_t ea = c->x[1] + 0xab0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    fp_op_s(c, FOP_MUL, 0, 0, 8);
+    c->x[30] = 0x7005317ebcull; f_7005315f68(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    c->x[1] = (uint64_t)(c->sp + 0x38ull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x7005317ec8ull; f_700531bfa0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    { uint64_t ea = c->x[20] + 0x114ull; c->v[0] = LD32(ea); }
+    c->x[1] = (uint64_t)(c->sp + 0x8ull);
+    c->x[2] = (uint64_t)(c->sp + 0x38ull);
+    { uint64_t ea = c->x[20] + 0x118ull; c->v[1] = LD32(ea); }
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    { uint64_t ea = c->x[20] + 0x1a8ull; c->v[4] = LD32(ea); }
+    { uint64_t ea = c->sp + 56; u128 a = LD32(ea), b = LD32(ea + 4); c->v[2] = a; c->v[3] = b; }
+    fp_fma_s(c, 0, 0, 0, 9, 0, 2);
+    { uint64_t ea = c->x[20] + 0x11cull; c->v[2] = LD32(ea); }
+    fp_fma_s(c, 0, 0, 1, 9, 1, 3);
+    { uint64_t ea = c->sp + 0x40ull; c->v[3] = LD32(ea); }
+    fp_fma_s(c, 0, 0, 5, 9, 2, 3);
+    { uint64_t ea = c->x[20] + 0x1a4ull; c->v[3] = LD32(ea); }
+    fp_op_s(c, FOP_ADD, 1, 1, 4);
+    fp_op_s(c, FOP_ADD, 0, 0, 3);
+    { uint64_t ea = c->sp + 56; ST32(ea, VS32(0)); ST32(ea + 4, VS32(1)); }
+    { uint64_t ea = c->x[20] + 0x1acull; c->v[0] = LD32(ea); }
+    fp_op_s(c, FOP_ADD, 0, 5, 0);
+    { uint64_t ea = c->sp + 0x40ull; ST32(ea, VS32(0)); }
+    c->x[30] = 0x7005317f18ull; f_700531c0dc(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    c->x[1] = (uint64_t)(c->sp + 0x8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[2] = (uint32_t)(0u | 0u);
+    c->x[30] = 0x7005317f28ull; f_700531c3e8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    goto L_7005317e80;
+}
+
+void f_7005318714(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0xa0ull);
+    { uint64_t ea = c->sp + 64; ST64(ea, VS64(13)); ST64(ea + 8, VS64(12)); }
+    { uint64_t ea = c->sp + 80; ST64(ea, VS64(11)); ST64(ea + 8, VS64(10)); }
+    { uint64_t ea = c->sp + 96; ST64(ea, VS64(9)); ST64(ea + 8, VS64(8)); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[29] = (uint64_t)(c->sp + 0x70ull);
+    c->v[8] = VS32(1);
+    c->v[9] = VS32(0);
+    { uint64_t ea = c->x[0] + 0x110ull; c->v[1] = LD32(ea); }
+    { uint64_t ea = c->x[0] + 0x108ull; c->v[0] = LD32(ea); }
+    c->x[19] = (uint64_t)(0ull | c->x[0]);
+    fp_fma_s(c, 0, 0, 0, 1, 9, 0);
+    c->nzcv = cmp_s(c, VSF32(1), 0);
+    { uint64_t ea = c->x[0] + 0x108ull; ST32(ea, VS32(0)); }
+    if (COND_PL(c)) goto L_700531886c;
+    { uint64_t ea = c->x[19] + 0x10cull; c->v[1] = LD32(ea); }
+    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
+    c->v[0] = COND_MI(c) ? VS32(1) : VS32(0);
+L_7005318764:;
+    { uint64_t ea = c->x[19] + 0x108ull; ST32(ea, VS32(0)); }
+L_7005318768:;
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(LD64(0x700531ce78ull));
+    c->x[8] = (uint64_t)(c->x[8] + 0x9dbull);
+    { uint64_t ea = c->sp + 0x30ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(LD64(0x700531ce68ull));
+    c->x[8] = (uint64_t)(c->x[8] + 0xdc2ull);
+    c->x[1] = (uint64_t)(c->sp + 0x30ull);
+    c->x[2] = (uint64_t)(c->sp + 0x20ull);
+    { uint64_t ea = c->sp + 0x20ull; ST64(ea, c->x[8]); }
+    c->x[30] = 0x7005318790ull; f_700531c780(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (c->x[0] == 0) goto L_700531884c;
+    { uint64_t ea = c->x[19] + 0x170ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[20] = (uint64_t)(0ull | c->x[0]);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
+    if (COND_NE(c)) goto L_70053187b0;
+    c->x[1] = (uint64_t)(c->x[19] + 0xf0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x70053187b0ull; f_700531c3b8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+L_70053187b0:;
+    { uint64_t ea = c->x[19] + 0x108ull; c->v[12] = LD32(ea); }
+    c->x[22] = (uint64_t)(c->x[19] + 0x70ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x70053187c0ull; f_70053161f8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005318880;
+    { uint64_t ea = c->x[19] + 0x108ull; c->v[0] = LD32(ea); }
+    c->v[11] = 0x3f000000ull;
+    c->v[13] = 0x40a00000ull;
+    c->x[21] = (uint64_t)(c->x[19] + 0x178ull);
+    fp_op_s(c, FOP_MUL, 12, 0, 11);
+    { uint64_t ea = c->x[19] + 0x178ull; c->v[0] = LD32(ea); }
+    c->nzcv = cmp_s(c, VSF32(0), VSF32(13));
+    if (COND_GT(c)) goto L_70053188a4;
+L_70053187e4:;
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x70053187ecull; f_700531c328(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+L_70053187ec:;
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[1] = (uint64_t)(0ull | 0ull);
+    c->x[30] = 0x70053187f8ull; f_70053163c4(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (((c->x[0] >> 0) & 1) != 0) goto L_7005318898;
+L_70053187fc:;
+    fp_op_s(c, FOP_DIV, 0, 9, 8);
+    { uint64_t ea = c->x[19] + 0x114ull; c->v[1] = LD32(ea); }
+    { uint64_t ea = c->x[19] + 0x118ull; c->v[2] = LD32(ea); }
+    { uint64_t ea = c->x[19] + 0x11cull; c->v[3] = LD32(ea); }
+    c->x[1] = (uint64_t)(c->sp + 0x30ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[2] = (uint32_t)(0u | 0u);
+    fp_op_s(c, FOP_MUL, 1, 12, 1);
+    fp_op_s(c, FOP_MUL, 2, 12, 2);
+    fp_op_s(c, FOP_MUL, 3, 12, 3);
+    fp_op_s(c, FOP_MUL, 1, 0, 1);
+    fp_op_s(c, FOP_MUL, 2, 0, 2);
+    fp_op_s(c, FOP_MUL, 0, 0, 3);
+    c->v[3] = 0x41f00000ull;
+    fp_op_s(c, FOP_MUL, 1, 1, 3);
+    fp_op_s(c, FOP_MUL, 2, 2, 3);
+    fp_op_s(c, FOP_MUL, 0, 0, 3);
+    { uint64_t ea = c->sp + 48; ST32(ea, VS32(1)); ST32(ea + 4, VS32(2)); }
+    { uint64_t ea = c->sp + 0x38ull; ST32(ea, VS32(0)); }
+    c->x[30] = 0x700531884cull; f_700531c3e8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+L_700531884c:;
+    { uint64_t ea = c->sp + 96; u128 a = LD64(ea), b = LD64(ea + 8); c->v[9] = a; c->v[8] = b; }
+    { uint64_t ea = c->sp + 80; u128 a = LD64(ea), b = LD64(ea + 8); c->v[11] = a; c->v[10] = b; }
+    { uint64_t ea = c->sp + 64; u128 a = LD64(ea), b = LD64(ea + 8); c->v[13] = a; c->v[12] = b; }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0xa0ull);
+    c->pc = 0; return;
+L_700531886c:;
+    if (COND_LE(c)) goto L_7005318768;
+    { uint64_t ea = c->x[19] + 0x10cull; c->v[1] = LD32(ea); }
+    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
+    c->v[0] = COND_GT(c) ? VS32(1) : VS32(0);
+    goto L_7005318764;
+L_7005318880:;
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x7005318888ull; f_700531c338(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (((c->x[0] >> 0) & 1) == 0) goto L_70053187ec;
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x7005318894ull; f_700531c318(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    goto L_70053187ec;
+L_7005318898:;
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x70053188a0ull; f_700531c678(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    goto L_70053187fc;
+L_70053188a4:;
+    c->x[1] = (uint64_t)(c->sp + 0x20ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    { uint64_t ea = c->sp + 0x38ull; ST32(ea, 0u); }
+    { uint64_t ea = c->sp + 0x30ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 0x28ull; ST32(ea, 0u); }
+    { uint64_t ea = c->sp + 0x20ull; ST64(ea, 0ull); }
+    c->x[30] = 0x70053188c0ull; f_700531bfa0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    c->x[1] = (uint64_t)(c->sp + 0x30ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[2] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x70053188d0ull; f_700531c670(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (((c->x[0] >> 0) & 1) == 0) goto L_700531892c;
+    { uint64_t ea = c->sp + 48; u128 a = LD32(ea), b = LD32(ea + 4); c->v[0] = a; c->v[1] = b; }
+    c->x[0] = (uint64_t)(c->sp + 0x14ull);
+    { uint64_t ea = c->sp + 32; u128 a = LD32(ea), b = LD32(ea + 4); c->v[2] = a; c->v[3] = b; }
+    fp_op_s(c, FOP_SUB, 1, 1, 3);
+    { uint64_t ea = c->sp + 0x38ull; c->v[4] = LD32(ea); }
+    { uint64_t ea = c->sp + 0x28ull; c->v[5] = LD32(ea); }
+    fp_op_s(c, FOP_SUB, 0, 0, 2);
+    { uint64_t ea = c->sp + 20; ST32(ea, VS32(0)); ST32(ea + 4, VS32(1)); }
+    fp_op_s(c, FOP_SUB, 0, 4, 5);
+    { uint64_t ea = c->sp + 0x1cull; ST32(ea, VS32(0)); }
+    c->x[30] = 0x7005318900ull; f_700531450c(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    c->nzcv = cmp_s(c, VSF32(0), 0);
+    if (COND_EQ(c)) goto L_70053187e4;
+    c->v[10] = VS32(0);
+    c->nzcv = cmp_s(c, VSF32(0), VSF32(13));
+    if (COND_PL(c)) goto L_7005318944;
+    { uint64_t ea = c->sp + 20; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(c->x[19] + 0x114ull);
+    { uint64_t ea = c->x[8] + 0x0ull; ST64(ea, c->x[9]); }
+    { uint64_t ea = c->sp + 0x1cull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + 0x8ull; ST32(ea, (uint32_t)c->x[9]); }
+    goto L_70053187e4;
+L_700531892c:;
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x7005318934ull; f_700531c338(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (((c->x[0] >> 0) & 1) == 0) goto L_70053187e4;
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x7005318940ull; f_700531c318(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    goto L_70053187e4;
+L_7005318944:;
+    { uint64_t ea = c->x[19] + 0x114ull; c->v[0] = LD32(ea); }
+    { uint64_t ea = c->sp + 20; u128 a = LD32(ea), b = LD32(ea + 4); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->x[19] + 0x118ull; c->v[4] = LD32(ea); }
+    fp_op_s(c, FOP_MUL, 1, 3, 4);
+    { uint64_t ea = c->sp + 0x1cull; c->v[5] = LD32(ea); }
+    { uint64_t ea = c->x[19] + 0x11cull; c->v[6] = LD32(ea); }
+    fp_fma_s(c, 0, 0, 1, 2, 0, 1);
+    fp_op_s(c, FOP_NMUL, 7, 5, 4);
+    fp_fma_s(c, 0, 0, 7, 3, 6, 7);
+    fp_op_s(c, FOP_NMUL, 17, 2, 6);
+    fp_fma_s(c, 0, 0, 1, 5, 6, 1);
+    fp_fma_s(c, 0, 0, 5, 5, 0, 17);
+    fp_op_s(c, FOP_NMUL, 0, 3, 0);
+    fp_fma_s(c, 0, 0, 0, 2, 4, 0);
+    fp_op_s(c, FOP_MUL, 2, 5, 5);
+    fp_fma_s(c, 0, 0, 2, 7, 7, 2);
+    fp_fma_s(c, 0, 0, 0, 0, 0, 2);
+    fp_op_s(c, FOP_SQRT, 0, 0, 0);
+    c->x[30] = 0x7005318990ull; f_700531c7a8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    c->v[1] = 0xb4000000b4000000ull;
+    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
+    c->v[1] = 0x3400000034000000ull;
+    c->nzcv = COND_GE(c) ? cmp_s(c, VSF32(0), VSF32(1)) : 0x20000000ull;
+    if (COND_LS(c)) goto L_70053187e4;
+    c->x[30] = 0x70053189a8ull; f_700531c7b0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    fp_op_s(c, FOP_ADD, 0, 0, 0);
+    { uint64_t ea = c->x[19] + 0x118ull; c->v[1] = LD32(ea); }
+    c->x[0] = (uint64_t)(c->sp + 0x8ull);
+    { uint64_t ea = c->sp + 24; u128 a = LD32(ea), b = LD32(ea + 4); c->v[4] = a; c->v[2] = b; }
+    fp_op_s(c, FOP_DIV, 0, 10, 0);
+    { uint64_t ea = c->x[19] + 0x11cull; c->v[3] = LD32(ea); }
+    { uint64_t ea = c->sp + 0x14ull; c->v[5] = LD32(ea); }
+    { uint64_t ea = c->x[19] + 0x114ull; c->v[7] = LD32(ea); }
+    fp_op_s(c, FOP_NMUL, 6, 3, 4);
+    fp_fma_s(c, 0, 0, 6, 1, 2, 6);
+    fp_op_s(c, FOP_NMUL, 2, 7, 2);
+    fp_fma_s(c, 0, 0, 2, 3, 5, 2);
+    fp_op_s(c, FOP_NMUL, 1, 1, 5);
+    fp_fma_s(c, 0, 0, 1, 7, 4, 1);
+    { uint64_t ea = c->sp + 8; ST32(ea, VS32(6)); ST32(ea + 4, VS32(2)); }
+    { uint64_t ea = c->sp + 0x10ull; ST32(ea, VS32(1)); }
+    fp_op_s(c, FOP_DIV, 10, 12, 0);
+    c->x[30] = 0x70053189f0ull; f_700531450c(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    fp_op_s(c, FOP_MUL, 0, 10, 9);
+    fp_op_s(c, FOP_MUL, 10, 0, 11);
+    c->v[0] = VS32(10);
+    c->x[30] = 0x7005318a00ull; f_700531c798(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    c->v[11] = VS32(0);
+    c->v[0] = VS32(10);
+    c->x[30] = 0x7005318a0cull; f_700531c7b0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    { uint64_t ea = c->sp + 8; u128 a = LD32(ea), b = LD32(ea + 4); c->v[1] = a; c->v[2] = b; }
+    fp_op_s(c, FOP_MUL, 2, 0, 2);
+    { uint64_t ea = c->sp + 0x10ull; c->v[3] = LD32(ea); }
+    { uint64_t ea = c->x[19] + 0x11cull; c->v[4] = LD32(ea); }
+    { uint64_t ea = c->x[19] + 0x118ull; c->v[5] = LD32(ea); }
+    { uint64_t ea = c->x[19] + 0x114ull; c->v[6] = LD32(ea); }
+    fp_op_s(c, FOP_MUL, 1, 0, 1);
+    fp_op_s(c, FOP_MUL, 0, 0, 3);
+    fp_op_s(c, FOP_NMUL, 16, 2, 6);
+    fp_op_s(c, FOP_NMUL, 18, 2, 5);
+    fp_op_s(c, FOP_NMUL, 3, 0, 5);
+    fp_fma_s(c, 0, 0, 3, 2, 4, 3);
+    fp_op_s(c, FOP_MUL, 7, 0, 6);
+    fp_fma_s(c, 0, 1, 7, 1, 4, 7);
+    fp_fma_s(c, 0, 0, 16, 1, 5, 16);
+    fp_fma_s(c, 0, 1, 18, 1, 6, 18);
+    fp_fma_s(c, 0, 0, 3, 11, 6, 3);
+    fp_fma_s(c, 0, 0, 7, 11, 5, 7);
+    fp_fma_s(c, 0, 0, 6, 11, 4, 16);
+    fp_fma_s(c, 0, 1, 4, 0, 4, 18);
+    fp_op_s(c, FOP_NMUL, 5, 0, 7);
+    fp_fma_s(c, 0, 0, 5, 3, 11, 5);
+    fp_op_s(c, FOP_MUL, 17, 11, 7);
+    fp_fma_s(c, 0, 0, 17, 3, 0, 17);
+    fp_op_s(c, FOP_MUL, 16, 1, 7);
+    fp_fma_s(c, 0, 1, 16, 3, 2, 16);
+    fp_fma_s(c, 0, 0, 5, 6, 2, 5);
+    fp_fma_s(c, 0, 1, 7, 6, 1, 17);
+    fp_fma_s(c, 0, 0, 16, 6, 11, 16);
+    fp_fma_s(c, 0, 1, 1, 4, 1, 5);
+    fp_fma_s(c, 0, 1, 17, 4, 2, 7);
+    fp_fma_s(c, 0, 1, 0, 4, 0, 16);
+    { uint64_t ea = c->x[19] + 0x114ull; ST32(ea, VS32(1)); }
+    { uint64_t ea = c->x[19] + 0x118ull; ST32(ea, VS32(17)); }
+    { uint64_t ea = c->x[19] + 0x11cull; ST32(ea, VS32(0)); }
+    goto L_70053187e4;
+}
+
+void f_70053197dc(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x30ull);
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
+    { uint64_t ea = c->sp + 0x20ull; ST64(ea, c->x[19]); }
+    c->x[29] = (uint64_t)(c->sp + 0x10ull);
+    c->x[19] = (uint64_t)(0ull | c->x[0]);
+    c->x[8] = (uint64_t)(c->sp + 0x0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[1]);
+    c->x[30] = 0x70053197fcull; f_7005315100(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    c->x[8] = (uint64_t)(c->x[29] + 0x18ull);
+    c->x[0] = (uint64_t)(c->sp + 0x0ull);
+    c->x[30] = 0x7005319808ull; f_700531be78(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    { uint64_t ea = c->x[29] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700531981c;
+    c->x[0] = (uint64_t)(c->x[29] + 0x18ull);
+    c->x[30] = 0x7005319818ull; f_700531c5c8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005319858;
+L_700531981c:;
+    c->x[0] = (uint64_t)(c->sp + 0x0ull);
+    c->x[30] = 0x7005319824ull; f_700531c4b8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    { uint64_t ea = c->x[19] + 0x9ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    if (((c->x[8] >> 7) & 1) != 0) goto L_7005319860;
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint64_t)(0xe7eull);
+    c->x[10] = (uint64_t)((c->x[10] & 0xffffffff0000ffffull) | 0xc3e50000ull);
+    c->x[10] = (uint64_t)((c->x[10] & 0xffff0000ffffffffull) | 0xefc000000000ull);
+    c->x[10] = (uint64_t)((c->x[10] & 0xffffffffffffull) | 0x3000000000000ull);
+    c->x[9] = (uint32_t)(0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x32ull));
+    c->x[8] = (uint64_t)(c->x[10] >> (c->x[8] & 63));
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] & 0x1ull);
+    c->x[0] = (uint32_t)((COND_HI(c)) ? (uint32_t)c->x[9] : (uint32_t)((uint32_t)c->x[8]));
+    goto L_7005319864;
+L_7005319858:;
+    c->x[0] = (uint64_t)(c->sp + 0x0ull);
+    c->x[30] = 0x7005319860ull; f_700531c4b8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+L_7005319860:;
+    c->x[0] = (uint32_t)(0u | 0u);
+L_7005319864:;
+    { uint64_t ea = c->sp + 0x20ull; uint64_t v = LD64(ea); c->x[19] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x30ull);
+    c->pc = 0; return;
+}
+
+void f_700531be78(Cpu *c) {
     { uint64_t ea = c->sp - 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
     { uint64_t ea = c->sp + 0x10ull; ST64(ea, c->x[19]); }
     c->x[29] = (uint64_t)(c->sp + 0x0ull);
-    { uint64_t ea = c->x[0] + 0x170ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    (void)(subs32(c, (uint32_t)c->x[8], 0x3ull));
-    if (COND_CC(c)) goto L_7005317c4c;
-    if (COND_EQ(c)) goto L_7005317cb8;
+    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[19] = (uint64_t)(0ull | c->x[8]);
+    if (c->x[0] == 0) goto L_700531bea8;
+    c->x[30] = 0x700531be94ull; f_700531c560(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    c->x[1] = (uint64_t)(0ull | c->x[0]);
+L_700531be98:;
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
     { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[19] = (uint64_t)(v); }
     { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 32; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-L_7005317c4c:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005317c54ull; f_7005318714(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005317c5cull; f_7005318a9c(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) == 0) goto L_7005317ca8;
-    { uint64_t ea = c->x[19] + 0x1f0ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] != 0) goto L_7005317ca0;
-    { uint64_t ea = c->x[19] + 0x170ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x2ull));
-    if (COND_NE(c)) goto L_7005317ca0;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    f_7005316138(c); return;
+L_700531bea8:;
     c->x[1] = (uint64_t)(0ull | 0ull);
-    c->x[30] = 0x7005317c80ull; f_70053163c4(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) != 0) goto L_7005317ca0;
+    goto L_700531be98;
+}
+
+void f_700531beb0(Cpu *c) {
+    { uint64_t ea = c->x[1] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[0] + 0x8ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(((uint32_t)c->x[9] & 0xffffffc0ull) | ((((uint32_t)c->x[9] & 0xffffffc0ull) | ((uint32_t)c->x[8] & 0x3full)) & 0x3full));
+    { uint64_t ea = c->x[0] + 0x8ull; ST32(ea, (uint32_t)c->x[9]); }
+    { uint64_t ea = c->x[1] + 0x4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(((uint32_t)c->x[9] & 0xfffff000ull) | ((((uint32_t)c->x[9] & 0xfffff03full) | (ROR32((uint32_t)c->x[8], 26) & 0xfc0ull)) & 0xfffull));
     c->x[8] = (uint64_t)(LD64(0x700531cee8ull));
-    c->v[1] = 0x3f000000ull;
-    { uint64_t ea = c->x[8] + 0xa70ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[0] + 0x8ull; ST32(ea, (uint32_t)c->x[9]); }
+    { uint64_t ea = c->x[8] + 0xac0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[8] + 0x10ull; c->v[0] = LD32(ea); }
-    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
-    if (COND_LS(c)) goto L_7005317cc8;
-L_7005317ca0:;
+    { uint64_t ea = c->x[8] + 0x18ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9] + 0x68ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9] + 0x90ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[0] + 0xcull; ST32(ea, (uint32_t)c->x[9]); }
+    { uint64_t ea = c->x[8] + 0xc8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], 0x0ull));
+    c->x[0] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
+    c->pc = 0; return;
+}
+
+void f_700531bef8(Cpu *c) {
+    c->pc = 0; return;
+}
+
+void f_700531befc(Cpu *c) {
+    c->x[8] = (uint64_t)(LD64(0x700531cee8ull));
+    c->x[9] = (uint64_t)(((uint64_t)(-(int64_t)((c->x[1] >> 31) & 1)) & 0xfffffffc00000000ull) | (ROR64(c->x[1], 62) & 0x3fffffffcull));
+    { uint64_t ea = c->x[8] + 0xac0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(logic32(c, (uint32_t)c->x[2] & 0x1ull));
+    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + 0x68ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + c->x[9]; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((COND_NE(c)) ? (uint32_t)c->x[8] : (uint32_t)(~(uint32_t)c->x[8]));
+    { uint64_t ea = c->x[0] + 0xcull; ST32(ea, (uint32_t)c->x[8]); }
+    c->pc = 0; return;
+}
+
+void f_700531bf28(Cpu *c) {
+    { uint64_t ea = c->sp - 48; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+    { uint64_t ea = c->sp + 0x10ull; ST64(ea, c->x[21]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[29] = (uint64_t)(c->sp + 0x0ull);
+    { uint64_t ea = c->x[0] + 0x60ull; uint64_t v = LD64(ea); c->x[21] = (uint64_t)(v); }
+    c->x[19] = (uint64_t)(0ull | c->x[1]);
+    if (c->x[21] == 0) goto L_700531bf4c;
+    { uint64_t ea = c->x[21] + 0xd4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if (((c->x[8] >> 8) & 1) != 0) goto L_700531bf70;
+L_700531bf4c:;
+    c->x[8] = (uint64_t)(c->x[0] + 0x104ull);
+    { uint64_t ea = c->x[0] + 0x10cull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[21] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x8ull; ST32(ea, (uint32_t)c->x[9]); }
+    { uint64_t ea = c->x[19] + 0x0ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 48; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    c->pc = 0; return;
+L_700531bf70:;
+    c->x[20] = (uint64_t)(c->x[0] + 0x78ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x700531bf7cull; f_700531c7d8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    { uint64_t ea = c->x[21] + 0x50ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    { uint64_t ea = c->x[21] + 0x58ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x8ull; ST32(ea, (uint32_t)c->x[9]); }
+    { uint64_t ea = c->x[19] + 0x0ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[21] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 48; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    f_700531c7e0(c); return;
+}
+
+void f_700531c070(Cpu *c) {
+    { uint64_t ea = c->sp - 64; ST64(ea, VS64(10)); c->sp = ea; }
+    { uint64_t ea = c->sp + 16; ST64(ea, VS64(9)); ST64(ea + 8, VS64(8)); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[29] = (uint64_t)(c->sp + 0x20ull);
+    { uint64_t ea = c->x[0] + 0x60ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
+    if (c->x[20] == 0) goto L_700531c094;
+    { uint64_t ea = c->x[20] + 0xd4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if (((c->x[8] >> 7) & 1) != 0) goto L_700531c0bc;
+L_700531c094:;
+    { uint64_t ea = c->x[0] + 248; u128 a = LD32(ea), b = LD32(ea + 4); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->x[0] + 0x100ull; c->v[10] = LD32(ea); }
+L_700531c09c:;
+    c->v[0] = VS32(8);
+    c->v[1] = VS32(9);
+    c->v[2] = VS32(10);
+    { uint64_t ea = c->sp + 16; u128 a = LD64(ea), b = LD64(ea + 8); c->v[9] = a; c->v[8] = b; }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    { uint64_t ea = c->sp; c->v[10] = LD64(ea); c->sp = c->sp + 64; }
+    c->pc = 0; return;
+L_700531c0bc:;
+    c->x[19] = (uint64_t)(c->x[0] + 0x78ull);
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005317ca8ull; f_7005318b88(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-L_7005317ca8:;
+    c->x[30] = 0x700531c0c8ull; f_700531c7d8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    { uint64_t ea = c->x[20] + 68; u128 a = LD32(ea), b = LD32(ea + 4); c->v[8] = a; c->v[9] = b; }
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[19] = (uint64_t)(v); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 32; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    f_7005316eb0(c); return;
-L_7005317cb8:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[19] = (uint64_t)(v); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 32; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    f_7005318c70(c); return;
-L_7005317cc8:;
+    { uint64_t ea = c->x[20] + 0x4cull; c->v[10] = LD32(ea); }
+    c->x[30] = 0x700531c0d8ull; f_700531c7e0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
+    goto L_700531c09c;
+}
+
+void f_700531c258(Cpu *c) {
+    { uint64_t ea = c->sp - 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+    { uint64_t ea = c->sp + 0x10ull; ST64(ea, c->x[19]); }
+    c->x[29] = (uint64_t)(c->sp + 0x0ull);
+    c->x[8] = (uint32_t)(0xbf800000ull);
+    c->x[19] = (uint64_t)(0ull | c->x[0]);
+    { uint64_t ea = c->x[0] + 0x30ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->x[0] + 72; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->x[0] + 0x38ull; ST32(ea, 0u); }
+    { uint64_t ea = c->x[0] + 0x18ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->x[0] + 0x20ull; ST8(ea, 0u); }
+    { uint64_t ea = c->x[0] + 60; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(0x100000000ull);
+    { uint64_t ea = c->x[0] + 0x58ull; ST32(ea, 0u); }
+    { uint64_t ea = c->x[0] + 0x5cull; ST8(ea, 0u); }
+    { uint64_t ea = c->x[0] + 0x80ull; ST32(ea, (uint32_t)c->x[1]); }
+    c->x[1] = (uint32_t)(0u | 0u);
+    { uint64_t ea = c->x[0] + 132; ST64(ea, 0ull); }
+    { uint64_t ea = c->x[19] + 140; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->x[0] + 8; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->x[0] + 96; ST64(ea, 0ull); ST64(ea + 8, c->x[2]); }
+    c->x[2] = (uint32_t)(0x7cull);
+    { uint64_t ea = c->x[0] + 112; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    c->x[0] = (uint64_t)(c->x[0] + 0x98ull);
+    c->x[30] = 0x700531c2b8ull; f_700531c7e8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
     c->x[8] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[19] + 0x1f0ull; ST8(ea, (uint32_t)c->x[8]); }
-    goto L_7005317ca8;
-}
-
-void f_7005317f2c(Cpu *c) {
-    { uint64_t ea = c->sp - 96; ST64(ea, VS64(13)); ST64(ea + 8, VS64(12)); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, VS64(11)); ST64(ea + 8, VS64(10)); }
-    { uint64_t ea = c->sp + 32; ST64(ea, VS64(9)); ST64(ea + 8, VS64(8)); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
-    c->x[29] = (uint64_t)(c->sp + 0x30ull);
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[28]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->sp = (uint64_t)(c->sp - 0x200ull);
-    c->x[20] = (uint64_t)(0ull | c->x[1]);
-    c->x[1] = (uint64_t)(0ull | 0ull);
-    c->v[8] = VS32(1);
-    c->x[21] = (uint32_t)(0u | (uint32_t)c->x[2]);
-    c->v[9] = VS32(0);
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[30] = 0x7005317f68ull; f_70053163c4(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) == 0) goto L_7005317f98;
-    { uint64_t ea = c->x[19] + 0x18cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x5ull));
-    if (COND_EQ(c)) goto L_7005317f98;
-L_7005317f78:;
-    c->sp = (uint64_t)(c->sp + 0x200ull);
-    { uint64_t ea = c->sp + 32; u128 a = LD64(ea), b = LD64(ea + 8); c->v[9] = a; c->v[8] = b; }
-    { uint64_t ea = c->sp + 16; u128 a = LD64(ea), b = LD64(ea + 8); c->v[11] = a; c->v[10] = b; }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; u128 a = LD64(ea), b = LD64(ea + 8); c->v[13] = a; c->v[12] = b; c->sp = ea + 96; }
+    { uint64_t ea = c->x[19] + 0x118ull; ST8(ea, 0u); }
+    { uint64_t ea = c->x[19] + 0x94ull; ST32(ea, 0u); }
+    { uint64_t ea = c->x[19] + 0x114ull; ST32(ea, (uint32_t)c->x[8]); }
+    c->x[8] = (uint64_t)(LD64(0x700531cee0ull));
+    c->x[8] = (uint64_t)(c->x[8] + 0xa78ull);
+    { uint64_t ea = c->x[19] + 0x0ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[19] = (uint64_t)(v); }
+    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 32; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
     c->pc = 0; return;
-L_7005317f98:;
-    { uint64_t ea = c->x[19] + 0x1f1ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    if (((c->x[8] >> 0) & 1) == 0) goto L_7005317fe0;
-    { uint64_t ea = c->x[19] + 0x1efull; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
-    if ((uint32_t)c->x[9] == 0) goto L_70053180ac;
-    { uint64_t ea = c->x[19] + 0x50ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x58ull; ST32(ea, 0u); }
-    c->x[1] = (uint64_t)(0ull | 0ull);
-    c->x[2] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[8] + 0x130ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[30] = 0x7005317fc0ull; f_700531c448(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (c->x[0] == 0) goto L_7005317fd0;
-    c->x[1] = (uint32_t)(0x10ull);
-    c->x[2] = (uint64_t)(0ull | 0ull);
-    c->x[30] = 0x7005317fd0ull; f_700531c570(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-L_7005317fd0:;
-    { uint64_t ea = c->x[19] + 0x14ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x1ull);
-    { uint64_t ea = c->x[19] + 0x14ull; ST8(ea, (uint32_t)c->x[8]); }
-    goto L_7005317f78;
-L_7005317fe0:;
-    c->v[0] = VS32(9);
-    c->v[1] = VS32(8);
-    c->x[8] = (uint32_t)((uint32_t)c->x[21] & 0x1ull);
-    c->x[1] = (uint64_t)(c->x[29] - 0x34ull);
-    c->x[2] = (uint64_t)(c->x[29] - 0x38ull);
-    c->x[3] = (uint64_t)(c->x[29] - 0x3cull);
-    c->x[4] = (uint64_t)(c->x[29] - 0x40ull);
-    c->x[5] = (uint64_t)(c->x[29] - 0x44ull);
-    { uint64_t ea = c->x[29] - 52; ST8(ea, 0u); }
-    c->x[6] = (uint64_t)(c->x[29] - 0x48ull);
-    c->x[7] = (uint64_t)(c->x[29] - 0x58ull);
-    { uint64_t ea = c->x[29] - 56; ST8(ea, 0u); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->x[29] - 60; ST8(ea, 0u); }
-    { uint64_t ea = c->x[29] - 64; ST8(ea, 0u); }
-    { uint64_t ea = c->x[29] - 68; ST8(ea, 0u); }
-    { uint64_t ea = c->x[29] - 72; ST8(ea, 0u); }
-    { uint64_t ea = c->x[29] - 80; ST32(ea, 0u); }
-    { uint64_t ea = c->x[29] - 88; ST64(ea, 0ull); }
-    { uint64_t ea = c->sp + 0x0ull; ST64(ea, c->x[20]); }
-    { uint64_t ea = c->sp + 0x8ull; ST8(ea, (uint32_t)c->x[8]); }
-    c->x[30] = 0x7005318038ull; f_7005319874(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) == 0) goto L_7005318048;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(c->x[29] - 0x58ull);
-    f_70053137f8(c); return;
-L_7005318048:;
-    { uint64_t ea = c->x[29] - 68; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] != 0) goto L_70053183d4;
-L_7005318050:;
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[30] = 0x7005318058ull; f_700531c440(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (c->x[0] == 0) goto L_7005317f78;
-    c->x[8] = (uint64_t)(LD64(0x700531ce20ull));
-    c->x[8] = (uint64_t)(c->x[8] + 0xbd4ull);
-    { uint64_t ea = c->sp + 0x20ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->x[29] - 68; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->sp + 0x20ull);
-    c->x[2] = (uint32_t)(0u | 0u);
-    c->x[3] = (uint32_t)(0u | 0u);
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    (void)(subs32(c, (uint32_t)c->x[8], 0x0ull));
-    { uint64_t ea = c->x[29] - 72; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    if (COND_NE(c)) (void)subs32(c, (uint32_t)c->x[8], 0x0ull); else c->nzcv = 0x40000000ull;
-    c->x[8] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
-    { uint64_t ea = c->x[29] - 136; ST8(ea, (uint32_t)c->x[8]); }
-    c->x[30] = 0x7005318094ull; f_700531c498(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 31) & 1) != 0) goto L_7005317f78;
-    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[2] = (uint64_t)(c->x[29] - 0x88ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x70053180a8ull; f_700531c478(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    goto L_7005317f78;
-L_70053180ac:;
-    if (((c->x[8] >> 1) & 1) != 0) goto L_70053180f0;
-L_70053180b0:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x70053180bcull; f_700531c6a0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) == 0) goto L_7005318108;
-    c->x[1] = (uint64_t)(c->x[19] + 0x88ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[2] = (uint64_t)(0ull | 0ull);
-    c->x[3] = (uint32_t)(0u | 0u);
-    c->sp = (uint64_t)(c->sp + 0x200ull);
-    { uint64_t ea = c->sp + 32; u128 a = LD64(ea), b = LD64(ea + 8); c->v[9] = a; c->v[8] = b; }
-    { uint64_t ea = c->sp + 16; u128 a = LD64(ea), b = LD64(ea + 8); c->v[11] = a; c->v[10] = b; }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; u128 a = LD64(ea), b = LD64(ea + 8); c->v[13] = a; c->v[12] = b; c->sp = ea + 96; }
-    goto L_7005318fa4;
-L_70053180f0:;
-    c->v[0] = VS32(9);
-    c->v[1] = VS32(8);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005318100ull; f_700531c6b0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) != 0) goto L_7005317f78;
-    goto L_70053180b0;
-L_7005318108:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint32_t)(0u | 0u);
-    c->sp = (uint64_t)(c->sp + 0x200ull);
-    { uint64_t ea = c->sp + 32; u128 a = LD64(ea), b = LD64(ea + 8); c->v[9] = a; c->v[8] = b; }
-    { uint64_t ea = c->sp + 16; u128 a = LD64(ea), b = LD64(ea + 8); c->v[11] = a; c->v[10] = b; }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; u128 a = LD64(ea), b = LD64(ea + 8); c->v[13] = a; c->v[12] = b; c->sp = ea + 96; }
-    f_70053184b4(c); return;
-L_70053183d4:;
-    c->v[0] = VS32(9);
-    c->v[1] = VS32(8);
-    c->x[8] = (uint64_t)(c->x[19] + 0x1a4ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->x[8] + 0x0ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->x[19] + 0x1acull; ST32(ea, 0u); }
-    c->x[30] = 0x70053183f0ull; f_7005317cd4(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    goto L_7005318050;
-L_7005318fa4:;
-    c->sp = (uint64_t)(c->sp - 0x1d0ull);
-    { uint64_t ea = c->sp + 352; ST64(ea, VS64(9)); ST64(ea + 8, VS64(8)); }
-    { uint64_t ea = c->sp + 368; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
-    { uint64_t ea = c->sp + 384; ST64(ea, c->x[28]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 400; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 416; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 432; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 448; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->x[29] = (uint64_t)(c->sp + 0x170ull);
-    { uint64_t ea = c->x[0] + 0x50ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[21] = (uint32_t)(0u | (uint32_t)c->x[3]);
-    c->x[20] = (uint64_t)(0ull | c->x[2]);
-    c->x[22] = (uint64_t)(0ull | c->x[1]);
-    { uint64_t ea = c->x[8] + 0x130ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[30] = 0x7005318fe4ull; f_700531c338(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) != 0) goto L_7005319184;
-    c->x[0] = (uint64_t)(0ull | c->x[22]);
-    c->x[24] = (uint64_t)(c->x[29] - 0x88ull);
-    c->x[30] = 0x7005318ff4ull; f_700531c338(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) == 0) goto L_700531904c;
-    c->x[8] = (uint64_t)(c->x[29] - 0x60ull);
-    c->x[0] = (uint64_t)(0ull | c->x[22]);
-    c->x[30] = 0x7005319004ull; f_700531c310(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(c->x[29] - 0x60ull);
-    c->x[30] = 0x700531900cull; f_700531c740(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) != 0) goto L_7005319154;
-    c->x[0] = (uint64_t)(c->x[29] - 0x60ull);
-    c->x[30] = 0x7005319018ull; f_700531c738(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) != 0) goto L_7005319154;
-    { uint64_t ea = c->x[24] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_7005319044;
-    { uint64_t ea = c->x[8] + 0x228ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_7005319044;
-    { uint64_t ea = c->x[8] + 0x1c8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0xb0ull; ST64(ea, c->x[8]); }
-    if (c->x[8] == 0) goto L_7005319044;
-    c->x[0] = (uint64_t)(c->sp + 0xb0ull);
-    c->x[30] = 0x7005319040ull; f_700531c5a8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) != 0) goto L_7005319154;
-L_7005319044:;
-    c->x[0] = (uint64_t)(c->x[29] - 0x60ull);
-    c->x[30] = 0x700531904cull; f_700531c4b8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-L_700531904c:;
-    c->x[25] = (uint64_t)(c->x[20] & 0xffffffffull);
-    (void)(subs64(c, c->x[25], 0x5ull));
-    if (COND_NE(c)) goto L_70053190e0;
-L_7005319058:;
-    c->x[1] = (uint64_t)(LD64(0x700531cef0ull));
-    { uint64_t ea = c->x[19] + 0x19cull; uint64_t v = LD8(ea); c->x[23] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(c->x[29] - 0x60ull);
-    { uint64_t ea = c->x[1] + 0x88ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint32_t)(0x30ull);
-    c->x[30] = 0x7005319070ull; f_700531c7f0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->x[29] - 0x60ull);
-    c->x[30] = 0x700531907cull; f_700531c330(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->x[19] + 0x120ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[22]);
-    { uint64_t ea = c->x[24] + 0x18ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->x[19] + 0x128ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[29] - 104; ST32(ea, (uint32_t)c->x[9]); }
-    { uint64_t ea = c->x[29] - 112; u128 a = LD32(ea), b = LD32(ea + 4); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->x[29] - 68; ST32(ea, VS32(1)); }
-    { uint64_t ea = c->x[29] - 84; ST32(ea, VS32(0)); }
-    { uint64_t ea = c->x[29] - 104; c->v[0] = LD32(ea); }
-    { uint64_t ea = c->x[29] - 52; ST32(ea, VS32(0)); }
-    c->x[30] = 0x70053190a8ull; f_700531c338(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    if (((c->x[8] >> 0) & 1) != 0) goto L_70053191b0;
-    c->x[30] = 0x70053190b8ull; f_700531c778(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (c->x[0] != 0) goto L_70053191f0;
-L_70053190bc:;
-    { uint64_t ea = c->sp + 352; u128 a = LD64(ea), b = LD64(ea + 8); c->v[9] = a; c->v[8] = b; }
-    { uint64_t ea = c->sp + 448; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 432; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 416; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 400; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 384; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 368; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0x1d0ull);
-    c->pc = 0; return;
-L_70053190e0:;
-    { uint64_t ea = c->x[19] + 0x50ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[30] = 0x70053190e8ull; f_700531c618(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (c->x[0] == 0) goto L_70053190f4;
-    { uint64_t ea = c->x[0] + 0xd9ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    if (((c->x[8] >> 4) & 1) != 0) goto L_7005319058;
-L_70053190f4:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x70053190fcull; f_700531c680(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->x[19] + 0x58ull; ST32(ea, 0u); }
-    c->x[30] = 0x7005319108ull; f_700531c6c8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->x[19] + 0x14ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x1ull);
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x14ull; ST8(ea, (uint32_t)c->x[8]); }
-    c->x[30] = 0x700531911cull; f_700531c4a8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (c->x[0] != 0) goto L_70053193e8;
-L_7005319120:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005319128ull; f_700531c760(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (c->x[0] == 0) goto L_70053190bc;
-    c->x[20] = (uint64_t)(LD64(0x700531cee8ull));
-    c->x[2] = (uint32_t)(0u | 0u);
-    { uint64_t ea = c->x[20] + 0xab0ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005319144ull; f_700531c3e8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005319150ull; f_700531c348(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    goto L_70053190bc;
-L_7005319154:;
-    if (((c->x[21] >> 0) & 1) == 0) goto L_7005319230;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005319160ull; f_700531c680(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005319168ull; f_700531c688(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->x[19] + 0x58ull; ST32(ea, 0u); }
-    c->x[30] = 0x7005319174ull; f_700531c6c8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->x[19] + 0x14ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x1ull);
-    { uint64_t ea = c->x[19] + 0x14ull; ST8(ea, (uint32_t)c->x[8]); }
-    goto L_700531923c;
-L_7005319184:;
-    { uint64_t ea = c->sp + 352; u128 a = LD64(ea), b = LD64(ea + 8); c->v[9] = a; c->v[8] = b; }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->sp + 448; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    c->x[1] = (uint32_t)(0u | 0u);
-    { uint64_t ea = c->sp + 432; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 416; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 400; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 384; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 368; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0x1d0ull);
-    f_70053184b4(c); return;
-L_70053191b0:;
-    c->x[30] = 0x70053191b4ull; f_700531c4a0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (c->x[0] == 0) goto L_7005319208;
-    c->x[20] = (uint64_t)(0ull | c->x[0]);
-    c->x[8] = (uint64_t)(c->x[29] - 0x80ull);
-    c->x[0] = (uint64_t)(0ull | c->x[22]);
-    c->x[30] = 0x70053191c8ull; f_700531c310(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->x[24] + 0x8ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    if (c->x[0] != 0) goto L_7005319248;
-L_70053191d0:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->x[19] + 0x58ull; ST32(ea, 0u); }
-    c->x[30] = 0x70053191dcull; f_700531c6c8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->x[19] + 0x14ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x1ull);
-    { uint64_t ea = c->x[19] + 0x14ull; ST8(ea, (uint32_t)c->x[8]); }
-L_70053191e8:;
-    c->x[0] = (uint64_t)(c->x[29] - 0x80ull);
-    goto L_7005319240;
-L_70053191f0:;
-    c->x[1] = (uint64_t)(c->x[29] - 0x70ull);
-    c->x[20] = (uint64_t)(0ull | c->x[0]);
-    c->x[30] = 0x70053191fcull; f_700531c3b8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[1] = (uint64_t)(0ull | 0ull);
-    c->x[30] = 0x7005319208ull; f_700531c458(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-L_7005319208:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005319210ull; f_700531c6b8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint32_t)(0u | 0u);
-    c->x[30] = 0x700531921cull; f_700531c6c0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[23] >> 0) & 1) != 0) goto L_7005319308;
-L_7005319220:;
-    { uint64_t ea = c->x[19] + 0x14ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x1ull);
-    { uint64_t ea = c->x[19] + 0x14ull; ST8(ea, (uint32_t)c->x[8]); }
-    goto L_70053190bc;
-L_7005319230:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint32_t)(0u | 0u);
-    c->x[30] = 0x700531923cull; f_70053184b4(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-L_700531923c:;
-    c->x[0] = (uint64_t)(c->x[29] - 0x60ull);
-L_7005319240:;
-    c->x[30] = 0x7005319244ull; f_700531c4b8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    goto L_70053190bc;
-L_7005319248:;
-    c->x[30] = 0x700531924cull; f_700531c488(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->x[24] + 0x0ull; ST64(ea, c->x[0]); }
-    c->x[1] = (uint64_t)(LD64(0x700531cef0ull));
-    c->x[0] = (uint64_t)(c->sp + 0xb0ull);
-    { uint64_t ea = c->x[1] + 0x88ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint32_t)(0x30ull);
-    c->x[30] = 0x7005319264ull; f_700531c7f0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[26] = (uint64_t)(LD64(0x700531ce18ull));
-    c->x[27] = (uint64_t)(LD64(0x700531ce18ull));
-    c->x[28] = (uint64_t)(LD64(0x700531ce10ull));
-    if (((c->x[23] >> 0) & 1) != 0) goto L_70053192b4;
-    (void)(subs64(c, c->x[25], 0x5ull));
-    if (COND_NE(c)) goto L_7005319318;
-    c->x[0] = (uint64_t)(c->x[20] + 0x70ull);
-    c->x[1] = (uint64_t)(0ull | c->x[22]);
-    c->x[2] = (uint64_t)(0ull | 0ull);
-    c->x[30] = 0x700531928cull; f_700531c320(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->x[24] + 0x8ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)(0xffffffffull);
-    { uint64_t ea = c->x[20] + 0x38ull; ST32(ea, (uint32_t)c->x[8]); }
-    if (c->x[0] != 0) goto L_70053194a0;
-    { uint64_t ea = c->x[28] + 0xfa0ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->x[27] + 0x690ull; c->v[1] = LD128(ea); }
-    { uint64_t ea = c->x[26] + 0x170ull; c->v[2] = LD128(ea); }
-    { uint64_t ea = c->sp + 176; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 0xd0ull; ST128(ea, c->v[2]); }
-    goto L_70053194a8;
-L_70053192b4:;
-    { uint64_t ea = c->x[26] + 0x170ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->sp + 0x20ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->x[27] + 0x690ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->sp + 0x30ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->x[28] + 0xfa0ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->sp + 0x40ull; ST128(ea, c->v[0]); }
-L_70053192cc:;
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[30] = 0x70053192d4ull; f_700531c778(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (c->x[0] == 0) goto L_7005319494;
-    { uint64_t ea = c->x[24] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[20] = (uint64_t)(0ull | c->x[0]);
-    if (c->x[8] != 0) goto L_7005319404;
-    c->v[0] = 0x0ull;
-    c->v[1] = 0x0ull;
-    { uint64_t ea = c->x[24] + 0x58ull; ST64(ea, 0ull); }
-    c->v[2] = 0x0ull;
-    c->v[3] = 0x0ull;
-    { uint64_t ea = c->x[29] - 40; ST32(ea, 0u); }
-    c->v[4] = 0x0ull;
-    c->v[5] = 0x0ull;
-    goto L_7005319438;
-L_7005319308:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->x[19] + 0x58ull; ST32(ea, 0u); }
-    c->x[30] = 0x7005319314ull; f_700531c6c8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    goto L_7005319220;
-L_7005319318:;
-    c->x[0] = (uint64_t)(c->x[29] - 0x88ull);
-    c->x[1] = (uint64_t)(c->sp + 0xb0ull);
-    c->x[30] = 0x7005319324ull; f_700531c768(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    if (((c->x[0] >> 0) & 1) == 0) goto L_7005319574;
-    c->x[0] = (uint64_t)(c->x[20] + 0x70ull);
-    c->x[1] = (uint64_t)(0ull | c->x[22]);
-    c->x[2] = (uint64_t)(0ull | 0ull);
-    c->x[30] = 0x7005319338ull; f_700531c320(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[8] = (uint32_t)(0xffffffffull);
-    c->x[0] = (uint64_t)(c->x[29] - 0x80ull);
-    { uint64_t ea = c->x[20] + 0x38ull; ST32(ea, (uint32_t)c->x[8]); }
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[30] = 0x700531934cull; f_700531c410(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[1] = (uint64_t)(LD64(0x700531cef0ull));
-    c->x[0] = (uint64_t)(c->sp + 0x70ull);
-    { uint64_t ea = c->x[1] + 0x88ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint32_t)(0x30ull);
-    c->x[30] = 0x7005319360ull; f_700531c7f0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(c->sp + 0x70ull);
-    c->x[1] = (uint64_t)(c->sp + 0xb0ull);
-    c->x[30] = 0x700531936cull; f_700531c380(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->sp + 112; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    c->v[5] = 0x0ull;
-    VW(vu64, 1, 6, VREG(vu64, 5) | VREG(vu64, 5));
-    { uint64_t ea = c->sp + 0x90ull; c->v[2] = LD128(ea); }
-    { uint64_t ea = c->x[24] + 40; c->v[3] = LD128(ea); }
-    VW(vu64, 1, 16, VREG(vu64, 5) | VREG(vu64, 5));
-    { uint64_t ea = c->x[24] + 56; c->v[4] = LD128(ea); }
-    SV_FOP_S(FOP_MUL, 1, 17, VREG(vf32, 3), vsplat_s(VREG(vf32, 1), 0, 1), (vf32){});
-    SV_FOP_S(FOP_MADD, 1, 17, VREG(vf32, 17), VREG(vf32, 4), vsplat_s(VREG(vf32, 1), 1, 1));
-    SV_FOP_S(FOP_MUL, 1, 7, VREG(vf32, 3), vsplat_s(VREG(vf32, 0), 0, 1), (vf32){});
-    SV_FOP_S(FOP_MADD, 1, 7, VREG(vf32, 7), VREG(vf32, 4), vsplat_s(VREG(vf32, 0), 1, 1));
-    SV_FOP_S(FOP_MUL, 1, 3, VREG(vf32, 3), vsplat_s(VREG(vf32, 2), 0, 1), (vf32){});
-    SV_FOP_S(FOP_MADD, 1, 3, VREG(vf32, 3), VREG(vf32, 4), vsplat_s(VREG(vf32, 2), 1, 1));
-    VW(vu32, 1, 4, SHUF(VREG(vu32, 0), VREG(vu32, 0), 3, 3, 3, 3));
-    ((sa32 *)&c->v[6])[3] = ((sa32 *)&c->v[4])[1];
-    VW(vu32, 1, 4, SHUF(VREG(vu32, 1), VREG(vu32, 1), 3, 3, 3, 3));
-    ((sa32 *)&c->v[16])[3] = ((sa32 *)&c->v[4])[1];
-    VW(vu32, 1, 4, SHUF(VREG(vu32, 2), VREG(vu32, 2), 3, 3, 3, 3));
-    ((sa32 *)&c->v[5])[3] = ((sa32 *)&c->v[4])[1];
-    { uint64_t ea = c->x[24] + 72; c->v[4] = LD128(ea); }
-    SV_FOP_S(FOP_MADD, 1, 7, VREG(vf32, 7), VREG(vf32, 4), vsplat_s(VREG(vf32, 0), 2, 1));
-    SV_FOP_S(FOP_MADD, 1, 17, VREG(vf32, 17), VREG(vf32, 4), vsplat_s(VREG(vf32, 1), 2, 1));
-    SV_FOP_S(FOP_MADD, 1, 3, VREG(vf32, 3), VREG(vf32, 4), vsplat_s(VREG(vf32, 2), 2, 1));
-    SV_FOP_S(FOP_ADD, 1, 0, VREG(vf32, 6), VREG(vf32, 7), (vf32){});
-    SV_FOP_S(FOP_ADD, 1, 1, VREG(vf32, 16), VREG(vf32, 17), (vf32){});
-    { uint64_t ea = c->sp + 48; ST128(ea, c->v[1]); ST128(ea + 16, c->v[0]); }
-    { uint64_t ea = c->x[20] + 64; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    SV_FOP_S(FOP_ADD, 1, 0, VREG(vf32, 5), VREG(vf32, 3), (vf32){});
-    { uint64_t ea = c->sp + 0x20ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->x[20] + 0x60ull; ST128(ea, c->v[0]); }
-    goto L_70053192cc;
-L_70053193e8:;
-    c->x[1] = (uint64_t)(LD64(0x700531ce78ull));
-    c->x[1] = (uint64_t)(c->x[1] + 0x9dbull);
-    c->x[2] = (uint64_t)(LD64(0x700531ce68ull));
-    c->x[2] = (uint64_t)(c->x[2] + 0xdc2ull);
-    c->x[3] = (uint32_t)(0x1ull);
-    c->x[30] = 0x7005319400ull; f_700531c610(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    goto L_7005319120;
-L_7005319404:;
-    { uint64_t ea = c->x[8] + 0x320ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x70ull; ST64(ea, c->x[9]); }
-    { uint64_t ea = c->x[8] + 0x328ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 112; u128 a = LD32(ea), b = LD32(ea + 4); c->v[2] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 0x78ull; ST32(ea, (uint32_t)c->x[9]); }
-    c->x[9] = (uint64_t)(c->x[8] + 0x32cull);
-    { uint64_t ea = c->x[8] + 0x334ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x78ull; c->v[0] = LD32(ea); }
-    { uint64_t ea = c->x[29] - 40; ST32(ea, (uint32_t)c->x[8]); }
-    { uint64_t ea = c->x[24] + 0x58ull; ST64(ea, c->x[9]); }
-    { uint64_t ea = c->x[29] - 44; u128 a = LD32(ea), b = LD32(ea + 4); c->v[5] = a; c->v[4] = b; }
-    { uint64_t ea = c->x[29] - 48; c->v[3] = LD32(ea); }
-L_7005319438:;
-    { uint64_t ea = c->sp + 32; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[17] = b; }
-    c->v[6] = VS32(4) ^ 0x80000000u;
-    c->v[7] = VS32(3) ^ 0x80000000u;
-    c->v[16] = VS32(5) ^ 0x80000000u;
-    c->x[1] = (uint64_t)(c->sp + 0x70ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint32_t)(0u | 0u);
-    FP_SETS(6, op_s(c, FOP_MUL, VSF32(6), VREG(vf32, 17)[3], 0));
-    FP_SETS(6, op_s(c, FOP_MADD, VSF32(6), VSF32(5), VREG(vf32, 18)[3]));
-    FP_SETS(5, op_s(c, FOP_MUL, VSF32(7), VREG(vf32, 18)[3], 0));
-    { uint64_t ea = c->sp + 0x40ull; c->v[7] = LD128(ea); }
-    FP_SETS(5, op_s(c, FOP_MADD, VSF32(5), VSF32(4), VREG(vf32, 7)[3]));
-    FP_SETS(4, op_s(c, FOP_MUL, VSF32(16), VREG(vf32, 7)[3], 0));
-    FP_SETS(4, op_s(c, FOP_MADD, VSF32(4), VSF32(3), VREG(vf32, 17)[3]));
-    fp_op_s(c, FOP_ADD, 2, 2, 6);
-    fp_op_s(c, FOP_ADD, 1, 1, 5);
-    fp_op_s(c, FOP_ADD, 0, 0, 4);
-    { uint64_t ea = c->sp + 112; ST32(ea, VS32(2)); ST32(ea + 4, VS32(1)); }
-    { uint64_t ea = c->sp + 0x78ull; ST32(ea, VS32(0)); }
-    c->x[30] = 0x7005319488ull; f_700531c3e8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[1] = (uint64_t)(c->x[29] - 0x30ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005319494ull; f_700531c348(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-L_7005319494:;
-    c->x[0] = (uint64_t)(c->x[29] - 0x80ull);
-    c->x[30] = 0x700531949cull; f_700531c4b8(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    goto L_7005319208;
-L_70053194a0:;
-    c->x[1] = (uint64_t)(c->sp + 0xb0ull);
-    c->x[30] = 0x70053194a8ull; f_700531c330(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-L_70053194a8:;
-    c->x[0] = (uint64_t)(c->x[29] - 0x88ull);
-    c->x[1] = (uint64_t)(c->sp + 0xa0ull);
-    { uint64_t ea = c->sp + 0xa8ull; ST32(ea, 0u); }
-    c->x[2] = (uint64_t)(0ull | 0ull);
-    { uint64_t ea = c->sp + 0xa0ull; ST64(ea, 0ull); }
-    c->x[30] = 0x70053194c0ull; f_700531c3a0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->x[29] - 92; c->v[0] = LD32(ea); }
-    c->x[0] = (uint64_t)(c->sp + 0x70ull);
-    { uint64_t ea = c->x[29] - 76; c->v[1] = LD32(ea); }
-    { uint64_t ea = c->x[29] - 60; c->v[2] = LD32(ea); }
-    { uint64_t ea = c->sp + 0xb4ull; c->v[16] = LD32(ea); }
-    { uint64_t ea = c->sp + 0xc4ull; c->v[7] = LD32(ea); }
-    { uint64_t ea = c->sp + 0x20ull; ST128(ea, c->v[16]); }
-    { uint64_t ea = c->sp + 0xd4ull; c->v[6] = LD32(ea); }
-    { uint64_t ea = c->sp + 160; u128 a = LD32(ea), b = LD32(ea + 4); c->v[3] = a; c->v[4] = b; }
-    { uint64_t ea = c->sp + 0xbcull; ST32(ea, VS32(3)); }
-    { uint64_t ea = c->sp + 0xccull; ST32(ea, VS32(4)); }
-    fp_op_s(c, FOP_NMUL, 3, 2, 7);
-    fp_fma_s(c, 0, 0, 3, 1, 6, 3);
-    fp_op_s(c, FOP_NMUL, 4, 0, 6);
-    fp_fma_s(c, 0, 0, 2, 2, 16, 4);
-    fp_op_s(c, FOP_NMUL, 4, 1, 16);
-    fp_fma_s(c, 0, 0, 0, 0, 7, 4);
-    { uint64_t ea = c->sp + 112; ST32(ea, VS32(3)); ST32(ea + 4, VS32(2)); }
-    { uint64_t ea = c->sp + 0xa8ull; c->v[5] = LD32(ea); }
-    { uint64_t ea = c->sp + 0xdcull; ST32(ea, VS32(5)); }
-    { uint64_t ea = c->sp + 0x78ull; ST32(ea, VS32(0)); }
-    { uint64_t ea = c->sp + 48; ST128(ea, c->v[7]); ST128(ea + 16, c->v[6]); }
-    c->x[30] = 0x700531951cull; f_700531450c(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->sp + 0x70ull; c->v[0] = LD32(ea); }
-    c->v[1] = 0xb4000000b4000000ull;
-    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
-    if (COND_LT(c)) goto L_7005319584;
-    c->v[1] = 0x3400000034000000ull;
-    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
-    if (COND_HI(c)) goto L_7005319584;
-    { uint64_t ea = c->sp + 116; u128 a = LD32(ea), b = LD32(ea + 4); c->v[1] = a; c->v[2] = b; }
-    c->v[3] = 0xb4000000b4000000ull;
-    c->nzcv = cmp_s(c, VSF32(1), VSF32(3));
-    if (COND_LT(c)) goto L_7005319588;
-    c->v[3] = 0x3400000034000000ull;
-    c->nzcv = cmp_s(c, VSF32(1), VSF32(3));
-    if (COND_HI(c)) goto L_7005319588;
-    c->v[3] = 0xb4000000b4000000ull;
-    c->nzcv = cmp_s(c, VSF32(2), VSF32(3));
-    if (COND_LT(c)) goto L_7005319588;
-    c->v[3] = 0x3400000034000000ull;
-    c->nzcv = cmp_s(c, VSF32(2), VSF32(3));
-    if (COND_HI(c)) goto L_7005319588;
-    if (((c->x[21] >> 0) & 1) != 0) goto L_70053191d0;
-    goto L_70053197cc;
-L_7005319574:;
-    if (((c->x[21] >> 0) & 1) == 0) goto L_70053197cc;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005319580ull; f_700531c680(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    goto L_70053191d0;
-L_7005319584:;
-    { uint64_t ea = c->sp + 116; u128 a = LD32(ea), b = LD32(ea + 4); c->v[1] = a; c->v[2] = b; }
-L_7005319588:;
-    { uint64_t ea = c->sp + 48; u128 a = LD128(ea), b = LD128(ea + 16); c->v[5] = a; c->v[4] = b; }
-    c->x[22] = (uint64_t)(c->x[29] - 0x30ull);
-    c->x[0] = (uint64_t)(c->x[29] - 0x30ull);
-    c->x[21] = (uint32_t)(0xdull);
-    c->x[21] = (uint32_t)((c->x[21] & 0xffffffff0000ffffull) | 0x75e90000ull);
-    { uint64_t ea = c->sp + 0x20ull; c->v[6] = LD128(ea); }
-    c->x[25] = (uint64_t)(c->x[22] + 0x4ull);
-    c->x[26] = (uint64_t)(c->x[22] + 0x8ull);
-    fp_op_s(c, FOP_NMUL, 3, 4, 1);
-    fp_fma_s(c, 0, 0, 3, 5, 2, 3);
-    fp_op_s(c, FOP_NMUL, 2, 6, 2);
-    fp_fma_s(c, 0, 0, 2, 4, 0, 2);
-    fp_op_s(c, FOP_NMUL, 0, 5, 0);
-    fp_fma_s(c, 0, 0, 0, 6, 1, 0);
-    { uint64_t ea = c->x[29] - 48; ST32(ea, VS32(3)); ST32(ea + 4, VS32(2)); }
-    { uint64_t ea = c->x[29] - 40; ST32(ea, VS32(0)); }
-    c->x[30] = 0x70053195ccull; f_700531450c(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->sp + 0x70ull; c->v[1] = LD64(ea); }
-    c->x[1] = (uint64_t)(LD64(0x700531cef0ull));
-    c->x[0] = (uint64_t)(c->sp + 0x70ull);
-    { uint64_t ea = c->sp + 116; c->v[0] = LD64(ea); }
-    c->x[2] = (uint32_t)(0x30ull);
-    VW(vu64, 1, 2, VREG(vu64, 0) | VREG(vu64, 0));
-    { uint64_t ea = c->x[22]; sl_lds(c, 2, 1, 1, 1, ea); }
-    { uint64_t ea = c->sp + 0x20ull; c->v[3] = LD128(ea); }
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(c->x[8] + 0x2b4ull);
-    VW(vu32, 1, 0, SHUF(VREG(vu32, 0), VREG(vu32, 0), 1, 1, 1, 1));
-    { uint64_t ea = c->x[25]; sl_lds(c, 2, 1, 1, 2, ea); }
-    { uint64_t ea = c->x[26]; sl_lds(c, 2, 1, 1, 0, ea); }
-    ((sa32 *)&c->v[1])[2] = ((sa32 *)&c->v[3])[0];
-    { uint64_t ea = c->sp + 0x30ull; c->v[3] = LD128(ea); }
-    ((sa32 *)&c->v[2])[2] = ((sa32 *)&c->v[3])[0];
-    { uint64_t ea = c->x[9]; sl_lds(c, 2, 1, 3, 1, ea); }
-    c->x[9] = (uint64_t)(c->x[8] + 0x2b8ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x2bcull);
-    { uint64_t ea = c->x[9]; sl_lds(c, 2, 1, 3, 2, ea); }
-    { uint64_t ea = c->sp + 16; ST128(ea, c->v[2]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 0x40ull; c->v[1] = LD128(ea); }
-    ((sa32 *)&c->v[0])[2] = ((sa32 *)&c->v[1])[0];
-    { uint64_t ea = c->x[8]; sl_lds(c, 2, 1, 3, 0, ea); }
-    { uint64_t ea = c->sp + 0x0ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->x[1] + 0x88ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[30] = 0x7005319638ull; f_700531c7f0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[0] = (uint64_t)(c->sp + 0x70ull);
-    c->x[1] = (uint64_t)(c->sp + 0xb0ull);
-    c->x[30] = 0x7005319644ull; f_700531c380(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->sp + 112; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    c->v[4] = 0x0ull;
-    c->x[0] = (uint64_t)(c->x[29] - 0x88ull);
-    c->x[1] = (uint64_t)(c->sp + 0x60ull);
-    { uint64_t ea = c->sp + 16; u128 a = LD128(ea), b = LD128(ea + 16); c->v[7] = a; c->v[6] = b; }
-    VW(vu64, 1, 5, VREG(vu64, 4) | VREG(vu64, 4));
-    c->x[2] = (uint64_t)(0ull | 0ull);
-    { uint64_t ea = c->sp + 0x68ull; ST32(ea, 0u); }
-    { uint64_t ea = c->sp + 0x0ull; c->v[16] = LD128(ea); }
-    { uint64_t ea = c->sp + 0x60ull; ST64(ea, 0ull); }
-    VW(vu32, 1, 3, SHUF(VREG(vu32, 0), VREG(vu32, 0), 3, 3, 3, 3));
-    { uint64_t ea = c->sp + 0x90ull; c->v[2] = LD128(ea); }
-    ((sa32 *)&c->v[5])[3] = ((sa32 *)&c->v[3])[1];
-    SV_FOP_S(FOP_MUL, 1, 3, VREG(vf32, 6), vsplat_s(VREG(vf32, 0), 0, 1), (vf32){});
-    SV_FOP_S(FOP_MADD, 1, 3, VREG(vf32, 3), VREG(vf32, 7), vsplat_s(VREG(vf32, 0), 1, 1));
-    SV_FOP_S(FOP_MADD, 1, 3, VREG(vf32, 3), VREG(vf32, 16), vsplat_s(VREG(vf32, 0), 2, 1));
-    SV_FOP_S(FOP_MUL, 1, 0, VREG(vf32, 6), vsplat_s(VREG(vf32, 1), 0, 1), (vf32){});
-    SV_FOP_S(FOP_MADD, 1, 0, VREG(vf32, 0), VREG(vf32, 7), vsplat_s(VREG(vf32, 1), 1, 1));
-    SV_FOP_S(FOP_MADD, 1, 0, VREG(vf32, 0), VREG(vf32, 16), vsplat_s(VREG(vf32, 1), 2, 1));
-    VW(vu32, 1, 1, SHUF(VREG(vu32, 2), VREG(vu32, 2), 3, 3, 3, 3));
-    SV_FOP_S(FOP_ADD, 1, 3, VREG(vf32, 5), VREG(vf32, 3), (vf32){});
-    SV_FOP_S(FOP_ADD, 1, 0, VREG(vf32, 0), VREG(vf32, 4), (vf32){});
-    ((sa32 *)&c->v[4])[3] = ((sa32 *)&c->v[1])[1];
-    c->v[8] = ((sa32 *)&c->v[3])[3];
-    { uint64_t ea = c->sp + 48; ST128(ea, c->v[0]); ST128(ea + 16, c->v[3]); }
-    SV_FOP_S(FOP_MUL, 1, 0, VREG(vf32, 6), vsplat_s(VREG(vf32, 2), 0, 1), (vf32){});
-    SV_FOP_S(FOP_MADD, 1, 0, VREG(vf32, 0), VREG(vf32, 7), vsplat_s(VREG(vf32, 2), 1, 1));
-    SV_FOP_S(FOP_MADD, 1, 0, VREG(vf32, 0), VREG(vf32, 16), vsplat_s(VREG(vf32, 2), 2, 1));
-    SV_FOP_S(FOP_ADD, 1, 0, VREG(vf32, 4), VREG(vf32, 0), (vf32){});
-    { uint64_t ea = c->sp + 0x20ull; ST128(ea, c->v[0]); }
-    c->v[9] = ((sa32 *)&c->v[0])[3];
-    c->x[30] = 0x70053196c4ull; f_700531c770(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->sp + 0x60ull; c->v[0] = LD32(ea); }
-    c->x[0] = (uint64_t)(c->sp + 0x54ull);
-    { uint64_t ea = c->sp + 0x58ull; ST32(ea, 0u); }
-    { uint64_t ea = c->sp + 0x68ull; c->v[1] = LD32(ea); }
-    fp_op_s(c, FOP_SUB, 0, 8, 0);
-    { uint64_t ea = c->sp + 0x54ull; ST32(ea, VS32(0)); }
-    fp_op_s(c, FOP_SUB, 0, 9, 1);
-    { uint64_t ea = c->sp + 0x5cull; ST32(ea, VS32(0)); }
-    c->x[30] = 0x70053196e8ull; f_700531450c(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[8] = (uint64_t)(LD64(0x700531cf40ull));
-    c->x[8] = (uint64_t)(c->x[8] + 0xea8ull);
-    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[30] = 0x70053196f8ull; f_700531c4c0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    c->x[8] = (uint32_t)(0x3f800000ull);
-    c->v[1] = 0xbf800000ull;
-    { uint64_t ea = c->sp + 0x68ull; c->v[4] = LD32(ea); }
-    c->x[8] = (uint32_t)(((uint32_t)c->x[8] & 0xff800000ull) | ((((uint32_t)c->x[8] & 0x0ull) | (ROR32((uint32_t)c->x[0], 9) & 0xffffffffull)) & 0x7fffffull));
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(c->x[29] - 0x80ull);
-    c->v[0] = (uint32_t)c->x[8];
-    c->x[8] = (uint64_t)(LD64(0x700531ceb8ull));
-    c->x[8] = (uint64_t)(c->x[8] + 0x6d0ull);
-    fp_op_s(c, FOP_ADD, 0, 0, 1);
-    c->v[1] = 0x3e800000ull;
-    fp_op_s(c, FOP_MUL, 3, 0, 1);
-    c->v[1] = 0x0ull;
-    fp_op_s(c, FOP_ADD, 0, 3, 1);
-    { uint64_t ea = c->sp + 0x54ull; c->v[1] = LD32(ea); }
-    { uint64_t ea = c->sp + 92; u128 a = LD32(ea), b = LD32(ea + 4); c->v[2] = a; c->v[3] = b; }
-    fp_op_s(c, FOP_MUL, 1, 1, 0);
-    fp_op_s(c, FOP_MUL, 0, 2, 0);
-    fp_op_s(c, FOP_ADD, 1, 3, 1);
-    { uint64_t ea = c->sp + 0x40ull; c->v[3] = LD128(ea); }
-    fp_op_s(c, FOP_ADD, 0, 4, 0);
-    ((sa32 *)&c->v[3])[3] = ((sa32 *)&c->v[1])[0];
-    { uint64_t ea = c->sp + 0x30ull; c->v[1] = LD128(ea); }
-    { uint64_t ea = c->x[8]; sl_lds(c, 2, 1, 3, 1, ea); }
-    { uint64_t ea = c->sp + 0x40ull; ST128(ea, c->v[3]); }
-    { uint64_t ea = c->sp + 0x30ull; ST128(ea, c->v[1]); }
-    { uint64_t ea = c->sp + 0x20ull; c->v[1] = LD128(ea); }
-    ((sa32 *)&c->v[1])[3] = ((sa32 *)&c->v[0])[0];
-    { uint64_t ea = c->sp + 0x20ull; ST128(ea, c->v[1]); }
-    c->x[30] = 0x7005319770ull; f_700531c410(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    { uint64_t ea = c->sp + 0x40ull; c->v[1] = LD128(ea); }
-    { uint64_t ea = c->sp + 0x30ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->x[20] + 64; ST128(ea, c->v[1]); ST128(ea + 16, c->v[0]); }
-    { uint64_t ea = c->sp + 0x20ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->x[20] + 0x60ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->x[19] + 0xb0ull; ST32(ea, (uint32_t)c->x[21]); }
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(c->x[8] + 0x378ull);
-    { uint64_t ea = c->x[24] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xa8ull; ST64(ea, c->x[0]); }
-    if (c->x[8] != 0) goto L_70053197a4;
-    c->x[8] = (uint32_t)(0xffffffffull);
-    goto L_70053197a8;
-L_70053197a4:;
-    { uint64_t ea = c->x[8] + 0x380ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-L_70053197a8:;
-    c->x[3] = (uint64_t)(c->x[19] + 0xb8ull);
-    c->x[2] = (uint64_t)(c->x[29] - 0x30ull);
-    { uint64_t ea = c->x[29] - 40; ST8(ea, 0u); }
-    { uint64_t ea = c->x[29] - 48; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[21]); }
-    c->x[30] = 0x70053197bcull; f_700531c3b0(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    (void)(adds32(c, (uint32_t)c->x[0], 0x1ull));
-    c->x[8] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
-    { uint64_t ea = c->x[19] + 0xb4ull; ST8(ea, (uint32_t)c->x[8]); }
-    goto L_70053192cc;
-L_70053197cc:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint32_t)(0u | 0u);
-    c->x[30] = 0x70053197d8ull; f_70053184b4(c); if (g_wxlm_arrow_unwind) { c->pc = 0; return; }
-    goto L_70053191e8;
 }
 
-void f_700531c778(Cpu *c) {
-    c->x[16] = (uint64_t)(LD64(0x700531cd88ull));
+void f_700531c2e0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c8f0ull));
     c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
 }
 
-void f_700531c790(Cpu *c) {
-    c->x[16] = (uint64_t)(LD64(0x700531cda0ull));
+void f_700531c2e8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c8f8ull));
     c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
 }
 
-void f_700531c7a8(Cpu *c) {
-    c->x[16] = (uint64_t)(LD64(0x700531cdb8ull));
+void f_700531c2f0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c900ull));
     c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
 }
 
-void f_700531c7c0(Cpu *c) {
-    c->x[16] = (uint64_t)(LD64(0x700531cdd0ull));
+void f_700531c2f8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c908ull));
     c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
 }
 
-void f_700531c7d8(Cpu *c) {
-    c->x[16] = (uint64_t)(LD64(0x700531cde8ull));
+void f_700531c300(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c910ull));
     c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
 }
 
-void f_700531c7f0(Cpu *c) {
-    c->x[16] = (uint64_t)(LD64(0x700531ce00ull));
+void f_700531c308(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c918ull));
     c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
 }
 
-void f_7005401800(Cpu *c) {
+void f_700531c310(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c920ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c318(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c928ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c320(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c930ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c328(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c938ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c330(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c940ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c338(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c948ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c340(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c950ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c348(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c958ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c350(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c960ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c358(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c968ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c360(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c970ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c368(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c978ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c370(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c980ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c378(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c988ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c380(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c990ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c388(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c998ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c390(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c9a0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c3a0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c9b0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c3b0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c9c0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c3c0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c9d0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c3d0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c9e0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c3e0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531c9f0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c3f0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca00ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c400(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca10ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c410(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca20ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c420(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca30ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c430(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca40ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c440(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca50ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c450(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca60ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c460(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca70ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c470(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca80ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c480(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ca90ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c490(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531caa0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c4a0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cab0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c4b0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cac0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c4c0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cad0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c4d0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cae0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c4e0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531caf0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c4f0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb00ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c500(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb10ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c510(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb20ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c520(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb30ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c530(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb40ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c540(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb50ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c550(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb60ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c560(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb70ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c570(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb80ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c580(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cb90ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c590(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cba0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c5a0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cbb0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c5b0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cbc0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c5c0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cbd0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c5d0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cbe0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c5e0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cbf0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c5f0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cc00ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c600(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cc10ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c618(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cc28ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c628(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cc38ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c638(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cc48ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c648(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cc58ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c658(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cc68ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c670(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cc80ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c680(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cc90ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c698(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cca8ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c6a8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ccb8ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c6b8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ccc8ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c6c8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ccd8ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c6d8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cce8ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c6e8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531ccf8ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c6f8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cd08ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c708(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cd18ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c718(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cd28ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c728(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cd38ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c738(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cd48ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c748(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cd58ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c758(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cd68ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c770(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cd80ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c788(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cd98ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c7a0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cdb0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c7b8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cdc8ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c7d0(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cde0ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_700531c7e8(Cpu *c) {
+    c->x[16] = (uint64_t)(LD64(0x700531cdf8ull));
+    c->pc = c->x[16]; rt_dispatch(c); c->pc = 0; return;
+}
+
+void f_7005401000(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x340ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
+    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
+    c->x[16] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
+    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
+    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
+    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
+    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
+    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
+    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
+    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
+    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
+    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
+    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
+    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
+    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
+    { uint64_t ea = c->sp + 0x98ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->x[1] + 0x3c50ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x364ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0x0ull);
+    c->x[30] = 0x70054010a0ull; f_7005409000(c);
+    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->nzcv = c->x[16] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x340ull);
+    c->sp = (uint64_t)(c->sp + 0xa000ull);
+    c->pc = 0x70008a48a8ull; return;
+}
+
+void f_7005401c00(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -5508,15 +5846,15 @@ void f_7005401800(Cpu *c) {
     { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
     c->x[2] = (uint64_t)(0ull | 0ull);
     c->x[3] = (uint64_t)(0ull | 0ull);
-    if (c->x[1] == 0) goto L_70054018b0;
+    if (c->x[1] == 0) goto L_7005401cb0;
     { uint64_t ea = c->x[1] + 0x3c50ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    if (c->x[2] == 0) goto L_70054018b0;
+    if (c->x[2] == 0) goto L_7005401cb0;
     { uint64_t ea = c->x[2] + 0x9ull; uint64_t v = LD8(ea); c->x[3] = (uint64_t)(v); }
     { uint64_t ea = c->x[2] + 0xaull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
     c->x[3] = (uint32_t)((uint32_t)c->x[3] | ((uint32_t)c->x[8] << 8));
-L_70054018b0:;
-    c->x[0] = (uint32_t)(0xaull);
-    c->x[30] = 0x70054018b8ull; f_7005409000(c);
+L_7005401cb0:;
+    c->x[0] = (uint32_t)(0xbull);
+    c->x[30] = 0x7005401cb8ull; f_7005409000(c);
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -5552,11 +5890,11 @@ L_70054018b0:;
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->sp = (uint64_t)(c->sp - 0x140ull);
-    c->pc = 0x7001d3c0d8ull; return;
+    c->sp = (uint64_t)(c->sp - 0x160ull);
+    c->pc = 0x7001d4320cull; return;
 }
 
-void f_7005402400(Cpu *c) {
+void f_7005402800(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -5593,17 +5931,9 @@ void f_7005402400(Cpu *c) {
     { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
     { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0ull | 0ull);
-    c->x[3] = (uint64_t)(0ull | 0ull);
-    if (c->x[1] == 0) goto L_70054024b0;
-    { uint64_t ea = c->x[1] + 0x3c50ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    if (c->x[2] == 0) goto L_70054024b0;
-    { uint64_t ea = c->x[2] + 0x9ull; uint64_t v = LD8(ea); c->x[3] = (uint64_t)(v); }
-    { uint64_t ea = c->x[2] + 0xaull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[3] = (uint32_t)((uint32_t)c->x[3] | ((uint32_t)c->x[8] << 8));
-L_70054024b0:;
-    c->x[0] = (uint32_t)(0xdull);
-    c->x[30] = 0x70054024b8ull; f_7005409000(c);
+    { uint64_t ea = c->x[1] + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    c->x[0] = (uint32_t)(0xeull);
+    c->x[30] = 0x700540289cull; f_7005409000(c);
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -5639,11 +5969,11 @@ L_70054024b0:;
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->sp = (uint64_t)(c->sp - 0x90ull);
-    c->pc = 0x70009a84c8ull; return;
+    { uint64_t ea = c->sp - 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+    c->pc = 0x7001d3cfccull; return;
 }
 
-void f_7005403000(Cpu *c) {
+void f_7005404000(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x20ull);
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
@@ -5680,15 +6010,15 @@ void f_7005403000(Cpu *c) {
     { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
     { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     { uint64_t ea = c->sp + 0x340ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     { uint64_t ea = c->sp + 0x348ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[3] = (uint64_t)(v); }
-    c->x[0] = (uint32_t)(0x1ull);
-    c->x[30] = 0x70054030b4ull; f_7005409000(c);
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x28ull; uint64_t v = LD64(ea); c->x[3] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0x5ull);
+    c->x[30] = 0x70054040b4ull; f_7005409000(c);
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -5725,9 +6055,9 @@ void f_7005403000(Cpu *c) {
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
     c->x[16] = (uint64_t)(0x700540e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x150ull);
+    c->x[16] = (uint64_t)(c->x[16] + 0x160ull);
     { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x7005403150ull; rt_dispatch(c); c->pc = 0;
+    c->pc = c->x[16]; c->x[30] = 0x7005404150ull; rt_dispatch(c); c->pc = 0;
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -5764,16 +6094,15 @@ void f_7005403000(Cpu *c) {
     { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
     { uint64_t ea = c->sp + 0x340ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    c->x[3] = (uint64_t)(0ull | 0ull);
-    if (c->x[2] == 0) goto L_70054031fc;
-    if (c->x[1] == 0) goto L_70054031fc;
-    { uint64_t ea = c->x[1] + 0x9ull; uint64_t v = LD8(ea); c->x[3] = (uint64_t)(v); }
-    { uint64_t ea = c->x[1] + 0xaull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[3] = (uint32_t)((uint32_t)c->x[3] | ((uint32_t)c->x[8] << 8));
-L_70054031fc:;
-    c->x[0] = (uint32_t)(0x2ull);
-    c->x[30] = 0x7005403204ull; f_7005409000(c);
+    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[3] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(0ull | 0ull);
+    if (c->x[3] == 0) goto L_70054041f8;
+    { uint64_t ea = c->sp + 0x348ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_70054041f8;
+    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
+L_70054041f8:;
+    c->x[0] = (uint32_t)(0x6ull);
+    c->x[30] = 0x7005404200ull; f_7005409000(c);
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -5813,149 +6142,12 @@ L_70054031fc:;
     c->x[30] = (uint64_t)(0x700540e000ull);
     c->x[30] = (uint64_t)(c->x[30] + 0x148ull);
     { uint64_t ea = c->x[30] + 0x0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->x[30] = (uint64_t)(c->x[30] + 0x9a3000ull);
-    c->x[30] = (uint64_t)(c->x[30] + 0x6c8ull);
-    c->pc = 0x70009a36c8ull; return;
+    c->x[30] = (uint64_t)(c->x[30] + 0x9a6000ull);
+    c->x[30] = (uint64_t)(c->x[30] + 0xa20ull);
+    c->pc = 0x70009a6a20ull; return;
 }
 
-void f_7005409000(Cpu *c) {
-    { uint64_t ea = c->sp - 64; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
-    c->x[19] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[20] = (uint64_t)(0x700540e000ull);
-    c->x[20] = (uint64_t)(c->x[20] + 0x180ull);
-    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[20] + 0x80ull);
-L_7005409020:;
-    c->x[9] = (uint64_t)(ldx32(c, c->x[8]));
-    if ((uint32_t)c->x[9] != 0) goto L_7005409020;
-    c->x[9] = (uint32_t)(0x1ull);
-    { uint32_t st = stx32(c, c->x[8], c->x[9]); c->x[10] = (uint32_t)(st); }
-    if ((uint32_t)c->x[10] != 0) goto L_7005409020;
-    c->x[9] = (uint64_t)(c->x[20] + (c->x[19] << 2));
-    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD32(ea); c->x[21] = (uint64_t)(v); }
-    c->x[21] = (uint32_t)((uint32_t)c->x[21] + 0x1ull);
-    { uint64_t ea = c->x[9] + 0x0ull; ST32(ea, (uint32_t)c->x[21]); }
-    c->x[10] = (uint64_t)(c->x[20] + 0x100ull);
-    c->x[10] = (uint64_t)(c->x[10] + (c->x[19] << 5));
-    { uint64_t ea = c->x[10] + 0; ST64(ea, c->x[1]); ST64(ea + 8, c->x[2]); }
-    { uint64_t ea = c->x[10] + 16; ST64(ea, c->x[3]); ST64(ea + 8, c->x[21]); }
-    stl32(c->x[8], 0ull);
-    (void)(subs32(c, (uint32_t)c->x[21], 0x4ull));
-    if (COND_LS(c)) goto L_700540906c;
-    c->x[8] = (uint32_t)((uint32_t)c->x[21] - 0x1ull);
-    (void)(logic32(c, (uint32_t)((uint32_t)c->x[8] & (uint32_t)c->x[21])));
-    if (COND_NE(c)) goto L_7005409094;
-L_700540906c:;
-    c->x[8] = (uint64_t)(0x700540e000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x800ull);
-    { uint64_t ea = c->x[8] + (c->x[19] << 2); uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0x7005400000ull);
-    c->x[0] = (uint64_t)(c->x[0] + 0x0ull);
-    c->x[0] = (uint64_t)(c->x[0] + c->x[9]);
-    c->x[16] = (uint64_t)(0x700540e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x0ull);
-    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x7005409094ull; rt_dispatch(c); c->pc = 0;
-L_7005409094:;
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 64; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-}
-
-void f_7005502000(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x320ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
-    c->x[8] = (uint64_t)(c->nzcv);
-    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[8]); }
-    c->x[8] = (uint64_t)(c->fpcr);
-    { uint64_t ea = c->sp + 0x100ull; ST64(ea, c->x[8]); }
-    c->x[8] = (uint64_t)(c->fpsr);
-    { uint64_t ea = c->sp + 0x108ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->sp + 272; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 304; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
-    { uint64_t ea = c->sp + 336; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
-    { uint64_t ea = c->sp + 368; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    { uint64_t ea = c->sp + 400; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
-    { uint64_t ea = c->sp + 432; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
-    { uint64_t ea = c->sp + 464; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
-    { uint64_t ea = c->sp + 496; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
-    { uint64_t ea = c->sp + 528; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
-    { uint64_t ea = c->sp + 560; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
-    { uint64_t ea = c->sp + 592; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
-    { uint64_t ea = c->sp + 624; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
-    { uint64_t ea = c->sp + 656; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
-    { uint64_t ea = c->sp + 688; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
-    { uint64_t ea = c->sp + 720; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
-    { uint64_t ea = c->sp + 752; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    c->x[0] = (uint64_t)(0x7005500000ull);
-    c->x[0] = (uint64_t)(c->x[0] + 0xe40ull);
-    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint32_t)(0x1ull);
-    c->x[2] = (uint64_t)(c->sp + 0x0ull);
-    c->x[3] = (uint64_t)(c->sp + 0x320ull);
-    c->x[30] = 0x70055020b8ull; f_7005505000(c);
-    { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 304; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 336; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 368; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 400; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 432; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 464; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 496; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 528; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 560; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 592; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 624; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 656; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 688; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 720; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 752; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->fpsr = c->x[8] & 0xf800009full;
-    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->fpcr = c->x[8] & 0x7c00000ull; rt_fpcr_sync(c);
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->nzcv = c->x[8] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x320ull);
-    { uint64_t ea = c->x[0] + 0x171ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->pc = 0x70001fb4c4ull; return;
-}
-
-void f_7005502400(Cpu *c) {
+void f_7005502200(Cpu *c) {
     { uint64_t ea = c->x[19] + 0x16eull; ST8(ea, (uint32_t)c->x[8]); }
     c->sp = (uint64_t)(c->sp - 0x320ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
@@ -5999,10 +6191,10 @@ void f_7005502400(Cpu *c) {
     c->x[0] = (uint64_t)(0x7005500000ull);
     c->x[0] = (uint64_t)(c->x[0] + 0xe40ull);
     { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint32_t)(0x3ull);
+    c->x[1] = (uint32_t)(0x2ull);
     c->x[2] = (uint64_t)(c->sp + 0x0ull);
     c->x[3] = (uint64_t)(c->sp + 0x320ull);
-    c->x[30] = 0x70055024bcull; f_7005505000(c);
+    c->x[30] = 0x70055022bcull; f_7005505000(c);
     { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 304; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 336; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -6042,10 +6234,10 @@ void f_7005502400(Cpu *c) {
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x320ull);
-    c->pc = 0x70001fce98ull; return;
+    c->pc = 0x70001fcc30ull; return;
 }
 
-void f_7005502a00(Cpu *c) {
+void f_7005502600(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x320ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -6088,10 +6280,100 @@ void f_7005502a00(Cpu *c) {
     c->x[0] = (uint64_t)(0x7005500000ull);
     c->x[0] = (uint64_t)(c->x[0] + 0xe40ull);
     { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint32_t)(0x6ull);
+    c->x[1] = (uint32_t)(0x4ull);
     c->x[2] = (uint64_t)(c->sp + 0x0ull);
     c->x[3] = (uint64_t)(c->sp + 0x320ull);
-    c->x[30] = 0x7005502ab8ull; f_7005505000(c);
+    c->x[30] = 0x70055026b8ull; f_7005505000(c);
+    { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 304; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 336; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 368; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 400; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 432; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 464; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 496; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 528; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 560; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 592; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 624; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 656; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 688; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 720; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 752; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->fpsr = c->x[8] & 0xf800009full;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->fpcr = c->x[8] & 0x7c00000ull; rt_fpcr_sync(c);
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->nzcv = c->x[8] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x320ull);
+    { uint64_t ea = c->sp - 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+    c->pc = 0x700216fd1cull; return;
+}
+
+void f_7005502c00(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x320ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
+    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
+    c->x[8] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->fpcr);
+    { uint64_t ea = c->sp + 0x100ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->fpsr);
+    { uint64_t ea = c->sp + 0x108ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 272; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 304; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 336; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 368; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    { uint64_t ea = c->sp + 400; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
+    { uint64_t ea = c->sp + 432; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
+    { uint64_t ea = c->sp + 464; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
+    { uint64_t ea = c->sp + 496; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
+    { uint64_t ea = c->sp + 528; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
+    { uint64_t ea = c->sp + 560; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
+    { uint64_t ea = c->sp + 592; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
+    { uint64_t ea = c->sp + 624; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
+    { uint64_t ea = c->sp + 656; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
+    { uint64_t ea = c->sp + 688; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
+    { uint64_t ea = c->sp + 720; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
+    { uint64_t ea = c->sp + 752; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
+    c->x[0] = (uint64_t)(0x7005500000ull);
+    c->x[0] = (uint64_t)(c->x[0] + 0xe40ull);
+    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint32_t)(0x7ull);
+    c->x[2] = (uint64_t)(c->sp + 0x0ull);
+    c->x[3] = (uint64_t)(c->sp + 0x320ull);
+    c->x[30] = 0x7005502cb8ull; f_7005505000(c);
     { uint64_t ea = c->sp + 0x310ull; ST32(ea, (uint32_t)c->x[0]); }
     { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 304; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
@@ -6116,7 +6398,7 @@ void f_7005502a00(Cpu *c) {
     { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     c->nzcv = c->x[8] & 0xf0000000ull;
     { uint64_t ea = c->sp + 0x310ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] != 0) goto L_7005502b68;
+    if ((uint32_t)c->x[8] != 0) goto L_7005502d68;
     { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
@@ -6134,9 +6416,9 @@ void f_7005502a00(Cpu *c) {
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x320ull);
-    { uint64_t ea = c->x[0] + 0x308ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->pc = 0x7002177f1cull; return;
-L_7005502b68:;
+    { uint64_t ea = c->sp - 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+    c->pc = 0x7002179bd0ull; return;
+L_7005502d68:;
     { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
@@ -6157,7 +6439,7 @@ L_7005502b68:;
     c->pc = 0; return;
 }
 
-void f_7005503000(Cpu *c) {
+void f_7005503200(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x320ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -6200,190 +6482,10 @@ void f_7005503000(Cpu *c) {
     c->x[0] = (uint64_t)(0x7005500000ull);
     c->x[0] = (uint64_t)(c->x[0] + 0xe40ull);
     { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint32_t)(0x9ull);
+    c->x[1] = (uint32_t)(0xaull);
     c->x[2] = (uint64_t)(c->sp + 0x0ull);
     c->x[3] = (uint64_t)(c->sp + 0x320ull);
-    c->x[30] = 0x70055030b8ull; f_7005505000(c);
-    { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 304; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 336; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 368; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 400; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 432; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 464; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 496; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 528; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 560; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 592; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 624; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 656; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 688; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 720; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 752; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->fpsr = c->x[8] & 0xf800009full;
-    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->fpcr = c->x[8] & 0x7c00000ull; rt_fpcr_sync(c);
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->nzcv = c->x[8] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x320ull);
-    (void)(subs32(c, (uint32_t)c->x[24], 0x9ull));
-    c->pc = 0x700047afb0ull; return;
-}
-
-void f_7005503600(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x320ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
-    c->x[8] = (uint64_t)(c->nzcv);
-    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[8]); }
-    c->x[8] = (uint64_t)(c->fpcr);
-    { uint64_t ea = c->sp + 0x100ull; ST64(ea, c->x[8]); }
-    c->x[8] = (uint64_t)(c->fpsr);
-    { uint64_t ea = c->sp + 0x108ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->sp + 272; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 304; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
-    { uint64_t ea = c->sp + 336; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
-    { uint64_t ea = c->sp + 368; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    { uint64_t ea = c->sp + 400; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
-    { uint64_t ea = c->sp + 432; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
-    { uint64_t ea = c->sp + 464; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
-    { uint64_t ea = c->sp + 496; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
-    { uint64_t ea = c->sp + 528; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
-    { uint64_t ea = c->sp + 560; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
-    { uint64_t ea = c->sp + 592; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
-    { uint64_t ea = c->sp + 624; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
-    { uint64_t ea = c->sp + 656; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
-    { uint64_t ea = c->sp + 688; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
-    { uint64_t ea = c->sp + 720; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
-    { uint64_t ea = c->sp + 752; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    c->x[0] = (uint64_t)(0x7005500000ull);
-    c->x[0] = (uint64_t)(c->x[0] + 0xe40ull);
-    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint32_t)(0xcull);
-    c->x[2] = (uint64_t)(c->sp + 0x0ull);
-    c->x[3] = (uint64_t)(c->sp + 0x320ull);
-    c->x[30] = 0x70055036b8ull; f_7005505000(c);
-    { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 304; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 336; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 368; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 400; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 432; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 464; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 496; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 528; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 560; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 592; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 624; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 656; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 688; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 720; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 752; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->fpsr = c->x[8] & 0xf800009full;
-    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->fpcr = c->x[8] & 0x7c00000ull; rt_fpcr_sync(c);
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->nzcv = c->x[8] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x320ull);
-    c->sp = (uint64_t)(c->sp - 0x90ull);
-    c->pc = 0x7000b4c698ull; return;
-}
-
-void f_7005503c00(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x320ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
-    c->x[8] = (uint64_t)(c->nzcv);
-    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[8]); }
-    c->x[8] = (uint64_t)(c->fpcr);
-    { uint64_t ea = c->sp + 0x100ull; ST64(ea, c->x[8]); }
-    c->x[8] = (uint64_t)(c->fpsr);
-    { uint64_t ea = c->sp + 0x108ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->sp + 272; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 304; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
-    { uint64_t ea = c->sp + 336; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
-    { uint64_t ea = c->sp + 368; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    { uint64_t ea = c->sp + 400; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
-    { uint64_t ea = c->sp + 432; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
-    { uint64_t ea = c->sp + 464; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
-    { uint64_t ea = c->sp + 496; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
-    { uint64_t ea = c->sp + 528; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
-    { uint64_t ea = c->sp + 560; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
-    { uint64_t ea = c->sp + 592; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
-    { uint64_t ea = c->sp + 624; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
-    { uint64_t ea = c->sp + 656; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
-    { uint64_t ea = c->sp + 688; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
-    { uint64_t ea = c->sp + 720; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
-    { uint64_t ea = c->sp + 752; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    c->x[0] = (uint64_t)(0x7005500000ull);
-    c->x[0] = (uint64_t)(c->x[0] + 0xe40ull);
-    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint32_t)(0xfull);
-    c->x[2] = (uint64_t)(c->sp + 0x0ull);
-    c->x[3] = (uint64_t)(c->sp + 0x320ull);
-    c->x[30] = 0x7005503cb8ull; f_7005505000(c);
+    c->x[30] = 0x70055032b8ull; f_7005505000(c);
     { uint64_t ea = c->sp + 0x310ull; ST32(ea, (uint32_t)c->x[0]); }
     { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 304; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
@@ -6408,7 +6510,7 @@ void f_7005503c00(Cpu *c) {
     { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     c->nzcv = c->x[8] & 0xf0000000ull;
     { uint64_t ea = c->sp + 0x310ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] != 0) goto L_7005503d68;
+    if ((uint32_t)c->x[8] != 0) goto L_7005503368;
     { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
@@ -6426,9 +6528,9 @@ void f_7005503c00(Cpu *c) {
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x320ull);
-    { uint64_t ea = c->x[20] + 0x20ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->pc = 0x70001fb6b4ull; return;
-L_7005503d68:;
+    c->sp = (uint64_t)(c->sp - 0xa0ull);
+    c->pc = 0x700216fd80ull; return;
+L_7005503368:;
     { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
@@ -6446,208 +6548,692 @@ L_7005503d68:;
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x320ull);
-    { uint64_t ea = c->x[24] + 0x8ull; uint64_t v = LD64(ea); c->x[24] = (uint64_t)(v); }
-    c->pc = 0x70001fb6a4ull; return;
+    c->pc = 0; return;
 }
 
-void f_7005505000(Cpu *c) {
+void f_7005503800(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x320ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
+    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
+    c->x[8] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->fpcr);
+    { uint64_t ea = c->sp + 0x100ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->fpsr);
+    { uint64_t ea = c->sp + 0x108ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 272; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 304; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 336; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 368; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    { uint64_t ea = c->sp + 400; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
+    { uint64_t ea = c->sp + 432; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
+    { uint64_t ea = c->sp + 464; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
+    { uint64_t ea = c->sp + 496; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
+    { uint64_t ea = c->sp + 528; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
+    { uint64_t ea = c->sp + 560; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
+    { uint64_t ea = c->sp + 592; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
+    { uint64_t ea = c->sp + 624; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
+    { uint64_t ea = c->sp + 656; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
+    { uint64_t ea = c->sp + 688; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
+    { uint64_t ea = c->sp + 720; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
+    { uint64_t ea = c->sp + 752; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
+    c->x[0] = (uint64_t)(0x7005500000ull);
+    c->x[0] = (uint64_t)(c->x[0] + 0xe40ull);
+    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint32_t)(0xdull);
+    c->x[2] = (uint64_t)(c->sp + 0x0ull);
+    c->x[3] = (uint64_t)(c->sp + 0x320ull);
+    c->x[30] = 0x70055038b8ull; f_7005505000(c);
+    { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 304; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 336; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 368; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 400; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 432; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 464; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 496; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 528; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 560; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 592; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 624; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 656; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 688; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 720; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 752; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->fpsr = c->x[8] & 0xf800009full;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->fpcr = c->x[8] & 0x7c00000ull; rt_fpcr_sync(c);
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->nzcv = c->x[8] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x320ull);
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    c->pc = 0x7000b4ce94ull; return;
+}
+
+void f_7005503e00(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x320ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
+    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
+    c->x[8] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->fpcr);
+    { uint64_t ea = c->sp + 0x100ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->fpsr);
+    { uint64_t ea = c->sp + 0x108ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 272; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 304; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 336; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 368; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    { uint64_t ea = c->sp + 400; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
+    { uint64_t ea = c->sp + 432; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
+    { uint64_t ea = c->sp + 464; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
+    { uint64_t ea = c->sp + 496; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
+    { uint64_t ea = c->sp + 528; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
+    { uint64_t ea = c->sp + 560; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
+    { uint64_t ea = c->sp + 592; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
+    { uint64_t ea = c->sp + 624; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
+    { uint64_t ea = c->sp + 656; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
+    { uint64_t ea = c->sp + 688; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
+    { uint64_t ea = c->sp + 720; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
+    { uint64_t ea = c->sp + 752; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
+    c->x[0] = (uint64_t)(0x7005500000ull);
+    c->x[0] = (uint64_t)(c->x[0] + 0xe40ull);
+    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint32_t)(0x10ull);
+    c->x[2] = (uint64_t)(c->sp + 0x0ull);
+    c->x[3] = (uint64_t)(c->sp + 0x320ull);
+    c->x[30] = 0x7005503eb8ull; f_7005505000(c);
+    { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 304; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 336; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 368; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 400; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 432; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 464; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 496; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 528; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 560; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 592; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 624; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 656; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 688; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 720; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 752; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->fpsr = c->x[8] & 0xf800009full;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->fpcr = c->x[8] & 0x7c00000ull; rt_fpcr_sync(c);
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->nzcv = c->x[8] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x320ull);
+    { uint64_t ea = c->x[19] + 0x175ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    c->pc = 0x70001fb758ull; return;
+}
+
+void f_700550577c(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x60ull);
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[30]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->v[0] = 0x0ull;
+    c->x[8] = (uint64_t)(0ull | c->x[3]);
+    c->x[20] = (uint64_t)(0ull | c->x[1]);
+    c->x[19] = (uint64_t)(0ull | c->x[0]);
+    c->x[9] = (uint64_t)(0xffffffffffffedd0ull);
+L_700550579c:;
+    c->x[10] = (uint64_t)(c->x[19] + c->x[9]);
+    c->x[9] = (uint64_t)(adds64(c, c->x[9], 0x10ull));
+    { uint64_t ea = c->x[10] + 0x1230ull; ST128(ea, c->v[0]); }
+    if (COND_NE(c)) goto L_700550579c;
+    c->x[9] = (uint64_t)(0x700550f000ull);
+    c->x[10] = (uint32_t)((uint32_t)c->x[4] + 0x3ull);
+    { uint64_t ea = c->x[19] + 32; ST64(ea, c->x[20]); ST64(ea + 8, c->x[2]); }
+    { uint64_t ea = c->x[9] + 0xff0ull; c->v[0] = LD64(ea); }
+    c->x[9] = (uint32_t)((uint32_t)c->x[10] & 0xfffffffcull);
+    { uint64_t ea = c->x[19] + 0x30ull; ST64(ea, c->x[19]); }
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    /* hint */
+    c->x[10] = (uint64_t)(0x700550593cull);
+    { uint64_t ea = c->x[19] + 0xf38ull; ST64(ea, c->x[9]); }
+    c->x[9] = (uint32_t)(0xb840ull);
+    c->x[11] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x3980000ull);
+    { uint64_t ea = c->x[19] + 256; ST64(ea, c->x[19]); ST64(ea + 8, c->x[10]); }
+    { uint64_t ea = c->x[20] + c->x[9]; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x0ull; ST64(ea, VS64(0)); }
+    c->x[10] = (uint64_t)(c->x[9] + c->x[11]);
+    c->x[11] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    { uint64_t ea = c->x[19] + 0x40ull; ST64(ea, c->x[9]); }
+    c->x[11] = (uint64_t)((c->x[11] & 0xffffffffffff0000ull) | 0x0ull);
+    (void)(subs64(c, c->x[10], (uint64_t)(c->x[11])));
+    /* hint */
+    c->x[10] = (uint64_t)(0x7005505984ull);
+    { uint64_t ea = c->x[19] + 0x110ull; ST64(ea, c->x[10]); }
+    if (COND_CC(c)) goto L_700550591c;
+    c->x[10] = (uint64_t)(c->x[9] & 0x7ull);
+    if (c->x[10] != 0) goto L_700550591c;
+    c->x[11] = (uint64_t)(0xd068ull);
+    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    c->x[11] = (uint64_t)((c->x[11] & 0xffffffff0000ffffull) | 0xd53b0000ull);
+    c->x[11] = (uint64_t)((c->x[11] & 0xffff0000ffffffffull) | 0xfd0000000000ull);
+    c->x[11] = (uint64_t)((c->x[11] & 0xffffffffffffull) | 0xf940000000000000ull);
+    (void)(subs64(c, c->x[10], (uint64_t)(c->x[11])));
+    if (COND_NE(c)) goto L_700550591c;
+    { uint64_t ea = c->x[9] + 0x8ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0x3c0ull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0xd65f0000ull);
+    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
+    if (COND_NE(c)) goto L_700550591c;
+    /* hint */
+    c->x[9] = (uint64_t)(0x70055059a4ull);
+    /* hint */
+    c->x[10] = (uint64_t)(0x7005505ac4ull);
+    { uint64_t ea = c->sp + 24; ST64(ea, c->x[19]); ST64(ea + 8, c->x[9]); }
+    /* hint */
+    c->x[9] = (uint64_t)(0x7005505a94ull);
+    c->x[21] = (uint64_t)(c->x[19] + 0x2f0ull);
+    c->x[3] = (uint64_t)(c->sp + 0x18ull);
+    { uint64_t ea = c->sp + 40; ST64(ea, c->x[9]); ST64(ea + 8, c->x[10]); }
+    /* hint */
+    c->x[9] = (uint64_t)(0x7005505accull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[1] = (uint64_t)(0ull | c->x[8]);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[4]);
+    { uint64_t ea = c->sp + 0x38ull; ST64(ea, c->x[9]); }
+    c->x[30] = 0x700550588cull; f_7005509828(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005505934;
+    /* hint */
+    c->x[8] = (uint64_t)(0x7005510050ull);
+    c->x[1] = (uint64_t)(c->sp + 0x0ull);
+    { uint64_t ea = c->x[8] + 0x0ull; c->v[0] = LD128(ea); }
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    { uint64_t ea = c->sp + 0x0ull; ST128(ea, c->v[0]); }
+    c->x[30] = 0x70055058acull; f_7005509c04(c);
+    c->v[0] = 0ull;
+    c->x[8] = (uint64_t)(0x700550f000ull);
+    /* hint */
+    c->x[9] = (uint64_t)(0x7005505ad4ull);
+    { uint64_t ea = c->x[8] + 0xfe8ull; c->v[1] = LD64(ea); }
+    c->x[8] = (uint64_t)(c->x[19] + 0x3d8ull);
+    { uint64_t ea = c->x[19] + 0x400ull; ST64(ea, c->x[9]); }
+    /* hint */
+    c->x[9] = (uint64_t)(0x7005505b5cull);
+    ((sa64 *)&c->v[0])[1] = ((sa64 *)&c->v[0])[0];
+    { uint64_t ea = c->x[19] + 0x3f0ull; ST64(ea, VS64(1)); }
+    { uint64_t ea = c->x[19] + 0x3d0ull; ST64(ea, c->x[20]); }
+    { uint64_t ea = c->x[19] + 0x3e8ull; ST64(ea, c->x[21]); }
+    { uint64_t ea = c->x[19] + 0x3f8ull; ST64(ea, c->x[19]); }
+    { uint64_t ea = c->x[8] + 0x0ull; ST128(ea, c->v[0]); }
+    { uint64_t ea = c->x[19] + 0x110ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x100ull; c->v[0] = LD128(ea); }
+    { uint64_t ea = c->x[19] + 0x408ull; ST64(ea, c->x[9]); }
+    { uint64_t ea = c->x[19] + 0x420ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->x[19] + 0x440ull);
+    { uint64_t ea = c->x[19] + 0x430ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint32_t)(0x4345ull);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x36520000ull);
+    { uint64_t ea = c->x[19] + 0x410ull; ST128(ea, c->v[0]); }
+    { uint64_t ea = c->x[19] + 0x438ull; ST32(ea, (uint32_t)c->x[8]); }
+    c->x[8] = (uint32_t)(0x10ull);
+    { uint64_t ea = c->x[19] + 0xc0ull; ST32(ea, (uint32_t)c->x[8]); }
+    goto L_7005505924;
+L_700550591c:;
+    c->x[8] = (uint32_t)(0x5ull);
+L_7005505920:;
+    { uint64_t ea = c->x[19] + 0x3cull; ST32(ea, (uint32_t)c->x[8]); }
+L_7005505924:;
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x60ull);
+    c->pc = 0; return;
+L_7005505934:;
+    c->x[8] = (uint32_t)(0x4ull);
+    goto L_7005505920;
+}
+
+void f_7005505a94(Cpu *c) {
+    { uint64_t ea = c->x[0] + 0x510ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[1])));
+    if (COND_NE(c)) goto L_7005505ac0;
+    c->v[0] = 0x0ull;
+    c->x[8] = (uint64_t)(c->x[0] + 0x51cull);
+    c->x[9] = (uint64_t)(0x100000000ull);
+    { uint64_t ea = c->x[8] + 0x0ull; ST64(ea, c->x[9]); }
+    c->x[8] = (uint32_t)(0x11e8ull);
+    { uint64_t ea = c->x[0] + 0x510ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->x[0] + 0x2e8ull; ST32(ea, 0u); }
+    { uint64_t ea = c->x[0] + c->x[8]; ST128(ea, c->v[0]); }
+L_7005505ac0:;
+    c->pc = 0; return;
+}
+
+void f_7005505ac4(Cpu *c) {
+    c->x[0] = (uint64_t)(c->x[0] + 0x3d0ull);
+    f_70055093e8(c); return;
+}
+
+void f_7005505acc(Cpu *c) {
+    c->x[0] = (uint64_t)(c->x[0] + 0x3d0ull);
+    goto L_70055094d0;
+L_70055094d0:;
+    if (c->x[3] == 0) goto L_7005509804;
     c->sp = (uint64_t)(c->sp - 0xd0ull);
-    { uint64_t ea = c->sp + 0x70ull; ST64(ea, c->x[30]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[28]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[30]); ST64(ea + 8, c->x[23]); }
     { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
     { uint64_t ea = c->sp + 192; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
     c->x[19] = (uint64_t)(0ull | c->x[0]);
+    c->x[0] = (uint64_t)(0ull | c->x[1]);
+    c->x[22] = (uint64_t)(0ull | c->x[3]);
+    c->x[21] = (uint64_t)(0ull | c->x[2]);
+    c->x[20] = (uint64_t)(0ull | c->x[1]);
+    c->x[30] = 0x70055094fcull; f_7005509468(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005509814;
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x700550950cull; f_700550934c(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005509814;
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x7005509518ull; f_7005509080(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005509814;
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x7005509528ull; f_700550a414(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005509814;
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(0ull | c->x[20]);
+    c->x[2] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x7005509540ull; f_700550a48c(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005509814;
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[1] = (uint64_t)(0ull | c->x[20]);
+    c->x[2] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x7005509554ull; f_70055093e8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005509814;
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0x5a40ull);
+    /* hint */
+    c->x[8] = (uint64_t)(0x70055111f5ull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x2190000ull);
+    c->x[0] = (uint64_t)(c->sp + 0x8cull);
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[8]); ST64(ea + 8, c->x[20]); }
+    c->x[8] = (uint32_t)(0xffffffffull);
+    c->x[9] = (uint64_t)(c->x[9] + c->x[10]);
+    c->x[1] = (uint64_t)(c->sp + 0x98ull);
+    { uint64_t ea = c->sp + 136; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[8]); }
+    c->pc = c->x[9]; c->x[30] = 0x7005509588ull; rt_dispatch(c); c->pc = 0;
+    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
     c->x[0] = (uint32_t)(0u | 0u);
-    if (c->x[19] == 0) goto L_7005505054;
-    c->x[8] = (uint32_t)((uint32_t)c->x[1] - 0x12ull);
-    c->x[21] = (uint32_t)(0u | (uint32_t)c->x[1]);
-    (void)(adds32(c, (uint32_t)c->x[8], 0x11ull));
-    if (COND_CC(c)) goto L_7005505054;
-    c->x[8] = (uint64_t)(c->x[19] + 0x8ull);
-    c->x[8] = (uint64_t)(lda32(c->x[8]));
+    if ((uint32_t)c->x[8] == 0) goto L_7005509814;
+    { uint64_t ea = c->sp + 0x8cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], 0x4ull));
+    if (COND_HI(c)) goto L_7005509814;
+    { uint64_t ea = c->x[19] + 0x38ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(0ull | c->x[20]);
+    c->x[2] = (uint64_t)(0ull | c->x[21]);
+    c->x[3] = (uint64_t)(0ull | c->x[22]);
+    c->pc = c->x[8]; c->x[30] = 0x70055095b8ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_7005509814;
+    { uint64_t ea = c->x[19] + 40; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[8] = (uint64_t)(b); }
+    c->x[2] = (uint64_t)(0ull | c->x[21]);
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->pc = c->x[8]; c->x[30] = 0x70055095ccull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_7005509814;
+    c->x[9] = (uint64_t)(0x7005510000ull);
+    c->x[10] = (uint64_t)(0x7005510000ull);
+    c->x[8] = (uint32_t)(0x98ull);
+    { uint64_t ea = c->x[9] + 0x140ull; c->v[0] = LD128(ea); }
+    c->x[9] = (uint32_t)(0x8ull);
+    c->x[11] = (uint64_t)(0x7005510000ull);
+    { uint64_t ea = c->x[10] + 0x130ull; c->v[1] = LD128(ea); }
+    c->x[10] = (uint64_t)(0x7005510000ull);
+    VW(vu64, 1, 2, (vu64){} + (uint64_t)c->x[8]);
+    VW(vu64, 1, 3, (vu64){} + (uint64_t)c->x[9]);
+    { uint64_t ea = c->x[11] + 0xe0ull; c->v[4] = LD128(ea); }
+    { uint64_t ea = c->x[10] + 0xc0ull; c->v[5] = LD128(ea); }
+    { uint64_t ea = c->x[19] + 0x60ull; uint64_t v = LD64(ea); c->x[23] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0ull);
+L_7005509608:;
+    VW(vu64, 1, 6, (vu64)(VREG(vu64, 2) > VREG(vu64, 5)));
+    sl_gen(c, LOP_XTN, 2, 2, 6, 2, 0, 0, 6, 3, 0, -1, 0, 0, -1, 0x0ull);
+    VW(vu16, 0, 6, SHUF(VREG(vu16, 6), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
+    VW(vu8, 0, 6, SHUF(VREG(vu8, 6), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
+    c->x[10] = (uint32_t)(((uint8_t *)&c->v[6])[0]);
+    if (((c->x[10] >> 0) & 1) == 0) goto L_7005509624;
+    { uint64_t ea = c->x[23] + c->x[9]; ST8(ea, 0u); }
+L_7005509624:;
+    VW(vu64, 1, 6, (vu64){} + (uint64_t)c->x[8]);
+    VW(vu64, 1, 6, (vu64)(VREG(vu64, 6) > VREG(vu64, 5)));
+    sl_gen(c, LOP_XTN, 2, 2, 6, 2, 0, 0, 6, 3, 0, -1, 0, 0, -1, 0x0ull);
+    VW(vu16, 0, 6, SHUF(VREG(vu16, 6), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
+    VW(vu8, 0, 6, SHUF(VREG(vu8, 6), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
+    c->x[10] = (uint32_t)(((uint8_t *)&c->v[6])[1]);
+    if (((c->x[10] >> 0) & 1) == 0) goto L_7005509648;
+    c->x[10] = (uint64_t)(c->x[23] + c->x[9]);
+    { uint64_t ea = c->x[10] + 0x1ull; ST8(ea, 0u); }
+L_7005509648:;
+    VW(vu64, 1, 6, (vu64){} + (uint64_t)c->x[8]);
+    VW(vu64, 1, 6, (vu64)(VREG(vu64, 6) > VREG(vu64, 4)));
+    sl_gen(c, LOP_XTN, 2, 2, 6, 2, 0, 0, 6, 3, 0, -1, 0, 0, -1, 0x0ull);
+    VW(vu16, 0, 6, SHUF(VREG(vu16, 0), VREG(vu16, 6), 0, 2, 8, 10, 0, 0, 0, 0));
+    VW(vu8, 0, 6, SHUF(VREG(vu8, 6), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
+    c->x[10] = (uint32_t)(((uint8_t *)&c->v[6])[2]);
+    if (((c->x[10] >> 0) & 1) == 0) goto L_700550966c;
+    c->x[10] = (uint64_t)(c->x[23] + c->x[9]);
+    { uint64_t ea = c->x[10] + 0x2ull; ST8(ea, 0u); }
+L_700550966c:;
+    VW(vu64, 1, 6, (vu64){} + (uint64_t)c->x[8]);
+    VW(vu64, 1, 6, (vu64)(VREG(vu64, 6) > VREG(vu64, 4)));
+    sl_gen(c, LOP_XTN, 2, 2, 6, 2, 0, 0, 6, 3, 0, -1, 0, 0, -1, 0x0ull);
+    VW(vu16, 0, 6, SHUF(VREG(vu16, 0), VREG(vu16, 6), 0, 2, 8, 10, 0, 0, 0, 0));
+    VW(vu8, 0, 6, SHUF(VREG(vu8, 6), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
+    c->x[10] = (uint32_t)(((uint8_t *)&c->v[6])[3]);
+    if (((c->x[10] >> 0) & 1) == 0) goto L_7005509690;
+    c->x[10] = (uint64_t)(c->x[23] + c->x[9]);
+    { uint64_t ea = c->x[10] + 0x3ull; ST8(ea, 0u); }
+L_7005509690:;
+    VW(vu64, 1, 6, (vu64){} + (uint64_t)c->x[8]);
+    VW(vu64, 1, 6, (vu64)(VREG(vu64, 6) > VREG(vu64, 1)));
+    sl_gen(c, LOP_XTN, 2, 2, 6, 2, 0, 0, 6, 3, 0, -1, 0, 0, -1, 0x0ull);
+    VW(vu16, 0, 6, SHUF(VREG(vu16, 6), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
+    VW(vu8, 0, 6, SHUF(VREG(vu8, 0), VREG(vu8, 6), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
+    c->x[10] = (uint32_t)(((uint8_t *)&c->v[6])[4]);
+    if (((c->x[10] >> 0) & 1) == 0) goto L_70055096b4;
+    c->x[10] = (uint64_t)(c->x[23] + c->x[9]);
+    { uint64_t ea = c->x[10] + 0x4ull; ST8(ea, 0u); }
+L_70055096b4:;
+    VW(vu64, 1, 6, (vu64){} + (uint64_t)c->x[8]);
+    VW(vu64, 1, 6, (vu64)(VREG(vu64, 6) > VREG(vu64, 1)));
+    sl_gen(c, LOP_XTN, 2, 2, 6, 2, 0, 0, 6, 3, 0, -1, 0, 0, -1, 0x0ull);
+    VW(vu16, 0, 6, SHUF(VREG(vu16, 6), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
+    VW(vu8, 0, 6, SHUF(VREG(vu8, 0), VREG(vu8, 6), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
+    c->x[10] = (uint32_t)(((uint8_t *)&c->v[6])[5]);
+    if (((c->x[10] >> 0) & 1) == 0) goto L_70055096d8;
+    c->x[10] = (uint64_t)(c->x[23] + c->x[9]);
+    { uint64_t ea = c->x[10] + 0x5ull; ST8(ea, 0u); }
+L_70055096d8:;
+    VW(vu64, 1, 6, (vu64){} + (uint64_t)c->x[8]);
+    VW(vu64, 1, 6, (vu64)(VREG(vu64, 6) > VREG(vu64, 0)));
+    sl_gen(c, LOP_XTN, 2, 2, 6, 2, 0, 0, 6, 3, 0, -1, 0, 0, -1, 0x0ull);
+    VW(vu16, 0, 6, SHUF(VREG(vu16, 0), VREG(vu16, 6), 0, 2, 8, 10, 0, 0, 0, 0));
+    VW(vu8, 0, 6, SHUF(VREG(vu8, 0), VREG(vu8, 6), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
+    c->x[10] = (uint32_t)(((uint8_t *)&c->v[6])[6]);
+    if (((c->x[10] >> 0) & 1) == 0) goto L_70055096fc;
+    c->x[10] = (uint64_t)(c->x[23] + c->x[9]);
+    { uint64_t ea = c->x[10] + 0x6ull; ST8(ea, 0u); }
+L_70055096fc:;
+    VW(vu64, 1, 6, (vu64){} + (uint64_t)c->x[8]);
+    VW(vu64, 1, 6, (vu64)(VREG(vu64, 6) > VREG(vu64, 0)));
+    sl_gen(c, LOP_XTN, 2, 2, 6, 2, 0, 0, 6, 3, 0, -1, 0, 0, -1, 0x0ull);
+    VW(vu16, 0, 6, SHUF(VREG(vu16, 0), VREG(vu16, 6), 0, 2, 8, 10, 0, 0, 0, 0));
+    VW(vu8, 0, 6, SHUF(VREG(vu8, 0), VREG(vu8, 6), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
+    c->x[10] = (uint32_t)(((uint8_t *)&c->v[6])[7]);
+    if (((c->x[10] >> 0) & 1) == 0) goto L_7005509720;
+    c->x[10] = (uint64_t)(c->x[23] + c->x[9]);
+    { uint64_t ea = c->x[10] + 0x7ull; ST8(ea, 0u); }
+L_7005509720:;
+    VW(vu64, 1, 1, VREG(vu64, 1) + VREG(vu64, 3));
+    VW(vu64, 1, 4, VREG(vu64, 4) + VREG(vu64, 3));
+    c->x[9] = (uint64_t)(c->x[9] + 0x8ull);
+    VW(vu64, 1, 5, VREG(vu64, 5) + VREG(vu64, 3));
+    VW(vu64, 1, 0, VREG(vu64, 0) + VREG(vu64, 3));
+    (void)(subs64(c, c->x[9], 0x98ull));
+    if (COND_NE(c)) goto L_7005509608;
+    { uint64_t ea = c->x[23] + 0; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    c->x[9] = (uint64_t)(c->tpidrro);
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x8cull; uint64_t v = LD32(ea); c->x[11] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(0ull | 0ull);
+    { uint64_t ea = c->x[23] + 16; ST64(ea, c->x[9]); ST64(ea + 8, c->x[10]); }
+    c->x[9] = (uint32_t)(0x1ull);
+    { uint64_t ea = c->x[23] + 0x48ull; ST32(ea, (uint32_t)c->x[11]); }
+    { uint64_t ea = c->x[23] + 0x54ull; ST32(ea, (uint32_t)c->x[9]); }
+L_7005509760:;
+    { uint64_t ea = c->x[20] + c->x[8]; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint64_t)(c->x[23] + c->x[8]);
+    { uint64_t ea = c->x[10] + 0x58ull; ST8(ea, (uint32_t)c->x[9]); }
+    if ((uint32_t)c->x[9] == 0) goto L_700550977c;
+    (void)(subs64(c, c->x[8], 0x3full));
+    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
+    if (COND_NE(c)) goto L_7005509760;
+L_700550977c:;
+    { uint64_t ea = c->x[19] + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    c->x[8] = (uint32_t)(0x1ull);
+    c->x[10] = (uint64_t)(c->sp + 0x98ull);
+    VW(vu64, 1, 0, (vu64){} + (uint64_t)c->x[8]);
+    c->x[11] = (uint64_t)(0x7005510000ull);
+    { uint64_t ea = c->x[11] + 0x90ull; c->v[1] = LD128(ea); }
+    c->x[11] = (uint64_t)(0x7005510000ull);
+    c->x[0] = (uint64_t)(c->sp + 0x0ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[9]); ST64(ea + 8, c->x[10]); }
+    { uint64_t ea = c->sp + 0x8cull; uint64_t v = (uint64_t)(int64_t)(int32_t)LD32(ea); c->x[10] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(c->sp + 0x90ull);
+    { uint64_t ea = c->sp + 32; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    c->v[0] = ((u128)0xffffffffffffffffull << 64 | 0xffffffffffffffffull);
+    { uint64_t ea = c->x[11] + 0x60ull; c->v[1] = LD128(ea); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[9]); ST64(ea + 8, c->x[10]); }
+    c->x[9] = (uint64_t)(c->sp + 0x88ull);
+    c->x[1] = (uint64_t)(0ull | c->x[23]);
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[9]); ST64(ea + 8, c->x[8]); }
+    c->x[8] = (uint32_t)(0x86b0ull);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x2090000ull);
+    c->x[8] = (uint64_t)(c->x[12] + c->x[8]);
+    { uint64_t ea = c->sp + 64; ST128(ea, c->v[1]); ST128(ea + 16, c->v[0]); }
+    { uint64_t ea = c->sp + 0x60ull; ST128(ea, c->v[0]); }
+    { uint64_t ea = c->sp + 0x80ull; ST64(ea, c->x[8]); }
+    c->x[30] = 0x70055097e0ull; f_700550ff68(c);
+    { uint64_t ea = c->x[23] + 0x50ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
     (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
-    if (COND_NE(c)) goto L_7005505050;
-    { uint64_t ea = c->x[19] + 0x3cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_7005505074;
-L_7005505050:;
+    if (COND_NE(c)) goto L_700550980c;
+    c->x[8] = (uint32_t)(0x2ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    { uint64_t ea = c->x[23] + 0x54ull; ST32(ea, (uint32_t)c->x[8]); }
+    c->x[30] = 0x70055097fcull; f_70055091ac(c);
+    c->x[0] = (uint32_t)(0x1ull);
+    goto L_7005509814;
+L_7005509804:;
     c->x[0] = (uint32_t)(0u | 0u);
-L_7005505054:;
+    c->pc = 0; return;
+L_700550980c:;
+    { uint64_t ea = c->x[23] + 0x54ull; ST32(ea, 0u); }
+    c->x[0] = (uint32_t)(0x2ull);
+L_7005509814:;
     { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0x70ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
     c->sp = (uint64_t)(c->sp + 0xd0ull);
     c->pc = 0; return;
-L_7005505074:;
-    c->x[20] = (uint64_t)(0ull | c->x[3]);
-    c->x[23] = (uint64_t)(0ull | c->x[2]);
-    (void)(subs32(c, (uint32_t)c->x[21], 0xeull));
-    if (COND_GT(c)) goto L_70055050b8;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x8ull));
-    if (COND_EQ(c)) goto L_7005505258;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x9ull));
-    if (COND_NE(c)) goto L_7005505100;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[23]);
-    c->x[2] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x70055050a4ull; f_7005505bb8(c);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[23]);
-    c->x[2] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x70055050b4ull; f_7005505d70(c);
-    goto L_7005505050;
-L_70055050b8:;
-    (void)(subs32(c, (uint32_t)c->x[21], 0xfull));
-    if (COND_EQ(c)) goto L_7005505278;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x11ull));
-    if (COND_NE(c)) goto L_7005505100;
-    c->x[8] = (uint64_t)(c->x[19] + 0xfb8ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[20] = (uint64_t)(lda64(c->x[8]));
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x70055050dcull; f_7005506014(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005505054;
-    { uint64_t ea = c->x[23] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(c->x[20] + 0x890ull);
+}
+
+void f_7005506014(Cpu *c) {
+    if (c->x[1] == 0) goto L_7005506088;
+    c->x[8] = (uint64_t)(c->x[0] + 0xfb8ull);
+    c->x[8] = (uint64_t)(lda64(c->x[8]));
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[1])));
+    if (COND_NE(c)) goto L_7005506088;
+    { uint64_t ea = c->x[0] + 0xf40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[1])));
+    if (COND_NE(c)) goto L_7005506088;
+    { uint64_t ea = c->x[0] + 0xf80ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[0] + 0xf58ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
     (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_7005505050;
-    { uint64_t ea = c->x[20] + 0x30ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
-L_70055050f8:;
-    c->x[0] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
-    goto L_7005505054;
-L_7005505100:;
-    c->x[8] = (uint32_t)((uint32_t)c->x[21] - 0xdull);
-    c->x[27] = (uint32_t)((uint32_t)c->x[21] & 0x1eull);
-    c->x[28] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    (void)(subs32(c, (uint32_t)c->x[8], 0x2ull));
-    c->x[8] = (uint32_t)(0x98ull);
-    c->x[28] = (uint64_t)((c->x[28] & 0xffffffffffff0000ull) | 0x0ull);
-    if (COND_CS(c)) (void)subs32(c, (uint32_t)c->x[21], 0x10ull); else c->nzcv = 0x40000000ull;
-    c->x[0] = (uint32_t)(0u | 0u);
-    if (COND_NE(c)) (void)subs32(c, (uint32_t)c->x[27], 0x2ull); else c->nzcv = 0x40000000ull;
-    c->x[8] = (uint64_t)((COND_EQ(c)) ? c->x[8] : (uint64_t)(0ull));
-    { uint64_t ea = c->x[23] + c->x[8]; uint64_t v = LD64(ea); c->x[22] = (uint64_t)(v); }
+    if (COND_NE(c)) goto L_7005506088;
     c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[8] = (uint64_t)(c->x[22] + c->x[8]);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[28])));
-    if (COND_CC(c)) goto L_7005505054;
-    c->x[8] = (uint64_t)(c->x[22] & 0x7ull);
-    if (c->x[8] != 0) goto L_7005505054;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[8] = (uint64_t)(c->x[1] + c->x[8]);
+    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0x0ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    c->x[8] = (uint32_t)(0u | 0u);
+    if (COND_CC(c)) goto L_700550608c;
+    c->x[9] = (uint64_t)(c->x[1] & 0x7ull);
+    if (c->x[9] != 0) goto L_700550608c;
+    { uint64_t ea = c->x[0] + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     c->x[10] = (uint32_t)(0xf150ull);
-    { uint64_t ea = c->x[22] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[1] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
     c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3720000ull);
     c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
     (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_7005505050;
-    (void)(subs32(c, (uint32_t)c->x[27], 0x2ull));
-    if (COND_NE(c)) goto L_7005505180;
-    { uint64_t ea = c->x[19] + 0x128ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_7005505180;
-    c->x[30] = 0x7005505174ull; f_7005507d50(c);
-    { uint64_t ea = c->x[19] + 0x128ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[0], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_7005505374;
-L_7005505180:;
-    c->x[8] = (uint32_t)((uint32_t)c->x[21] - 0x5ull);
-    (void)(subs32(c, (uint32_t)c->x[8], 0x3ull));
-    if (COND_CC(c)) goto L_7005505320;
-    (void)(subs32(c, (uint32_t)c->x[27], 0xaull));
-    if (COND_EQ(c)) goto L_7005505320;
-    c->x[26] = (uint64_t)(c->x[19] + 0xf18ull);
-    c->x[25] = (uint64_t)(c->x[19] + 0xcull);
-    c->x[8] = (uint32_t)(0x1ull);
-L_70055051a0:;
-    c->x[9] = (uint64_t)(ldx32(c, c->x[25]));
-    if ((uint32_t)c->x[9] != 0) goto L_7005505344;
-    { uint32_t st = stx32(c, c->x[25], c->x[8]); c->x[9] = (uint32_t)(st); }
-    if ((uint32_t)c->x[9] != 0) goto L_70055051a0;
-    c->x[24] = (uint32_t)(subs32(c, (uint32_t)c->x[21], 0x1ull));
-    if (COND_NE(c)) goto L_70055053a8;
-    { uint64_t ea = c->x[19] + 0x128ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_7005505414;
-    c->x[30] = 0x70055051c4ull; f_7005507d50(c);
-    { uint64_t ea = c->x[19] + 0x128ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[0], (uint64_t)(c->x[8])));
-    if (COND_EQ(c)) goto L_7005505414;
-    { uint64_t ea = c->x[19] + 0xf40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[22], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_70055053dc;
-    { uint64_t ea = c->x[19] + 0x130ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_70055053dc;
-    { uint64_t ea = c->x[19] + 0x120ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
-    if (COND_NE(c)) goto L_70055053dc;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x70055051f8ull; f_70055063c8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_70055053dc;
-    { uint64_t ea = c->x[19] + 0x180ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x118ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
+    goto L_700550608c;
+L_7005506088:;
+    c->x[8] = (uint32_t)(0u | 0u);
+L_700550608c:;
+    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[8]);
+    c->pc = 0; return;
+}
+
+void f_7005506094(Cpu *c) {
+    { uint64_t ea = c->x[0] + 0xf40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[1])));
+    if (COND_NE(c)) goto L_70055060f0;
+    { uint64_t ea = c->x[0] + 0xf58ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[2])));
+    if (COND_NE(c)) goto L_70055060f0;
+    c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[8] = (uint64_t)(c->x[1] + c->x[8]);
+    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0x0ull);
     (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_70055053dc;
-    { uint64_t ea = c->x[19] + 0x494ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] - 0x1ull);
+    c->x[8] = (uint32_t)(0u | 0u);
+    if (COND_CC(c)) goto L_70055060f4;
+    c->x[9] = (uint64_t)(c->x[1] & 0x7ull);
+    if (c->x[9] != 0) goto L_70055060f4;
+    { uint64_t ea = c->x[0] + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xf150ull);
+    { uint64_t ea = c->x[1] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3720000ull);
+    c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    c->x[8] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
+    goto L_70055060f4;
+L_70055060f0:;
+    c->x[8] = (uint32_t)(0u | 0u);
+L_70055060f4:;
+    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[8]);
+    c->pc = 0; return;
+}
+
+void f_70055060fc(Cpu *c) {
+    { uint64_t ea = c->x[0] + 0x5c0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
     (void)(subs32(c, (uint32_t)c->x[8], 0x2ull));
-    if (COND_CC(c)) goto L_70055053dc;
+    if (COND_NE(c)) goto L_7005506198;
+    c->sp = (uint64_t)(c->sp - 0xe0ull);
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[30]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->x[0] + 0xf08ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[19] = (uint64_t)(0ull | c->x[0]);
+    if ((uint32_t)c->x[8] == 0) goto L_700550617c;
+    { uint64_t ea = c->x[19] + 0xdf8ull; uint64_t v = LD32(ea); c->x[23] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[23] - 0x24ull);
+    (void)(adds32(c, (uint32_t)c->x[8], 0x23ull));
+    if (COND_CC(c)) goto L_700550617c;
+    { uint64_t ea = c->x[19] + 0x2f4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_700550617c;
+    { uint64_t ea = c->x[19] + 0xf40ull; uint64_t v = LD64(ea); c->x[21] = (uint64_t)(v); }
+    c->x[20] = (uint64_t)(0ull | c->x[1]);
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint32_t)(0x10000ull);
-    c->x[30] = 0x700550522cull; f_7005506474(c);
-    if ((uint32_t)c->x[0] == 0) goto L_70055053dc;
-    c->x[30] = 0x7005505234ull; f_7005507d50(c);
-    { uint64_t ea = c->x[19] + 0x510ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x178ull; ST64(ea, c->x[0]); }
-    { uint64_t ea = c->x[19] + 0x128ull; ST64(ea, c->x[0]); }
-    if (c->x[8] == 0) goto L_7005505248;
-    { uint64_t ea = c->x[19] + 0xf98ull; ST64(ea, c->x[0]); }
-L_7005505248:;
-    { uint64_t ea = c->x[19] + 0x11e0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    { uint64_t ea = c->x[19] + 0x11e0ull; ST64(ea, c->x[8]); }
-    goto L_7005505414;
-L_7005505258:;
-    { uint64_t ea = c->x[23] + 0xe8ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    { uint64_t ea = c->x[23] + 0xc0ull; uint64_t v = LD64(ea); c->x[3] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(c->x[19] + 0x3d0ull);
-    { uint64_t ea = c->x[23] + 0xb0ull; uint64_t v = LD32(ea); c->x[4] = (uint64_t)(v); }
-    { uint64_t ea = c->x[23] + 0xd8ull; uint64_t v = LD32(ea); c->x[5] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005505274ull; f_7005508e48(c);
-    goto L_7005505050;
-L_7005505278:;
-    { uint64_t ea = c->x[19] + 0xf58ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_7005505050;
-    { uint64_t ea = c->x[23] + 0x98ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf40ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_NE(c)) goto L_7005505050;
-    c->x[10] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[11] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x7005506154ull; f_7005506014(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005506180;
+    c->x[22] = (uint64_t)(c->x[19] + 0x650ull);
+L_700550615c:;
+    { uint64_t ea = c->x[22] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[20])));
+    if (COND_NE(c)) goto L_7005506170;
+    { uint64_t ea = c->x[22] + 0x24ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] != 0) goto L_70055061a0;
+L_7005506170:;
+    c->x[23] = (uint64_t)(subs64(c, c->x[23], 0x1ull));
+    c->x[22] = (uint64_t)(c->x[22] + 0x38ull);
+    if (COND_NE(c)) goto L_700550615c;
+L_700550617c:;
     c->x[0] = (uint32_t)(0u | 0u);
-    c->x[10] = (uint64_t)(c->x[9] + c->x[10]);
-    c->x[11] = (uint64_t)((c->x[11] & 0xffffffffffff0000ull) | 0x0ull);
-    (void)(subs64(c, c->x[10], (uint64_t)(c->x[11])));
-    if (COND_CC(c)) goto L_7005505054;
-    c->x[10] = (uint64_t)(c->x[9] & 0x7ull);
-    if (c->x[10] != 0) goto L_7005505054;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    c->x[12] = (uint32_t)(0xf150ull);
-    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    c->x[12] = (uint32_t)((c->x[12] & 0xffffffff0000ffffull) | 0x3720000ull);
-    c->x[12] = (uint64_t)(c->x[10] + c->x[12]);
-    (void)(subs64(c, c->x[11], (uint64_t)(c->x[12])));
-    if (COND_NE(c)) goto L_7005505050;
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[10]); ST64(ea + 8, c->x[9]); }
+L_7005506180:;
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0xe0ull);
+    c->pc = 0; return;
+L_7005506198:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->pc = 0; return;
+L_70055061a0:;
+    c->v[0] = 0x0ull;
+    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x90ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[8]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->x[19] + 0xf58ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 112; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
     { uint64_t ea = c->sp + 0x30ull; ST64(ea, c->x[8]); }
-    c->x[30] = 0x70055052dcull; f_7005507d50(c);
+    c->x[30] = 0x70055061c0ull; f_7005507d50(c);
     { uint64_t ea = c->x[19] + 0x110ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     { uint64_t ea = c->x[19] + 0x100ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->x[23] + 0xa0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x70ull);
+    { uint64_t ea = c->x[22] + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
     { uint64_t ea = c->sp + 0x38ull; ST64(ea, c->x[0]); }
     c->x[0] = (uint64_t)(c->sp + 0x20ull);
     { uint64_t ea = c->sp + 80; ST64(ea, c->x[8]); ST64(ea + 8, c->x[19]); }
@@ -6655,1430 +7241,1747 @@ L_7005505278:;
     c->x[8] = (uint64_t)(0x7005506094ull);
     { uint64_t ea = c->sp + 0x40ull; ST128(ea, c->v[0]); }
     { uint64_t ea = c->sp + 96; ST64(ea, c->x[8]); ST64(ea + 8, c->x[8]); }
-    c->x[30] = 0x7005505308ull; f_700550c460(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005505398;
-    { uint64_t ea = c->x[23] + 0xa0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005505318ull; f_70055060fc(c);
-    (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
-    goto L_70055050f8;
-L_7005505320:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[22]);
-    c->x[30] = 0x700550532cull; f_7005506014(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005505364;
-    { uint64_t ea = c->x[19] + 0xe0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint32_t)(0x1ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    { uint64_t ea = c->x[19] + 0xe0ull; ST64(ea, c->x[8]); }
-    goto L_7005505054;
-L_7005505344:;
-    c->x[8] = (uint64_t)(c->x[19] + 0x18ull);
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->excl_addr = ~0ull;
-L_7005505350:;
-    c->x[9] = (uint64_t)(ldx64(c, c->x[8]));
-    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
-    { uint32_t st = stx64(c, c->x[8], c->x[9]); c->x[10] = (uint32_t)(st); }
-    if ((uint32_t)c->x[10] != 0) goto L_7005505350;
-    goto L_7005505054;
-L_7005505364:;
-    { uint64_t ea = c->x[19] + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    { uint64_t ea = c->x[19] + 0xe8ull; ST64(ea, c->x[8]); }
-    goto L_7005505054;
-L_7005505374:;
-    c->x[30] = 0x7005505378ull; f_7005507d50(c);
-    c->x[8] = (uint64_t)(c->x[19] + 0xfa8ull);
-    { uint64_t ea = c->x[19] + 0xfa0ull; ST64(ea, c->x[0]); }
-    c->x[0] = (uint32_t)(0u | 0u);
-L_7005505384:;
-    c->x[9] = (uint64_t)(ldx64(c, c->x[8]));
-    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
-    { uint32_t st = stx64(c, c->x[8], c->x[9]); c->x[10] = (uint32_t)(st); }
-    if ((uint32_t)c->x[10] != 0) goto L_7005505384;
-    goto L_7005505054;
-L_7005505398:;
-    { uint64_t ea = c->x[23] + 0x98ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x70055053a4ull; f_7005506014(c);
-    goto L_7005505054;
-L_70055053a8:;
-    (void)(subs32(c, (uint32_t)c->x[21], 0xbull));
-    if (COND_LE(c)) goto L_70055053cc;
-    (void)(subs32(c, (uint32_t)c->x[21], 0xdull));
-    if (COND_GT(c)) goto L_7005505404;
-    (void)(subs32(c, (uint32_t)c->x[21], 0xcull));
-    if (COND_EQ(c)) goto L_700550545c;
-    (void)(subs32(c, (uint32_t)c->x[21], 0xdull));
-    if (COND_EQ(c)) goto L_70055054b8;
-    goto L_700550563c;
-L_70055053cc:;
-    c->x[8] = (uint32_t)((uint32_t)c->x[21] - 0x2ull);
-    (void)(subs32(c, (uint32_t)c->x[8], 0x3ull));
-    if (COND_CC(c)) goto L_7005505414;
-    goto L_700550563c;
-L_70055053dc:;
-    c->x[30] = 0x70055053e0ull; f_7005507d50(c);
-    { uint64_t ea = c->x[19] + 0xfa8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(0ull | c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    { uint64_t ea = c->x[19] + 0xfa0ull; ST64(ea, c->x[8]); }
-    c->x[8] = (uint64_t)(c->x[9] + 0x1ull);
-    c->x[9] = (uint64_t)(c->x[19] + 0xcull);
-    { uint64_t ea = c->x[19] + 0xfa8ull; ST64(ea, c->x[8]); }
-    stl32(c->x[9], 0ull);
-    goto L_7005505054;
-L_7005505404:;
-    (void)(subs32(c, (uint32_t)c->x[21], 0xeull));
-    if (COND_EQ(c)) goto L_7005505568;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x10ull));
-    if (COND_NE(c)) goto L_700550563c;
-L_7005505414:;
-    { uint64_t ea = c->x[19] + 0xf08ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_7005505444;
-    { uint64_t ea = c->x[19] + 0xf40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[22], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_7005505444;
-    { uint64_t ea = c->x[19] + 0xf70ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf58ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_7005505444;
-    c->x[30] = 0x700550543cull; f_7005507d50(c);
-    { uint64_t ea = c->x[19] + 0xf90ull; ST64(ea, c->x[0]); }
-    { uint64_t ea = c->x[19] + 0x5e0ull; ST64(ea, c->x[0]); }
-L_7005505444:;
-    (void)(subs32(c, (uint32_t)c->x[21], 0xeull));
-    if (COND_EQ(c)) goto L_7005505568;
-    (void)(subs32(c, (uint32_t)c->x[21], 0xdull));
-    if (COND_EQ(c)) goto L_70055054b8;
-    (void)(subs32(c, (uint32_t)c->x[21], 0xcull));
-    if (COND_NE(c)) goto L_700550563c;
-L_700550545c:;
-    { uint64_t ea = c->x[19] + 0x5c0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] != 0) goto L_700550563c;
-    { uint64_t ea = c->x[23] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[28])));
-    if (COND_CC(c)) goto L_700550563c;
-    c->x[8] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550563c;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint32_t)(0u | 0x18000ull);
-    c->x[30] = 0x7005505490ull; f_7005506474(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550563c;
-    { uint64_t ea = c->x[19] + 0xf40ull; ST64(ea, c->x[22]); }
-    { uint64_t ea = c->x[23] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf48ull; ST64(ea, c->x[8]); }
-    c->x[30] = 0x70055054a4ull; f_7005507d50(c);
-    { uint64_t ea = c->x[19] + 0xf58ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf50ull; ST64(ea, c->x[0]); }
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    { uint64_t ea = c->x[19] + 0xf58ull; ST64(ea, c->x[8]); }
-    goto L_700550563c;
-L_70055054b8:;
-    { uint64_t ea = c->x[19] + 0xf40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
-    if (COND_NE(c)) goto L_700550563c;
-    { uint64_t ea = c->x[19] + 0xf50ull; uint64_t v = LD64(ea); c->x[23] = (uint64_t)(v); }
-    c->x[30] = 0x70055054ccull; f_7005507d50(c);
-    (void)(subs64(c, c->x[23], (uint64_t)(c->x[0])));
-    if (COND_NE(c)) goto L_700550563c;
-    { uint64_t ea = c->x[19] + 0xf58ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_700550563c;
-    c->x[9] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x100ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->x[19] + 0xf60ull; ST32(ea, (uint32_t)c->x[9]); }
-    { uint64_t ea = c->x[19] + 0xf50ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint32_t)(0u | 0x18000ull);
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[10]); ST64(ea + 8, c->x[22]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->x[19] + 0x110ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    /* hint */
-    c->x[9] = (uint64_t)(0x700550662cull);
-    { uint64_t ea = c->sp + 0x40ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[8]); ST64(ea + 8, c->x[19]); }
-    /* hint */
-    c->x[8] = (uint64_t)(0x700550656cull);
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->x[19] + 0xf48ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->sp + 0x20ull);
-    { uint64_t ea = c->sp + 8; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    /* hint */
-    c->x[8] = (uint64_t)(0x700550e73cull);
-    { uint64_t ea = c->sp + 0x18ull; ST64(ea, c->x[8]); }
-    c->x[30] = 0x7005505540ull; f_7005506474(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005505630;
-    c->x[0] = (uint64_t)(c->sp + 0x20ull);
-    c->x[1] = (uint64_t)(c->sp + 0x8ull);
-    c->x[2] = (uint64_t)(c->x[19] + 0x588ull);
-    c->x[30] = 0x7005505554ull; f_700550bca8(c);
-    if ((uint32_t)c->x[0] != 0) goto L_7005505638;
-    { uint64_t ea = c->x[19] + 0x5c4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
-    c->x[8] = (uint32_t)((COND_HI(c)) ? (uint32_t)c->x[8] : (uint32_t)(0u + 1));
-    goto L_7005505634;
-L_7005505568:;
-    { uint64_t ea = c->x[19] + 0x5c0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x4ull));
-    if (COND_NE(c)) goto L_700550563c;
-    { uint64_t ea = c->x[19] + 0xf40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
-    if (COND_NE(c)) goto L_700550563c;
-    { uint64_t ea = c->x[19] + 0xf48ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[23] + 0xa0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550563c;
-    { uint64_t ea = c->x[19] + 0xf50ull; uint64_t v = LD64(ea); c->x[23] = (uint64_t)(v); }
-    c->x[30] = 0x7005505598ull; f_7005507d50(c);
-    (void)(subs64(c, c->x[23], (uint64_t)(c->x[0])));
-    if (COND_NE(c)) goto L_700550563c;
-    c->x[8] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf50ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->x[19] + 0xf60ull; ST32(ea, (uint32_t)c->x[8]); }
-    { uint64_t ea = c->x[19] + 0x110ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    VW(vu8, 1, 0, SHUF(VREG(vu8, 0), VREG(vu8, 0), 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23));
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[9]); ST64(ea + 8, c->x[22]); }
-    /* hint */
-    c->x[9] = (uint64_t)(0x700550662cull);
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[8]); ST64(ea + 8, c->x[19]); }
-    /* hint */
-    c->x[8] = (uint64_t)(0x700550656cull);
-    { uint64_t ea = c->x[19] + 0x100ull; c->v[1] = LD128(ea); }
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->x[19] + 0xf48ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->sp + 0x20ull);
-    c->x[2] = (uint32_t)(0u | 0x18000ull);
-    { uint64_t ea = c->sp + 48; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 8; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    /* hint */
-    c->x[8] = (uint64_t)(0x700550e73cull);
-    { uint64_t ea = c->sp + 0x18ull; ST64(ea, c->x[8]); }
-    c->x[30] = 0x7005505604ull; f_7005506474(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005505630;
-    c->x[0] = (uint64_t)(c->sp + 0x20ull);
-    c->x[1] = (uint64_t)(c->sp + 0x8ull);
-    c->x[2] = (uint64_t)(c->x[19] + 0x588ull);
-    c->x[30] = 0x7005505618ull; f_700550c73c(c);
-    if ((uint32_t)c->x[0] != 0) goto L_7005505638;
-    { uint64_t ea = c->x[19] + 0x5c4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(0xbull);
-    (void)(subs32(c, (uint32_t)c->x[8], 0x0ull));
-    c->x[8] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[9] : (uint32_t)((uint32_t)c->x[8]));
-    goto L_7005505634;
-L_7005505630:;
-    c->x[8] = (uint32_t)(0xaull);
-L_7005505634:;
-    { uint64_t ea = c->x[19] + 0xf64ull; ST32(ea, (uint32_t)c->x[8]); }
-L_7005505638:;
-    { uint64_t ea = c->x[19] + 0xf60ull; ST32(ea, 0u); }
-L_700550563c:;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x4ull));
-    if (COND_EQ(c)) goto L_700550564c;
-    (void)(subs32(c, (uint32_t)c->x[27], 0x2ull));
-    if (COND_NE(c)) goto L_70055056f8;
-L_700550564c:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005505654ull; f_7005506668(c);
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[23] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[0] = (uint64_t)(c->x[19] + 0x100ull);
-    c->x[4] = (uint64_t)(c->x[19] + 0x118ull);
-    c->x[5] = (uint64_t)(c->x[19] + 0x138ull);
-    c->x[6] = (uint64_t)(c->x[19] + 0x2f0ull);
-    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[24]);
-    c->x[3] = (uint64_t)(0ull | c->x[22]);
-    c->x[30] = 0x7005505678ull; f_7005508b88(c);
-    (void)(subs32(c, (uint32_t)c->x[21], 0x4ull));
-    if (COND_NE(c)) goto L_70055056e8;
-    c->x[8] = (uint64_t)(c->x[19] + 0xfb8ull);
-    c->x[9] = (uint32_t)(0x1200ull);
-    c->x[0] = (uint64_t)(c->x[19] + 0x588ull);
-    stl64(c->x[8], 0ull);
-    c->x[8] = (uint64_t)(c->x[19] + c->x[9]);
-    c->x[1] = (uint64_t)(0ull | c->x[22]);
-    stl64(c->x[8], 0ull);
-    c->x[30] = 0x70055056a0ull; f_700550ce28(c);
-    c->v[0] = 0x0ull;
-    c->x[8] = (uint32_t)(0x5c8ull);
-L_70055056a8:;
-    { uint64_t ea = c->x[19] + c->x[8]; ST128(ea, c->v[0]); }
-    c->x[8] = (uint64_t)(c->x[8] + 0x10ull);
-    (void)(subs64(c, c->x[8], 0xf18ull));
-    if (COND_NE(c)) goto L_70055056a8;
-    c->v[0] = 0x0ull;
-    c->x[8] = (uint64_t)(c->x[19] + 0xf68ull);
-    { uint64_t ea = c->x[19] + 0xf50ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->x[19] + 0xf64ull; ST32(ea, 0u); }
-    { uint64_t ea = c->x[19] + 0xf88ull; ST32(ea, 0u); }
-    { uint64_t ea = c->x[19] + 0x520ull; ST32(ea, 0u); }
-    { uint64_t ea = c->x[8] + 0x0ull; ST128(ea, c->v[0]); }
-    c->x[8] = (uint64_t)(c->x[19] + 0xf78ull);
-    { uint64_t ea = c->x[26] + 0; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
-    { uint64_t ea = c->x[19] + 0xf40ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->x[8] + 0x0ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->x[19] + 0xf90ull; ST128(ea, c->v[0]); }
-L_70055056e8:;
-    { uint64_t ea = c->x[19] + 0x510ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->x[19] + 0x51cull; ST32(ea, 0u); }
-    if ((uint32_t)c->x[23] == 0) goto L_70055056f8;
-    { uint64_t ea = c->x[19] + 0x524ull; ST32(ea, 0u); }
-L_70055056f8:;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x1ull));
-    if (COND_NE(c)) goto L_7005505710;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x700550570cull; f_70055066cc(c);
-    goto L_7005505730;
-L_7005505710:;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x10ull));
-    if (COND_NE(c)) goto L_7005505730;
-    { uint64_t ea = c->x[19] + 0xf40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[22], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_7005505730;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005505730ull; f_7005506a64(c);
-L_7005505730:;
-    { uint64_t ea = c->x[19] + 0x5c0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf64ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xdf8ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf40ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->x[19] + 88; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[9]); }
-    { uint64_t ea = c->x[19] + 0xe21ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf08ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x70ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->x[19] + 96; ST32(ea, (uint32_t)c->x[10]); ST32(ea + 4, (uint32_t)c->x[8]); }
-    { uint64_t ea = c->x[19] + 0xe00ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 104; ST32(ea, (uint32_t)c->x[9]); ST32(ea + 4, (uint32_t)c->x[8]); }
-    c->x[8] = (uint64_t)(c->x[19] + 0x10ull);
-L_7005505760:;
-    c->x[9] = (uint64_t)(ldx64(c, c->x[8]));
-    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
-    { uint32_t st = stx64(c, c->x[8], c->x[9]); c->x[10] = (uint32_t)(st); }
-    if ((uint32_t)c->x[10] != 0) goto L_7005505760;
-    c->x[0] = (uint32_t)(0u | 0u);
-    stl32(c->x[25], 0ull);
-    goto L_7005505054;
-}
-
-void f_70055063c8(Cpu *c) {
-    { uint64_t ea = c->x[0] + 0x2e0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700550646c;
-    c->sp = (uint64_t)(c->sp - 0x50ull);
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[30]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->x[0] + 0x130ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    if ((uint32_t)c->x[8] == 0) goto L_700550645c;
-    c->v[0] = 0x0ull;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(c->x[19] + 0x100ull);
-    c->x[2] = (uint64_t)(c->sp + 0x0ull);
-    { uint64_t ea = c->sp + 0x30ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->sp + 16; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
-    { uint64_t ea = c->sp + 0x0ull; ST128(ea, c->v[0]); }
-    c->x[30] = 0x7005506404ull; f_70055080f8(c);
+    c->x[30] = 0x70055061f0ull; f_700550ac54(c);
     c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
     c->x[0] = (uint32_t)(0u | 0u);
-    if ((uint32_t)c->x[8] == 0) goto L_7005506460;
-    { uint64_t ea = c->sp + 0x30ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_7005506460;
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x148ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_7005506180;
+    { uint64_t ea = c->sp + 0x78ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[20])));
+    if (COND_NE(c)) goto L_7005506180;
+    { uint64_t ea = c->sp + 0x80ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[22] + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
     (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550645c;
+    if (COND_NE(c)) goto L_700550617c;
+    { uint64_t ea = c->x[19] + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x18ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[1] = (uint64_t)(0ull | c->x[20]);
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->sp + 16; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    c->pc = c->x[8]; c->x[30] = 0x7005506234ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_7005506180;
+    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xff30ull);
     { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x150ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3710000ull);
+    c->x[9] = (uint64_t)(c->x[9] + c->x[10]);
     (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550645c;
-    { uint64_t ea = c->sp + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x158ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if (COND_NE(c)) goto L_700550617c;
+    { uint64_t ea = c->x[19] + 0x108ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(c->x[8] + 0x20ull);
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->pc = c->x[9]; c->x[30] = 0x700550626cull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_7005506180;
+    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0x79f0ull);
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x2100000ull);
+    c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_700550617c;
+    c->x[23] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[24] = (uint32_t)(0xa000ull);
+    c->x[21] = (uint32_t)(0x28ull);
+    c->x[22] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[23] = (uint64_t)((c->x[23] & 0xffffffffffff0000ull) | 0x0ull);
+    c->x[24] = (uint32_t)((c->x[24] & 0xffffffff0000ffffull) | 0x2bb0000ull);
+    c->x[25] = (uint32_t)(0x3a00000ull);
+L_70055062a8:;
+    { uint64_t ea = c->x[19] + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(c->x[20] + c->x[21]);
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[1] = (uint64_t)(c->x[9] + 0x8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    c->pc = c->x[8]; c->x[30] = 0x70055062c8ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550617c;
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(c->x[1] + c->x[22]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
+    if (COND_CC(c)) goto L_700550617c;
+    c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550617c;
+    { uint64_t ea = c->x[19] + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->pc = c->x[8]; c->x[30] = 0x70055062f8ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550617c;
+    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[10] = (uint64_t)(c->x[9] + c->x[24]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[10])));
+    if (COND_CC(c)) goto L_7005506180;
+    c->x[9] = (uint64_t)(c->x[9] + c->x[25]);
     (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550645c;
-    { uint64_t ea = c->sp + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x160ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if (COND_CS(c)) goto L_7005506180;
+    c->x[21] = (uint64_t)(c->x[21] + 0x8ull);
+    (void)(subs64(c, c->x[21], 0x78ull));
+    if (COND_CC(c)) goto L_70055062a8;
+    c->x[23] = (uint64_t)(0ull | 0ull);
+    c->x[22] = (uint32_t)(0u | 0u);
+    /* hint */
+    c->x[24] = (uint64_t)(0x7005510170ull);
+    /* hint */
+    c->x[25] = (uint64_t)(0x700551017cull);
+L_7005506344:;
+    { uint64_t ea = c->x[24] + (c->x[23] << 2); uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x108ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->sp + 0x8ull; ST64(ea, 0ull); }
+    c->x[21] = (uint64_t)(c->x[8] + c->x[20]);
+    { uint64_t ea = c->sp + 0x0ull; ST32(ea, 0u); }
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->pc = c->x[9]; c->x[30] = 0x700550636cull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_70055063c0;
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(c->x[21] + 0xcull);
     (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_70055063c0;
+    { uint64_t ea = c->x[19] + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(c->x[21] + 0x8ull);
+    c->x[2] = (uint64_t)(c->sp + 0x0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[3] = (uint32_t)(0x4ull);
+    c->pc = c->x[8]; c->x[30] = 0x7005506398ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_70055063c0;
+    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[25] + (c->x[23] << 2); uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_70055063c0;
+    (void)(subs64(c, c->x[23], 0x1ull));
+    c->x[23] = (uint64_t)(c->x[23] + 0x1ull);
+    c->x[22] = (uint32_t)((COND_LS(c)) ? 0u : (uint32_t)(0u + 1));
+    (void)(subs64(c, c->x[23], 0x3ull));
+    if (COND_NE(c)) goto L_7005506344;
+L_70055063c0:;
+    c->x[0] = (uint32_t)((uint32_t)c->x[22] & 0x1ull);
+    goto L_7005506180;
+}
+
+void f_7005506bec(Cpu *c) {
+    { uint64_t ea = c->sp - 32; ST64(ea, c->x[30]); c->sp = ea; }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[19] = (uint64_t)(0ull | c->x[1]);
+    c->x[20] = (uint64_t)(0ull | c->x[0]);
+    c->x[30] = 0x7005506c00ull; f_7005507d50(c);
+    { uint64_t ea = c->x[20] + 0x178ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[0], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_7005506c38;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x7005506c14ull; f_70055063c8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005506c3c;
+    { uint64_t ea = c->x[20] + 0x148ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(c->x[8] + 0x890ull);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[19])));
+    if (COND_NE(c)) goto L_7005506c38;
+    { uint64_t ea = c->x[8] + 0x30ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[19])));
     c->x[0] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
-    goto L_7005506460;
-L_700550645c:;
+    goto L_7005506c3c;
+L_7005506c38:;
     c->x[0] = (uint32_t)(0u | 0u);
-L_7005506460:;
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0x50ull);
-    c->pc = 0; return;
-L_700550646c:;
-    c->x[0] = (uint32_t)(0u | 0u);
+L_7005506c3c:;
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp; uint64_t v = LD64(ea); c->sp = c->sp + 32; c->x[30] = (uint64_t)(v); }
     c->pc = 0; return;
 }
 
-void f_7005506474(Cpu *c) {
-    { uint64_t ea = c->sp - 48; ST64(ea, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->x[22] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    c->x[20] = (uint32_t)(0u | (uint32_t)c->x[2]);
+void f_7005506d44(Cpu *c) {
+    { uint64_t ea = c->x[2] + 0x0ull; ST64(ea, 0ull); }
+    c->x[8] = (uint32_t)(0x7ull);
+    { uint64_t ea = c->x[2] + 8; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, 0u); }
+    c->x[0] = (uint32_t)(0x1ull);
+    c->pc = 0; return;
+}
+
+void f_7005507020(Cpu *c) {
+    if (c->x[3] == 0) goto L_70055072f0;
+    c->sp = (uint64_t)(c->sp - 0x170ull);
+    { uint64_t ea = c->sp + 272; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
+    { uint64_t ea = c->sp + 288; ST64(ea, c->x[28]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 304; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 320; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 336; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 352; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->v[0] = 0x0ull;
+    c->x[9] = (uint64_t)(0ull | 0x7ffffe0000ull);
+    c->x[8] = (uint64_t)(c->x[1] - 0x10000ull);
+    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0xffffull);
+    c->x[19] = (uint64_t)(0ull | c->x[3]);
     c->x[21] = (uint64_t)(0ull | c->x[1]);
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[22] = (uint64_t)((c->x[22] & 0xffffffffffff0000ull) | 0x0ull);
-    c->x[30] = 0x7005506498ull; f_7005507d50(c);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    { uint64_t ea = c->x[3] + 16; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
+    { uint64_t ea = c->x[3] + 48; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
+    { uint64_t ea = c->x[3] + 0x0ull; ST128(ea, c->v[0]); }
+    if (COND_HI(c)) goto L_70055072e4;
+    c->x[8] = (uint64_t)(c->x[21] & 0xfffull);
+    if (c->x[8] != 0) goto L_70055072e4;
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->x[20] = (uint64_t)(0ull | c->x[2]);
+    c->x[22] = (uint64_t)(0ull | c->x[0]);
+    c->x[30] = 0x7005507084ull; f_7005507c54(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055072e4;
+    c->x[24] = (uint64_t)(0ull | 0ull);
+    c->x[25] = (uint64_t)(0x7005510000ull);
+    c->x[25] = (uint64_t)(c->x[25] + 0x548ull);
+    /* hint */
+    c->x[26] = (uint64_t)(0x7005510540ull);
+L_700550709c:;
+    c->x[8] = (uint64_t)(c->x[26] + c->x[24]);
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    { uint64_t ea = c->x[8] + 0; uint64_t a = LD32(ea), b = LD32(ea + 4); c->x[9] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    c->x[1] = (uint64_t)(c->x[9] + c->x[21]);
+    c->x[3] = (uint32_t)(0u | (uint32_t)c->x[23]);
+    c->x[30] = 0x70055070b8ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055072f8;
+    if ((uint32_t)c->x[23] == 0) goto L_70055070e0;
+    c->x[8] = (uint64_t)(c->sp + 0x10ull);
+    c->x[9] = (uint64_t)(0ull | c->x[25]);
+L_70055070c8:;
+    { uint64_t ea = c->x[8]; uint64_t v = LD8(ea); c->x[8] = c->x[8] + 1; c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9]; uint64_t v = LD8(ea); c->x[9] = c->x[9] + 1; c->x[11] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[11])));
+    if (COND_NE(c)) goto L_70055072f8;
+    c->x[23] = (uint64_t)(subs64(c, c->x[23], 0x1ull));
+    if (COND_NE(c)) goto L_70055070c8;
+L_70055070e0:;
+    c->x[24] = (uint64_t)(c->x[24] + 0xa8ull);
+    c->x[25] = (uint64_t)(c->x[25] + 0xa8ull);
+    (void)(subs64(c, c->x[24], 0xa80ull));
+    if (COND_NE(c)) goto L_700550709c;
+    c->x[23] = (uint32_t)(0xdc70ull);
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[23] = (uint32_t)((c->x[23] & 0xffffffff0000ffffull) | 0x3950000ull);
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->sp + 0x10ull; ST64(ea, 0ull); }
+    c->x[8] = (uint64_t)(c->x[21] + c->x[23]);
+    c->x[1] = (uint64_t)(c->x[8] + 0x388ull);
+    c->x[30] = 0x7005507114ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055072f8;
+    c->x[8] = (uint32_t)(0xa558ull);
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[26] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3ad0000ull);
+    c->x[8] = (uint64_t)(c->x[21] + c->x[8]);
+    (void)(subs64(c, c->x[26], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_70055072f8;
+    c->x[1] = (uint64_t)(c->x[21] + c->x[23]);
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507144ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055072f8;
+    c->x[28] = (uint32_t)(0xd238ull);
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[24] = (uint64_t)(v); }
+    c->x[28] = (uint32_t)((c->x[28] & 0xffffffff0000ffffull) | 0x3ad0000ull);
+    c->x[8] = (uint64_t)(c->x[21] + c->x[28]);
+    (void)(subs64(c, c->x[24], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_70055072f8;
+    c->x[8] = (uint32_t)(0x1e8ull);
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3960000ull);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[21] + c->x[8]);
+    c->x[30] = 0x700550717cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055072f8;
+    c->x[8] = (uint32_t)(0x1678ull);
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[23] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3a80000ull);
+    c->x[8] = (uint64_t)(c->x[21] + c->x[8]);
+    (void)(subs64(c, c->x[23], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_70055072f8;
+    c->x[8] = (uint32_t)(0xf7a8ull);
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3960000ull);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[21] + c->x[8]);
+    c->x[30] = 0x70055071b4ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055072f8;
+    c->x[8] = (uint32_t)(0xcda0ull);
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[25] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3ac0000ull);
+    c->x[8] = (uint64_t)(c->x[21] + c->x[8]);
+    (void)(subs64(c, c->x[25], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_70055072f8;
+    c->x[8] = (uint64_t)(c->x[28] + c->x[21]);
+    c->x[27] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x150ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[27] = (uint64_t)((c->x[27] & 0xffffffffffff0000ull) | 0x0ull);
+    { uint64_t ea = c->sp + 0x8ull; ST64(ea, 0ull); }
+    c->x[30] = 0x70055071f4ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550721c;
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[8] = (uint64_t)(0ull | c->x[0]);
-    c->x[9] = (uint64_t)(c->x[0] + c->x[9]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[22])));
-    if (COND_CC(c)) goto L_700550654c;
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_700550721c;
+    c->x[8] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550721c;
+    c->x[8] = (uint32_t)(0x1ull);
+    { uint64_t ea = c->x[19] + 0x44ull; ST32(ea, (uint32_t)c->x[8]); }
+L_700550721c:;
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(0ull | c->x[26]);
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->sp + 0x10ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 256; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    c->x[30] = 0x7005507238ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507324;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_7005507324;
     c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550654c;
-    { uint64_t ea = c->x[8] + 0x1f8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[9] != 0) goto L_7005507324;
+    c->x[1] = (uint64_t)(c->x[8] + 0x58ull);
+    c->x[2] = (uint64_t)(c->sp + 0x108ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550726cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507324;
+    c->x[2] = (uint64_t)(c->sp + 0x100ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(0ull | c->x[26]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507284ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055075fc;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_70055075fc;
+    c->x[1] = (uint64_t)(c->x[8] + 0x58ull);
+    c->x[2] = (uint64_t)(c->sp + 0x100ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x70055072acull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055075fc;
+    { uint64_t ea = c->sp + 256; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_70055075fc;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 16; ST64(ea, c->x[9]); ST64(ea + 8, c->x[8]); }
+    c->x[9] = (uint32_t)((uint32_t)c->x[10] | 0x1ull);
+    { uint64_t ea = c->x[19] + 0x0ull; ST32(ea, (uint32_t)c->x[9]); }
+    if (c->x[8] != 0) goto L_7005507330;
+    { uint64_t ea = c->x[19] + 0x4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x1ull);
+    { uint64_t ea = c->x[19] + 0x4ull; ST32(ea, (uint32_t)c->x[8]); }
+    goto L_7005507330;
+L_70055072e4:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[8] = (uint32_t)(0x1ull);
+    goto L_7005507300;
+L_70055072f0:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->pc = 0; return;
+L_70055072f8:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[8] = (uint32_t)(0x2ull);
+L_7005507300:;
+    { uint64_t ea = c->x[19] + 0x8ull; ST32(ea, (uint32_t)c->x[8]); }
+L_7005507304:;
+    { uint64_t ea = c->sp + 352; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 336; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 320; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 304; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 288; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 272; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x170ull);
+    c->pc = 0; return;
+L_7005507324:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x4ull);
+L_700550732c:;
+    { uint64_t ea = c->x[19] + 0x8ull; ST32(ea, (uint32_t)c->x[8]); }
+L_7005507330:;
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(0ull | c->x[24]);
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->sp + 0x10ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 256; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 240; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 224; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 0xd0ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 0xc0ull; ST8(ea, 0u); }
+    c->x[30] = 0x700550735cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_70055076ac;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_70055076ac;
+    c->x[1] = (uint64_t)(c->x[8] + 0x468ull);
+    c->x[2] = (uint64_t)(c->sp + 0xc0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x1ull);
+    c->x[30] = 0x7005507390ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x108ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x1e8ull);
+    c->x[30] = 0x70055073acull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_70055076ac;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_70055076ac;
+    c->x[1] = (uint64_t)(c->x[8] + 0x50ull);
+    c->x[2] = (uint64_t)(c->sp + 0xd4ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x4ull);
+    c->x[30] = 0x70055073e0ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0xd4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] - 0x101ull);
+    (void)(adds32(c, (uint32_t)c->x[8], 0xe3ull));
+    if (COND_CC(c)) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x100ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x58ull);
+    c->x[30] = 0x700550740cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_70055076ac;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_70055076ac;
+    c->x[1] = (uint64_t)(c->x[8] + 0xe8ull);
+    c->x[2] = (uint64_t)(c->sp + 0xf8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507440ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[8] = (uint64_t)(c->x[1] + c->x[8]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_70055076ac;
+    c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
+    if (c->x[8] != 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0xc0ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    if (((c->x[8] >> 5) & 1) != 0) goto L_7005507608;
+L_7005507468:;
+    c->x[2] = (uint64_t)(c->sp + 0xf0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507478ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550785c;
+    c->x[9] = (uint32_t)(0x7b68ull);
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x36d0000ull);
+    c->x[9] = (uint64_t)(c->x[21] + c->x[9]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550785c;
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xe8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x10ull);
+    c->x[30] = 0x70055074acull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550785c;
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550785c;
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xd0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x4ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x78ull);
+    c->x[30] = 0x70055074d8ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550785c;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xe0ull);
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(0ull | c->x[24]);
+    { uint64_t ea = c->x[19] + 32; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 0xd0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->x[19] + 0x30ull; ST64(ea, c->x[10]); }
+    { uint64_t ea = c->x[19] + 0xcull; ST32(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->sp + 0xd8ull; ST32(ea, 0u); }
+    { uint64_t ea = c->sp + 0xb0ull; ST8(ea, 0u); }
+    c->x[30] = 0x7005507514ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507a20;
+    { uint64_t ea = c->sp + 0xe0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005507a20;
+    c->x[1] = (uint64_t)(c->x[8] + 0x1e8ull);
+    c->x[2] = (uint64_t)(c->sp + 0xe0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550753cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507a20;
+    { uint64_t ea = c->sp + 0xe0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005507a20;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xe0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0xe8ull);
+    c->x[30] = 0x7005507568ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507a20;
+    { uint64_t ea = c->sp + 0xe0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005507a20;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xb0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x1ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x468ull);
+    c->x[30] = 0x7005507594ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507a20;
+    { uint64_t ea = c->sp + 0xb0ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xc0ull; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005507a20;
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xd8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x4ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x78ull);
+    c->x[30] = 0x70055075c0ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507a20;
+    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xd0ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005507a20;
+    (void)(subs32(c, (uint32_t)c->x[8], 0x40ull));
+    if (COND_CS(c)) goto L_7005507c48;
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)((uint32_t)c->x[9] | 0x2ull);
+    { uint64_t ea = c->x[19] + 0x0ull; ST32(ea, (uint32_t)c->x[9]); }
+    if ((uint32_t)c->x[8] != 0) goto L_70055076b8;
+    { uint64_t ea = c->x[19] + 0x4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x2ull);
+    { uint64_t ea = c->x[19] + 0x4ull; ST32(ea, (uint32_t)c->x[8]); }
+    goto L_70055076b8;
+L_70055075fc:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x40ull);
+    goto L_700550732c;
+L_7005507608:;
+    c->x[2] = (uint64_t)(c->sp + 0xd8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(0ull | c->x[25]);
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->sp + 0xd8ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 0xb0ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 0xc4ull; ST32(ea, 0u); }
+    c->x[30] = 0x7005507628ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_70055076ac;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_70055076ac;
+    c->x[1] = (uint64_t)(c->x[8] + 0x48ull);
+    c->x[2] = (uint64_t)(c->sp + 0xc4ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x4ull);
+    c->x[30] = 0x700550765cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xb0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x428ull);
+    c->x[30] = 0x7005507678ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0xb0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_70055076ac;
+    c->x[8] = (uint32_t)(0x74c0ull);
+    { uint64_t ea = c->sp + 0xc4ull; uint64_t v = LD32(ea); c->x[0] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x2bb0000ull);
+    c->x[8] = (uint64_t)(c->x[21] + c->x[8]);
+    c->pc = c->x[8]; c->x[30] = 0x7005507698ull; rt_dispatch(c); c->pc = 0;
+    { uint64_t ea = c->sp + 0xb0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[0], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_70055076ac;
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    goto L_7005507468;
+L_70055076ac:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x8ull);
+L_70055076b4:;
+    { uint64_t ea = c->x[19] + 0x8ull; ST32(ea, (uint32_t)c->x[8]); }
+L_70055076b8:;
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(0ull | c->x[23]);
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->sp + 0x10ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 256; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 240; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 224; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 208; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 0xccull; ST8(ea, 0u); }
+    { uint64_t ea = c->sp + 0xc8ull; ST8(ea, 0u); }
+    c->x[30] = 0x70055076e8ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005507abc;
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_7005507abc;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_7005507abc;
+    c->x[1] = (uint64_t)(c->x[8] + 0x480ull);
+    c->x[2] = (uint64_t)(c->sp + 0x108ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507728ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_7005507abc;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_7005507abc;
+    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
+    c->x[2] = (uint64_t)(c->sp + 0x100ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550775cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_7005507abc;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_7005507abc;
+    c->x[1] = (uint64_t)(c->x[8] + 0x218ull);
+    c->x[2] = (uint64_t)(c->sp + 0xf8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507790ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(ROR64(c->x[1], 16) & 0xffffffffffffull);
+    if (c->x[8] == 0) goto L_7005507abc;
+    c->x[2] = (uint64_t)(c->sp + 0xb0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x7ull);
+    c->x[25] = (uint64_t)(c->sp + 0xb0ull);
+    c->x[30] = 0x70055077b4ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    c->x[8] = (uint64_t)(0ull | 0ull);
+    /* hint */
+    c->x[24] = (uint64_t)(0x7005510fd5ull);
+L_70055077c4:;
+    { uint64_t ea = c->x[25] + c->x[8]; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[24] + c->x[8]; uint64_t v = LD8(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
+    if (COND_NE(c)) goto L_7005507abc;
+    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
+    (void)(subs64(c, c->x[8], 0x7ull));
+    if (COND_NE(c)) goto L_70055077c4;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xf0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x228ull);
+    c->x[30] = 0x70055077f8ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_7005507868;
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_7005507abc;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_7005507abc;
+    c->x[1] = (uint64_t)(c->x[8] + 0x158ull);
+    c->x[2] = (uint64_t)(c->sp + 0xe8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507830ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_70055078fc;
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_7005507abc;
+    c->x[8] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[8] != 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    goto L_7005507874;
+L_700550785c:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x10ull);
+    goto L_70055076b4;
+L_7005507868:;
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_70055078fc;
+    c->x[8] = (uint64_t)(0ull | 0ull);
+L_7005507874:;
+    c->x[1] = (uint64_t)(c->x[8] + 0x1c8ull);
+    c->x[2] = (uint64_t)(c->sp + 0xe0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507888ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xd4ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x4ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x58ull);
+    c->x[30] = 0x70055078a4ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0xe0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_7005507a2c;
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
+    if (COND_CC(c)) goto L_7005507abc;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_7005507abc;
+    c->x[1] = (uint64_t)(c->x[8] + 0x20ull);
+    c->x[2] = (uint64_t)(c->sp + 0xd0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x4ull);
+    c->x[30] = 0x70055078dcull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0xd0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)((uint32_t)c->x[8] & 0xc000ull);
+    (void)(logic32(c, (uint32_t)c->x[8] & 0xeull));
+    c->x[8] = (uint32_t)(0x4000ull);
+    if (COND_NE(c)) (void)subs32(c, (uint32_t)c->x[9], (uint32_t)c->x[8]); else c->nzcv = 0x40000000ull;
+    c->x[25] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
+    goto L_7005507a30;
+L_70055078fc:;
+    c->x[26] = (uint32_t)(0u | 0u);
+L_7005507900:;
+    c->x[25] = (uint32_t)(0u | 0u);
+L_7005507904:;
+    c->x[2] = (uint64_t)(c->sp + 0xd8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(0ull | c->x[23]);
+    c->x[3] = (uint32_t)(0x8ull);
+    { uint64_t ea = c->sp + 0xc0ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 0xbcull; ST8(ea, 0u); }
+    { uint64_t ea = c->sp + 0xb8ull; ST8(ea, 0u); }
+    c->x[30] = 0x7005507924ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005507c3c;
+    c->x[1] = (uint64_t)(c->x[8] + 0x480ull);
+    c->x[2] = (uint64_t)(c->sp + 0xd8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550794cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005507c3c;
+    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
+    c->x[2] = (uint64_t)(c->sp + 0xd8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507974ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005507c3c;
+    c->x[1] = (uint64_t)(c->x[8] + 0x218ull);
+    c->x[2] = (uint64_t)(c->sp + 0xd8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550799cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[1], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_7005507c3c;
+    c->x[2] = (uint64_t)(c->sp + 0xb0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x7ull);
+    c->x[30] = 0x70055079c0ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xd8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x228ull);
+    c->x[30] = 0x70055079dcull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005507c3c;
+    if (c->x[8] == 0) goto L_7005507af4;
+    c->x[1] = (uint64_t)(c->x[8] + 0x158ull);
+    c->x[2] = (uint64_t)(c->sp + 0xd8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x7005507a08ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_EQ(c)) goto L_7005507af8;
+    goto L_7005507c3c;
+L_7005507a20:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x40ull);
+    goto L_70055076b4;
+L_7005507a2c:;
+    c->x[25] = (uint32_t)(0x1ull);
+L_7005507a30:;
+    { uint64_t ea = c->sp + 0xd4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0x16a8ull);
+    c->x[2] = (uint64_t)(c->sp + 0xccull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x3aull));
+    c->x[26] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[8] : (uint32_t)(0u));
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(ROR32((uint32_t)c->x[26], 28) & 0xfffffff0ull);
+    c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
+    c->x[1] = (uint64_t)(c->x[8] + c->x[9]);
+    c->x[30] = 0x7005507a60ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0xccull; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (((c->x[9] >> 1) & 1) == 0) goto L_7005507a90;
+    c->x[9] = (uint32_t)(0x26a8ull);
+    c->x[2] = (uint64_t)(c->sp + 0xc8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(c->x[8] + c->x[9]);
+    c->x[3] = (uint32_t)(0x1ull);
+    c->x[30] = 0x7005507a88ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507abc;
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+L_7005507a90:;
+    (void)(subs64(c, c->x[8], 0x0ull));
+    c->x[8] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] & (uint32_t)c->x[25]);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
+    if (COND_NE(c)) goto L_7005507900;
+    { uint64_t ea = c->sp + 0xccull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    if (((c->x[8] >> 1) & 1) == 0) goto L_7005507900;
+    { uint64_t ea = c->sp + 0xc8ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], 0x2ull));
+    c->x[25] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
+    goto L_7005507904;
+L_7005507abc:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x20ull);
+L_7005507ac4:;
+    { uint64_t ea = c->x[19] + 0x8ull; ST32(ea, (uint32_t)c->x[8]); }
+L_7005507ac8:;
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->x[2] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x7005507ad8ull; f_7005507c54(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507ae4;
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD32(ea); c->x[0] = (uint64_t)(v); }
+    goto L_7005507304;
+L_7005507ae4:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x0ull; ST64(ea, 0ull); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x40ull);
+    goto L_7005507300;
+L_7005507af4:;
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+L_7005507af8:;
+    if (c->x[8] == 0) goto L_7005507bbc;
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xd8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x1c8ull);
+    c->x[30] = 0x7005507b14ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 216; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0xc4ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x4ull);
+    c->x[1] = (uint64_t)(c->x[8] + 0x58ull);
+    c->x[30] = 0x7005507b3cull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xc4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xd4ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(ROR32((uint32_t)c->x[26], 28) & 0xfffffff0ull);
+    c->x[10] = (uint32_t)(0x16a8ull);
+    c->x[2] = (uint64_t)(c->sp + 0xbcull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x1ull);
+    c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
+    c->x[1] = (uint64_t)(c->x[9] + c->x[8]);
+    c->x[30] = 0x7005507b74ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xbcull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xccull; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005507c3c;
+    if (((c->x[8] >> 1) & 1) == 0) goto L_7005507bbc;
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(0x26a8ull);
+    c->x[2] = (uint64_t)(c->sp + 0xb8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x1ull);
+    c->x[1] = (uint64_t)(c->x[8] + c->x[9]);
+    c->x[30] = 0x7005507ba8ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xb8ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xc8ull; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005507c3c;
+L_7005507bbc:;
+    { uint64_t ea = c->sp + 0xe0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_7005507bec;
+    c->x[1] = (uint64_t)(c->x[8] + 0x20ull);
+    c->x[2] = (uint64_t)(c->sp + 0xc0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x4ull);
+    c->x[30] = 0x7005507bd8ull; f_7005507cf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005507c3c;
+    { uint64_t ea = c->sp + 0xc0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xd0ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005507c3c;
+L_7005507bec:;
+    c->x[8] = (uint64_t)(0ull | 0ull);
+    c->x[9] = (uint64_t)(c->sp + 0xb0ull);
+L_7005507bf4:;
+    { uint64_t ea = c->x[9] + c->x[8]; uint64_t v = LD8(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[24] + c->x[8]; uint64_t v = LD8(ea); c->x[11] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[11])));
+    if (COND_NE(c)) goto L_7005507c3c;
+    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
+    (void)(subs64(c, c->x[8], 0x7ull));
+    if (COND_NE(c)) goto L_7005507bf4;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x40ull; ST32(ea, (uint32_t)c->x[25]); }
+    { uint64_t ea = c->x[19] + 0x38ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[9] | 0x4ull);
+    { uint64_t ea = c->x[19] + 0x0ull; ST32(ea, (uint32_t)c->x[8]); }
+    if (((c->x[25] >> 0) & 1) != 0) goto L_7005507ac8;
+    { uint64_t ea = c->x[19] + 0x4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x4ull);
+    { uint64_t ea = c->x[19] + 0x4ull; ST32(ea, (uint32_t)c->x[8]); }
+    goto L_7005507ac8;
+L_7005507c3c:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x40ull);
+    goto L_7005507ac4;
+L_7005507c48:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x80ull);
+    goto L_70055076b4;
+}
+
+void f_700550a48c(Cpu *c) {
+    if (c->x[0] == 0) goto L_700550a540;
+    c->x[8] = (uint32_t)(0u | 0u);
+    if (c->x[2] == 0) goto L_700550a544;
+    if (c->x[1] == 0) goto L_700550a544;
+    { uint64_t ea = c->x[0] + 0x68ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    if ((uint32_t)c->x[9] == 0) goto L_700550a544;
+    { uint64_t ea = c->x[0] + 0x4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], 0x4ull));
+    if (COND_NE(c)) goto L_700550a540;
+    { uint64_t ea = c->x[0] + 0x88ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[2])));
+    if (COND_NE(c)) goto L_700550a540;
+    { uint64_t ea = c->x[0] + 0x90ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[3])));
+    if (COND_NE(c)) goto L_700550a540;
+    { uint64_t ea = c->x[0] + 0x78ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[3])));
+    if (COND_NE(c)) goto L_700550a540;
+    { uint64_t ea = c->x[0] + 0xcull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[0] + 0x98ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    c->x[13] = (uint32_t)(0x19ull);
+    c->x[9] = (uint64_t)(0ull | 0ull);
+    c->x[10] = (uint64_t)(c->x[0] + (c->x[8] << 2));
+    c->x[8] = (uint32_t)(ROR32((uint32_t)c->x[8], 28) & 0xfffffff0ull);
+    { uint64_t ea = c->x[10] + 0x14ull; uint64_t v = LD32(ea); c->x[12] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(c->x[11] + c->x[8]);
+    { uint64_t ea = c->x[10] + 0x34ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + 0x20ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + (uint32_t)c->x[12] * (uint32_t)c->x[13]);
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + (uint32_t)c->x[10]);
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + ((uint32_t)c->x[8] << 1));
+    c->x[8] = (uint32_t)(ROR32((uint32_t)c->x[8], 29) & 0xfffffff8ull);
+    c->x[8] = (uint64_t)(c->x[11] + c->x[8]);
+    { uint64_t ea = c->x[8] + 0xa0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint64_t)(c->x[11] + c->x[8]);
+L_700550a518:;
+    { uint64_t ea = c->x[10] + c->x[9]; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[1] + c->x[9]; uint64_t v = LD8(ea); c->x[11] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[11])));
+    if (COND_NE(c)) goto L_700550a540;
+    if ((uint32_t)c->x[8] == 0) goto L_700550a54c;
+    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
+    c->x[8] = (uint32_t)(0u | 0u);
+    (void)(subs64(c, c->x[9], 0x40ull));
+    if (COND_NE(c)) goto L_700550a518;
+    goto L_700550a544;
+L_700550a540:;
+    c->x[8] = (uint32_t)(0u | 0u);
+L_700550a544:;
+    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[8]);
+    c->pc = 0; return;
+L_700550a54c:;
+    c->x[8] = (uint32_t)(0x1ull);
+    goto L_700550a544;
+}
+
+void f_700550aae0(Cpu *c) {
+    if (c->x[0] == 0) goto L_700550abf4;
+    { uint64_t ea = c->sp - 32; ST64(ea, c->x[30]); c->sp = ea; }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[20] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[20] = (uint64_t)((c->x[20] & 0xffffffffffff0000ull) | 0x0ull);
+    c->x[19] = (uint64_t)(0ull | c->x[0]);
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[20])));
+    if (COND_CC(c)) goto L_700550abec;
+    c->x[8] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550abec;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
     c->x[0] = (uint32_t)(0u | 0u);
     c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[22])));
-    if (COND_CC(c)) goto L_700550654c;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550654c;
-    { uint64_t ea = c->x[8] + 0x50ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    if (c->x[9] != 0) goto L_70055064e4;
-    { uint64_t ea = c->x[8] + 0x48ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-L_70055064e4:;
-    { uint64_t ea = c->x[8] + 0x40ull; uint64_t v = LD8(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[10], 0x3ull));
-    if (COND_NE(c)) goto L_7005506548;
-    c->x[10] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->x[10] = (uint64_t)(c->x[9] + c->x[10]);
-    (void)(subs64(c, c->x[10], (uint64_t)(c->x[22])));
-    if (COND_CC(c)) goto L_700550654c;
-    c->x[10] = (uint64_t)(c->x[9] & 0x7ull);
-    if (c->x[10] != 0) goto L_700550654c;
-    { uint64_t ea = c->x[8] + 0x58ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    c->x[11] = (uint64_t)(0xfffffffffeffffffull);
-    c->x[12] = (uint64_t)(0xffffffffff00ffffull);
-    c->x[11] = (uint64_t)(c->x[10] + c->x[11]);
-    (void)(subs64(c, c->x[11], (uint64_t)(c->x[12])));
-    if (COND_CC(c)) goto L_700550654c;
-    c->x[10] = (uint64_t)(c->x[10] + c->x[9]);
-    (void)(subs64(c, c->x[10], (uint64_t)(c->x[21])));
-    if (COND_CC(c)) goto L_700550654c;
-    c->x[11] = (uint64_t)(subs64(c, c->x[21], (uint64_t)(c->x[9])));
-    if (COND_CC(c)) goto L_700550654c;
-    (void)(subs64(c, c->x[10], (uint64_t)(c->x[9])));
-    if (COND_CC(c)) goto L_700550654c;
-    (void)(subs64(c, c->x[11], (uint64_t)((uint64_t)(uint32_t)c->x[20])));
-    if (COND_CS(c)) goto L_700550655c;
-L_7005506548:;
-    c->x[0] = (uint32_t)(0u | 0u);
-L_700550654c:;
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t v = LD64(ea); c->sp = c->sp + 48; c->x[30] = (uint64_t)(v); }
-    c->pc = 0; return;
-L_700550655c:;
-    c->x[0] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[19] + 136; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->x[19] + 152; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    goto L_700550654c;
-}
-
-void f_700550662c(Cpu *c) {
-    { uint64_t ea = c->sp - 16; ST64(ea, c->x[30]); ST64(ea + 8, c->x[19]); c->sp = ea; }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[30] = 0x7005506638ull; f_700550656c(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005506648;
-    { uint64_t ea = c->x[19] + 0xf60ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_7005506650;
-    c->x[0] = (uint32_t)(0x1ull);
-L_7005506648:;
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 16; c->x[30] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    c->pc = 0; return;
-L_7005506650:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005506658ull; f_70055063c8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005506648;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 16; c->x[30] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    f_7005506b70(c); return;
-}
-
-void f_70055066cc(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x90ull);
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[30]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->x[0] + 0x80ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[22] = (uint64_t)(0ull | c->x[1]);
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[9] = (uint32_t)(0x1ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    { uint64_t ea = c->x[0] + 0x80ull; ST64(ea, c->x[8]); }
-    c->x[8] = (uint64_t)(c->x[0] + 0x4d8ull);
-L_70055066fc:;
-    c->x[10] = (uint64_t)(ldx32(c, c->x[8]));
-    if ((uint32_t)c->x[10] != 0) goto L_7005506760;
-    { uint32_t st = stx32(c, c->x[8], c->x[9]); c->x[10] = (uint32_t)(st); }
-    if ((uint32_t)c->x[10] != 0) goto L_70055066fc;
-    { uint64_t ea = c->x[19] + 0x4dcull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x4e0ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    if ((uint32_t)c->x[9] == 0) goto L_7005506720;
-    { uint64_t ea = c->x[19] + 0x4f0ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)((uint32_t)c->x[9] & 0x1ull);
-L_7005506720:;
-    { uint64_t ea = c->x[19] + 0x500ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x4e8ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[10], (uint64_t)(c->x[11])));
-    if (COND_EQ(c)) goto L_700550673c;
-    { uint64_t ea = c->x[19] + 0x80ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x500ull; ST64(ea, c->x[10]); }
-    { uint64_t ea = c->x[19] + 0x4f8ull; ST64(ea, c->x[11]); }
-L_700550673c:;
-    { uint64_t ea = c->x[19] + 0x11d0ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
-    if ((uint32_t)c->x[10] == 0) goto L_7005506770;
-    { uint64_t ea = c->x[19] + 0x11c8ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x11d0ull; ST32(ea, 0u); }
-    c->x[21] = (uint32_t)(0u | 0u);
-    { uint64_t ea = c->x[19] + 0x11ccull; ST32(ea, (uint32_t)c->x[9]); }
-    c->x[9] = (uint64_t)(c->x[19] + 0xfb8ull);
-    (void)(lda64(c->x[9]));
-    goto L_70055067d4;
-L_7005506760:;
-    c->x[20] = (uint64_t)(0ull | 0ull);
-    c->x[21] = (uint32_t)(0u | 0u);
-    c->excl_addr = ~0ull;
-    goto L_70055067d8;
-L_7005506770:;
-    { uint64_t ea = c->x[19] + 0x80ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x4f8ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    c->x[10] = (uint64_t)(c->x[10] - c->x[11]);
-    (void)(subs64(c, c->x[10], 0x3ull));
-    c->x[10] = (uint64_t)(c->x[19] + 0xfb8ull);
-    c->x[21] = (uint32_t)((COND_HI(c)) ? 0u : (uint32_t)((uint32_t)c->x[9]));
-    c->x[9] = (uint64_t)(lda64(c->x[10]));
-    if ((uint32_t)c->x[21] == 0) goto L_70055067d4;
-    if (c->x[9] == 0) goto L_70055067d4;
-    { uint64_t ea = c->x[19] + 0xfc0ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_NE(c)) goto L_70055067d0;
-    { uint64_t ea = c->x[19] + 0x11ccull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x11c8ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_EQ(c)) goto L_70055067d0;
-    c->x[10] = (uint64_t)(c->x[9] & 0x3full);
-    { uint64_t ea = c->x[19] + 0x11d8ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)((uint32_t)c->x[9] + 0x1ull);
-    c->x[10] = (uint64_t)(c->x[19] + (c->x[10] << 3));
-    { uint64_t ea = c->x[19] + 0x11ccull; ST32(ea, (uint32_t)c->x[9]); }
-    c->x[9] = (uint64_t)(c->x[11] + 0x1ull);
-    { uint64_t ea = c->x[10] + 0xfc8ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x11d8ull; ST64(ea, c->x[9]); }
-L_70055067d0:;
-    c->x[21] = (uint32_t)(0x1ull);
-L_70055067d4:;
-    stl32(c->x[8], 0ull);
-L_70055067d8:;
-    { uint64_t ea = c->x[19] + 0xf88ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_70055067ec;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x70055067e8ull; f_7005506668(c);
-    if ((uint32_t)c->x[0] == 0) goto L_70055068c8;
-L_70055067ec:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[22]);
-    c->x[2] = (uint32_t)(0x10000ull);
-    c->x[30] = 0x70055067fcull; f_7005506474(c);
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)(0x21ull);
-    (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
-    c->x[0] = (uint64_t)(c->x[19] + 0x100ull);
-    c->x[2] = (uint64_t)(c->x[19] + 0x118ull);
-    c->x[3] = (uint64_t)(c->x[19] + 0x138ull);
-    c->x[4] = (uint64_t)(c->x[19] + 0x2f0ull);
-    c->x[22] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[8] : (uint32_t)(0u));
-    c->x[30] = 0x7005506820ull; f_7005508d90(c);
-    if ((uint32_t)c->x[0] == 0) goto L_70055068a8;
-    { uint64_t ea = c->x[19] + 0x2e4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] != 0) goto L_70055068d8;
-    { uint64_t ea = c->x[19] + 368; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[10] = (uint64_t)(b); }
-    { uint64_t ea = c->x[19] + 0xf58ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x100ull; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->x[19] + 0xf70ull; ST64(ea, c->x[9]); }
-    { uint64_t ea = c->x[19] + 0x148ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf68ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[8]); ST64(ea + 8, c->x[10]); }
-    { uint64_t ea = c->x[19] + 0x110ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[11]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->x[19] + 0xf64ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xf90ull; ST64(ea, c->x[10]); }
-    /* hint */
-    c->x[10] = (uint64_t)(0x700550662cull);
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[8]); ST64(ea + 8, c->x[19]); }
-    /* hint */
-    c->x[8] = (uint64_t)(0x700550656cull);
-    { uint64_t ea = c->sp + 0x20ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[10]); }
-    if ((uint32_t)c->x[9] != 0) goto L_70055068d4;
-    { uint64_t ea = c->x[19] + 0x5c0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x2ull));
-    if (COND_NE(c)) goto L_70055068d4;
-    c->x[0] = (uint64_t)(c->sp + 0x0ull);
-    c->x[1] = (uint64_t)(c->x[19] + 0x588ull);
-    c->x[2] = (uint64_t)(c->x[19] + 0x5c8ull);
-    c->x[30] = 0x7005506898ull; f_700550eb08(c);
-    if ((uint32_t)c->x[0] == 0) goto L_70055068d4;
-    c->x[8] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[19] + 0x2e4ull; ST32(ea, (uint32_t)c->x[8]); }
-    goto L_70055068d8;
-L_70055068a8:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x70055068b0ull; f_7005506668(c);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[21]);
-    c->x[2] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x70055068c0ull; f_7005506c48(c);
-    c->x[8] = (uint32_t)((uint32_t)c->x[22] | 0x2ull);
-    goto L_70055068cc;
-L_70055068c8:;
-    c->x[8] = (uint32_t)(0x80ull);
-L_70055068cc:;
-    { uint64_t ea = c->x[19] + 0xc0ull; ST32(ea, (uint32_t)c->x[8]); }
-    goto L_7005506a4c;
-L_70055068d4:;
-    c->x[22] = (uint32_t)((uint32_t)c->x[22] | 0x4ull);
-L_70055068d8:;
-    { uint64_t ea = c->x[19] + 0x148ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->x[8] + 0x30ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x508ull; ST64(ea, c->x[1]); }
-    c->x[30] = 0x70055068ecull; f_7005506bec(c);
-    c->x[8] = (uint32_t)((uint32_t)c->x[22] | 0x40ull);
-    (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[8] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[8] : (uint32_t)((uint32_t)c->x[22]));
-    (void)(subs32(c, (uint32_t)c->x[21], 0x0ull));
-    c->x[9] = (uint32_t)((uint32_t)c->x[8] | 0x8ull);
-    c->x[22] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[9] : (uint32_t)((uint32_t)c->x[8]));
-    c->x[30] = 0x700550690cull; f_7005506b70(c);
-    c->x[8] = (uint32_t)((uint32_t)c->x[22] | 0x10ull);
-    (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
-    { uint64_t ea = c->x[19] + 0x524ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[8] : (uint32_t)((uint32_t)c->x[22]));
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[21]);
-    c->x[10] = (uint32_t)((uint32_t)c->x[8] | 0x80ull);
-    (void)(subs32(c, (uint32_t)c->x[9], 0x0ull));
-    c->x[2] = (uint64_t)(0ull | c->x[20]);
-    c->x[22] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[8] : (uint32_t)((uint32_t)c->x[10]));
-    c->x[30] = 0x7005506938ull; f_7005506c48(c);
-    (void)(subs64(c, c->x[20], 0xc4ull));
-    if (COND_NE(c)) goto L_7005506960;
-    { uint64_t ea = c->x[19] + 0x51cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_7005506960;
-    { uint64_t ea = c->x[19] + 0xa8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(0xc4ull);
-    c->x[8] = (uint32_t)(0u | (uint32_t)~(uint32_t)c->x[8]);
-    (void)(logic64(c, (uint64_t)(c->x[8] & c->x[9])));
-    c->x[23] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
-    goto L_7005506964;
-L_7005506960:;
-    c->x[23] = (uint32_t)(0u | 0u);
-L_7005506964:;
-    (void)(subs32(c, (uint32_t)c->x[22], 0x0ull));
-    c->x[8] = (uint32_t)(0xffull);
-    c->x[9] = (uint32_t)(0x3full);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[24] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
-    c->x[21] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[8] : (uint32_t)(0u));
-    c->x[25] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[9] : (uint32_t)(0u));
-    c->x[30] = 0x7005506984ull; f_700550a554(c);
-    { uint64_t ea = c->x[19] + 0x2f4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x160ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->sp + 0x0ull);
-    { uint64_t ea = c->x[19] + 0x170ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x148ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 16; ST32(ea, (uint32_t)c->x[0]); ST32(ea + 4, (uint32_t)c->x[25]); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x0ull));
-    { uint64_t ea = c->x[19] + 0x3d8ull; ST64(ea, c->x[9]); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[21] & 0x7full);
-    c->x[9] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
-    c->x[12] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
-    c->x[0] = (uint64_t)(c->x[19] + 0x2f0ull);
-    c->x[9] = (uint32_t)((uint32_t)c->x[9] | (uint32_t)c->x[23]);
-    { uint64_t ea = c->x[19] + 0x3e0ull; ST64(ea, c->x[10]); }
-    (void)(logic32(c, (uint32_t)c->x[9] & 0x1ull));
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    c->x[21] = (uint32_t)((COND_NE(c)) ? (uint32_t)c->x[21] : (uint32_t)((uint32_t)c->x[8]));
-    c->x[8] = (uint32_t)((uint32_t)c->x[12] & (uint32_t)c->x[23]);
-    c->x[23] = (uint32_t)((uint32_t)c->x[9] & (uint32_t)c->x[24]);
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] & (uint32_t)c->x[23]);
-    { uint64_t ea = c->x[19] + 0x3f4ull; ST32(ea, (uint32_t)c->x[21]); }
-    { uint64_t ea = c->sp + 24; ST32(ea, (uint32_t)c->x[21]); ST32(ea + 4, (uint32_t)c->x[8]); }
-    c->x[30] = 0x70055069e0ull; f_7005509d84(c);
-    { uint64_t ea = c->x[19] + 0x2f4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[20], 0xc4ull));
-    if (COND_EQ(c)) goto L_70055069f0;
-    if ((uint32_t)c->x[8] == 0) goto L_70055069f4;
-L_70055069f0:;
-    { uint64_t ea = c->x[19] + 0x51cull; ST32(ea, 0u); }
-L_70055069f4:;
-    { uint64_t ea = c->x[19] + 0x494ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[9], 0x2ull));
-    c->x[10] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
-    c->x[10] = (uint32_t)((uint32_t)c->x[10] & (uint32_t)c->x[23]);
-    (void)(subs32(c, (uint32_t)c->x[10], 0x1ull));
-    if (COND_NE(c)) goto L_7005506a1c;
-    c->x[0] = (uint64_t)(c->x[19] + 0x3d0ull);
-    c->x[30] = 0x7005506a14ull; f_70055091ac(c);
-    { uint64_t ea = c->x[19] + 0x2f4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x494ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-L_7005506a1c:;
-    { uint64_t ea = c->x[19] + 0x118ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x170ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 192; ST32(ea, (uint32_t)c->x[22]); ST32(ea + 4, (uint32_t)c->x[21]); }
-    { uint64_t ea = c->x[19] + 168; ST64(ea, c->x[20]); ST64(ea + 8, c->x[10]); }
-    { uint64_t ea = c->x[19] + 0x2f8ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0xb8ull; ST64(ea, c->x[11]); }
-    { uint64_t ea = c->x[19] + 0x2e4ull; uint64_t v = LD32(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 200; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[10]); }
-    { uint64_t ea = c->x[19] + 0x34cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 208; ST32(ea, (uint32_t)c->x[11]); ST32(ea + 4, (uint32_t)c->x[8]); }
-    { uint64_t ea = c->x[19] + 0x490ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 216; ST32(ea, (uint32_t)c->x[9]); ST32(ea + 4, (uint32_t)c->x[8]); }
-L_7005506a4c:;
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0x90ull);
-    c->pc = 0; return;
-}
-
-void f_7005508758(Cpu *c) {
-    if (c->x[0] == 0) goto L_7005508a34;
-    { uint64_t ea = c->sp - 16; ST64(ea, c->x[30]); ST64(ea + 8, c->x[19]); c->sp = ea; }
-    { uint64_t ea = c->x[0] + 0x1a8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    if ((uint32_t)c->x[8] == 0) goto L_700550877c;
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[20])));
+    if (COND_CC(c)) goto L_700550abec;
+    c->x[8] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550abec;
+    { uint64_t ea = c->x[19] + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550abe8;
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550abe8;
+    c->x[30] = 0x700550ab4cull; f_7005507d50(c);
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[0], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_700550abe8;
     { uint64_t ea = c->x[19] + 0x40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(c->tpidrro);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_7005508a30;
-L_700550877c:;
-    if (c->x[1] == 0) goto L_70055087a0;
-    { uint64_t ea = c->x[1] + 0x68ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_70055087a0;
-    { uint64_t ea = c->x[19] + 0x1a8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_70055087a0;
-    { uint64_t ea = c->x[19] + 0x38ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[1]);
-    c->x[1] = (uint64_t)(0ull | c->x[8]);
-    c->x[30] = 0x70055087a0ull; f_7005509c8c(c);
-L_70055087a0:;
-    c->x[10] = (uint64_t)(0x7005510000ull);
-    c->x[11] = (uint64_t)(0x7005510000ull);
-    c->x[13] = (uint32_t)(0x10ull);
-    { uint64_t ea = c->x[10] + 0xd0ull; c->v[0] = LD128(ea); }
-    c->x[10] = (uint64_t)(0x7005510000ull);
-    { uint64_t ea = c->x[11] + 0x110ull; c->v[1] = LD128(ea); }
-    { uint64_t ea = c->x[10] + 0xb0ull; c->v[2] = LD128(ea); }
-    c->x[10] = (uint64_t)(0x7005510000ull);
-    c->x[11] = (uint64_t)(0x7005510000ull);
-    { uint64_t ea = c->x[10] + 0xf0ull; c->v[3] = LD128(ea); }
-    c->x[10] = (uint32_t)(0x1b8ull);
-    { uint64_t ea = c->x[11] + 0x140ull; c->v[4] = LD128(ea); }
-    c->x[11] = (uint64_t)(0x7005510000ull);
-    c->x[12] = (uint64_t)(0x7005510000ull);
-    VW(vu64, 1, 5, (vu64){} + (uint64_t)c->x[13]);
-    c->x[13] = (uint64_t)(0x7005510000ull);
-    VW(vu64, 1, 6, (vu64){} + (uint64_t)c->x[10]);
-    { uint64_t ea = c->x[19] + 0x38ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x48ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[11] + 0x130ull; c->v[7] = LD128(ea); }
-    { uint64_t ea = c->x[12] + 0xe0ull; c->v[16] = LD128(ea); }
-    { uint64_t ea = c->x[13] + 0xc0ull; c->v[17] = LD128(ea); }
-    c->x[11] = (uint64_t)(c->x[19] + 0x7ull);
-    c->x[12] = (uint32_t)(0x1c0ull);
-L_7005508800:;
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 6) > VREG(vu64, 17)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 18), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 18), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[0]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550881c;
-    { uint64_t ea = c->x[11] - 7; ST8(ea, 0u); }
-L_700550881c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 17)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 18), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 18), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[1]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550883c;
-    { uint64_t ea = c->x[11] - 6; ST8(ea, 0u); }
-L_700550883c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 16)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 0), VREG(vu16, 18), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 18), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[2]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550885c;
-    { uint64_t ea = c->x[11] - 5; ST8(ea, 0u); }
-L_700550885c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 16)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 0), VREG(vu16, 18), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 18), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[3]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550887c;
-    { uint64_t ea = c->x[11] - 4; ST8(ea, 0u); }
-L_700550887c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 7)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 18), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 0), VREG(vu8, 18), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[4]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550889c;
-    { uint64_t ea = c->x[11] - 3; ST8(ea, 0u); }
-L_700550889c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 7)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 18), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 0), VREG(vu8, 18), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[5]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_70055088bc;
-    { uint64_t ea = c->x[11] - 2; ST8(ea, 0u); }
-L_70055088bc:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 4)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 0), VREG(vu16, 18), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 0), VREG(vu8, 18), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[6]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_70055088dc;
-    { uint64_t ea = c->x[11] - 1; ST8(ea, 0u); }
-L_70055088dc:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 4)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 0), VREG(vu16, 18), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 0), VREG(vu8, 18), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[7]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_70055088fc;
-    { uint64_t ea = c->x[11] + 0x0ull; ST8(ea, 0u); }
-L_70055088fc:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 3)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 18), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 18), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[0]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550891c;
-    { uint64_t ea = c->x[11] + 0x1ull; ST8(ea, 0u); }
-L_700550891c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 3)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 18), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 18), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[1]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550893c;
-    { uint64_t ea = c->x[11] + 0x2ull; ST8(ea, 0u); }
-L_700550893c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 2)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 0), VREG(vu16, 18), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 18), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[2]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550895c;
-    { uint64_t ea = c->x[11] + 0x3ull; ST8(ea, 0u); }
-L_700550895c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 2)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 0), VREG(vu16, 18), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 18), VREG(vu8, 0), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[3]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550897c;
-    { uint64_t ea = c->x[11] + 0x4ull; ST8(ea, 0u); }
-L_700550897c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 1)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 18), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 0), VREG(vu8, 18), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[4]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_700550899c;
-    { uint64_t ea = c->x[11] + 0x5ull; ST8(ea, 0u); }
-L_700550899c:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 1)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 18), VREG(vu16, 0), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 0), VREG(vu8, 18), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[5]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_70055089bc;
-    { uint64_t ea = c->x[11] + 0x6ull; ST8(ea, 0u); }
-L_70055089bc:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 0)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 0), VREG(vu16, 18), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 0), VREG(vu8, 18), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[6]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_70055089dc;
-    { uint64_t ea = c->x[11] + 0x7ull; ST8(ea, 0u); }
-L_70055089dc:;
-    VW(vu64, 1, 18, (vu64){} + (uint64_t)c->x[10]);
-    VW(vu64, 1, 18, (vu64)(VREG(vu64, 18) > VREG(vu64, 0)));
-    sl_gen(c, LOP_XTN, 2, 2, 18, 2, 0, 0, 18, 3, 0, -1, 0, 0, -1, 0x0ull);
-    VW(vu16, 0, 18, SHUF(VREG(vu16, 0), VREG(vu16, 18), 0, 2, 8, 10, 0, 0, 0, 0));
-    VW(vu8, 0, 18, SHUF(VREG(vu8, 0), VREG(vu8, 18), 0, 2, 4, 6, 16, 18, 20, 22, 0, 0, 0, 0, 0, 0, 0, 0));
-    c->x[13] = (uint32_t)(((uint8_t *)&c->v[18])[7]);
-    if (((c->x[13] >> 0) & 1) == 0) goto L_70055089fc;
-    { uint64_t ea = c->x[11] + 0x8ull; ST8(ea, 0u); }
-L_70055089fc:;
-    VW(vu64, 1, 7, VREG(vu64, 7) + VREG(vu64, 5));
-    VW(vu64, 1, 16, VREG(vu64, 16) + VREG(vu64, 5));
-    c->x[12] = (uint64_t)(subs64(c, c->x[12], 0x10ull));
-    VW(vu64, 1, 17, VREG(vu64, 17) + VREG(vu64, 5));
-    VW(vu64, 1, 4, VREG(vu64, 4) + VREG(vu64, 5));
-    c->x[11] = (uint64_t)(c->x[11] + 0x10ull);
-    VW(vu64, 1, 3, VREG(vu64, 3) + VREG(vu64, 5));
-    VW(vu64, 1, 2, VREG(vu64, 2) + VREG(vu64, 5));
-    VW(vu64, 1, 1, VREG(vu64, 1) + VREG(vu64, 5));
-    VW(vu64, 1, 0, VREG(vu64, 0) + VREG(vu64, 5));
-    if (COND_NE(c)) goto L_7005508800;
-    { uint64_t ea = c->x[19] + 0x38ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->x[19] + 0x48ull; ST64(ea, c->x[9]); }
-L_7005508a30:;
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 16; c->x[30] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-L_7005508a34:;
-    c->pc = 0; return;
-}
-
-void f_7005508d90(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x70ull);
-    { uint64_t ea = c->sp + 0x40ull; ST64(ea, c->x[30]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->x[21] = (uint64_t)(0ull | c->x[2]);
-    c->x[2] = (uint32_t)(0u | 0u);
-    if (c->x[21] == 0) goto L_7005508e30;
-    c->x[20] = (uint64_t)(0ull | c->x[3]);
-    if (c->x[3] == 0) goto L_7005508e30;
-    c->x[22] = (uint64_t)(c->tpidrro);
-    if (c->x[22] == 0) goto L_7005508e2c;
-    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[22], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_7005508e2c;
-    { uint64_t ea = c->x[21] + 0x18ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[19] = (uint64_t)(0ull | c->x[4]);
-    if ((uint32_t)c->x[8] == 0) goto L_7005508e20;
-    c->v[0] = 0x0ull;
-    c->x[2] = (uint64_t)(c->sp + 0x0ull);
-    { uint64_t ea = c->sp + 0x30ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->sp + 16; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
-    { uint64_t ea = c->sp + 0x0ull; ST128(ea, c->v[0]); }
-    c->x[30] = 0x7005508decull; f_70055080f8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005508e20;
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_7005508e20;
-    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[3] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->sp + 0x0ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint64_t)(0ull | c->x[22]);
-    c->x[4] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005508e18ull; f_7005508a38(c);
-    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    goto L_7005508e30;
-L_7005508e20:;
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[1] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x7005508e2cull; f_7005508758(c);
-L_7005508e2c:;
-    c->x[2] = (uint32_t)(0u | 0u);
-L_7005508e30:;
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[2]);
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x70ull);
-    c->pc = 0; return;
-}
-
-void f_7005509080(Cpu *c) {
-    { uint64_t ea = c->sp - 32; ST64(ea, c->x[30]); ST64(ea + 8, c->x[21]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    if (c->x[0] == 0) goto L_7005509124;
-    { uint64_t ea = c->x[0] + 0x60ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    if (c->x[8] == 0) goto L_7005509124;
-    { uint64_t ea = c->x[19] + 0x68ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(0x4345ull);
-    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x36520000ull);
-    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_7005509124;
-    c->x[20] = (uint64_t)(0ull | c->x[19]);
-    c->x[2] = (uint64_t)(0x7005511000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0x328ull);
-    { uint64_t ea = c->x[20]; uint64_t v = LD64(ea); c->x[20] = c->x[20] + 64; c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x10ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x6e7000ull);
-    c->x[1] = (uint64_t)(c->x[8] + 0x6d0ull);
-    c->x[30] = 0x70055090d0ull; f_7005508018(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005509124;
-    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[21] = (uint32_t)(0xa088ull);
-    /* hint */
-    c->x[2] = (uint64_t)(0x7005511468ull);
-    c->x[21] = (uint32_t)((c->x[21] & 0xffffffff0000ffffull) | 0x2090000ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[8] = (uint64_t)(c->x[8] + c->x[21]);
-    c->x[3] = (uint32_t)(0x18ull);
-    c->x[1] = (uint64_t)(c->x[8] + 0x228ull);
-    c->x[30] = 0x70055090fcull; f_7005508018(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005509124;
-    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    /* hint */
-    c->x[2] = (uint64_t)(0x7005511480ull);
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    c->x[1] = (uint64_t)(c->x[8] + c->x[21]);
-    c->x[3] = (uint32_t)(0x1cull);
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 32; c->x[30] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    f_7005508018(c); return;
-L_7005509124:;
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    if (c->x[8] == 0) goto L_700550abe8;
+    { uint64_t ea = c->x[19] + 0x48ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550abe8;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
     c->x[0] = (uint32_t)(0u | 0u);
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 32; c->x[30] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0x8ull; ST64(ea, 0ull); }
+    c->x[8] = (uint64_t)(c->x[1] + c->x[8]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[20])));
+    if (COND_CC(c)) goto L_700550abec;
+    c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550abec;
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550ab9cull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550abec;
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xf150ull);
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3720000ull);
+    c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_700550abe8;
+    { uint64_t ea = c->x[19] + 56; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[8] = (uint64_t)(b); }
+    { uint64_t ea = c->x[19] + 8; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[1] = (uint64_t)(a); c->x[2] = (uint64_t)(b); }
+    c->pc = c->x[8]; c->x[30] = 0x700550abc8ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550abec;
+    { uint64_t ea = c->x[19] + 8; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[1] = (uint64_t)(a); c->x[2] = (uint64_t)(b); }
+    { uint64_t ea = c->x[19] + 0x48ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x38ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->pc = c->x[8]; c->x[30] = 0x700550abdcull; rt_dispatch(c); c->pc = 0;
+    (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
+    c->x[0] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
+    goto L_700550abec;
+L_700550abe8:;
+    c->x[0] = (uint32_t)(0u | 0u);
+L_700550abec:;
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp; uint64_t v = LD64(ea); c->sp = c->sp + 32; c->x[30] = (uint64_t)(v); }
+L_700550abf4:;
     c->pc = 0; return;
 }
 
-void f_7005509134(Cpu *c) {
-    { uint64_t ea = c->sp - 48; ST64(ea, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+void f_700550ac54(Cpu *c) {
+    if (c->x[2] == 0) goto L_700550aec4;
+    c->sp = (uint64_t)(c->sp - 0x60ull);
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[30]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
     c->x[19] = (uint64_t)(0ull | c->x[2]);
     c->x[20] = (uint64_t)(0ull | c->x[1]);
     c->x[21] = (uint64_t)(0ull | c->x[0]);
-    c->x[22] = (uint64_t)(0ull | 0ull);
-L_7005509150:;
-    c->x[2] = (uint64_t)(c->sp + 0xcull);
+    c->x[30] = 0x700550ac78ull; f_700550a9d8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550aed0;
+    c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[22] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[22] = (uint64_t)((c->x[22] & 0xffffffffffff0000ull) | 0x0ull);
+    c->x[8] = (uint64_t)(c->x[20] + c->x[8]);
+    { uint64_t ea = c->sp + 32; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
+    { uint64_t ea = c->sp + 16; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 0x8ull; ST64(ea, 0ull); }
+    if (COND_CC(c)) goto L_700550aed0;
+    c->x[8] = (uint64_t)(c->x[20] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550aed0;
+    c->x[2] = (uint64_t)(c->sp + 0x28ull);
     c->x[0] = (uint64_t)(0ull | c->x[21]);
     c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->sp + 0xcull; ST8(ea, 0u); }
-    c->x[30] = 0x7005509168ull; f_70055080a0(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005509190;
-    { uint64_t ea = c->sp + 0xcull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + c->x[22]; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_7005509190;
-    if ((uint32_t)c->x[8] == 0) goto L_7005509198;
-    c->x[22] = (uint64_t)(c->x[22] + 0x1ull);
-    c->x[20] = (uint64_t)(c->x[20] + 0x1ull);
-    (void)(subs64(c, c->x[22], 0x40ull));
-    if (COND_NE(c)) goto L_7005509150;
-L_7005509190:;
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550acc0ull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550aed0;
+    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xd5a0ull);
+    { uint64_t ea = c->sp + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3710000ull);
     c->x[0] = (uint32_t)(0u | 0u);
-    goto L_700550919c;
-L_7005509198:;
+    c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_700550aed0;
+    c->x[23] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[23] = (uint64_t)((c->x[23] & 0xffffffffffff0000ull) | 0x18ull);
+    c->x[8] = (uint64_t)(c->x[20] + c->x[23]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
+    if (COND_CC(c)) goto L_700550aed0;
+    c->x[1] = (uint64_t)(c->x[20] + 0x18ull);
+    c->x[2] = (uint64_t)(c->sp + 0x20ull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550ad0cull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550aed0;
+    { uint64_t ea = c->sp + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0u | 0u);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550aed0;
+    c->x[8] = (uint64_t)(c->x[23] + c->x[20]);
+    c->x[8] = (uint64_t)(c->x[8] + 0x8ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
+    if (COND_CC(c)) goto L_700550aed0;
+    c->x[1] = (uint64_t)(c->x[20] + 0x20ull);
+    c->x[2] = (uint64_t)(c->sp + 0x18ull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550ad48ull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550aed0;
+    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[9] = (uint64_t)(c->x[23] + c->x[8]);
+    c->x[9] = (uint64_t)(c->x[9] + 0x68ull);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[22])));
+    if (COND_CC(c)) goto L_700550aed0;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_700550aed0;
+    c->x[1] = (uint64_t)(c->x[8] + 0x80ull);
+    c->x[2] = (uint64_t)(c->sp + 0x20ull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550ad80ull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550aed0;
+    { uint64_t ea = c->sp + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550aecc;
+    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[23]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[22])));
+    if (COND_CC(c)) goto L_700550aed0;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_700550aed0;
+    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550adc4ull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550aed0;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    /* hint */
+    c->x[2] = (uint64_t)(0x7005511061ull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x700550addcull; f_700550aee4(c);
+    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
+    c->x[0] = (uint32_t)(0u | 0u);
+    if ((uint32_t)c->x[8] == 0) goto L_700550aed0;
+    c->x[8] = (uint64_t)(c->x[23] + c->x[20]);
+    c->x[8] = (uint64_t)(c->x[8] + 0xa0ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
+    if (COND_CC(c)) goto L_700550aed0;
+    c->x[1] = (uint64_t)(c->x[20] + 0xb8ull);
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550ae0cull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550aed0;
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[8] = (uint64_t)(c->x[1] + c->x[8]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
+    if (COND_CC(c)) goto L_700550aed0;
+    c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550aed0;
+    c->x[2] = (uint64_t)(c->sp + 0x28ull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550ae40ull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550aed0;
+    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xff30ull);
+    { uint64_t ea = c->sp + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3710000ull);
+    c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_700550aecc;
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[23]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[22])));
+    if (COND_CC(c)) goto L_700550aed0;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_700550aed0;
+    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
+    c->x[2] = (uint64_t)(c->sp + 0x20ull);
+    c->x[0] = (uint64_t)(0ull | c->x[21]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550ae90ull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550aed0;
+    { uint64_t ea = c->sp + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550aecc;
+    c->v[0] = 0xffffffffull;
+    { uint64_t ea = c->sp + 8; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[10] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
     c->x[0] = (uint32_t)(0x1ull);
-L_700550919c:;
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t v = LD64(ea); c->sp = c->sp + 48; c->x[30] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0; ST64(ea, c->x[20]); ST64(ea + 8, c->x[8]); }
+    { uint64_t ea = c->x[19] + 16; ST64(ea, c->x[9]); ST64(ea + 8, c->x[10]); }
+    { uint64_t ea = c->x[19] + 0x20ull; ST64(ea, VS64(0)); }
+    goto L_700550aed0;
+L_700550aec4:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->pc = 0; return;
+L_700550aecc:;
+    c->x[0] = (uint32_t)(0u | 0u);
+L_700550aed0:;
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x60ull);
     c->pc = 0; return;
 }
 
-void f_70055091ac(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x40ull);
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[30]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[30] = 0x70055091c0ull; f_7005509080(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550933c;
-    { uint64_t ea = c->x[19] + 0x60ull; uint64_t v = LD64(ea); c->x[21] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 0x54ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x2ull));
-    if (COND_NE(c)) goto L_7005509338;
-    { uint64_t ea = c->x[21] + 0x50ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
-    if (COND_NE(c)) goto L_7005509338;
-    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(c->tpidrro);
+void f_700550b148(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x110ull);
+    { uint64_t ea = c->sp + 0xc0ull; ST64(ea, c->x[29]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[30]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 240; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 256; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[20] = (uint64_t)(0ull | c->x[0]);
+    c->x[0] = (uint32_t)(0u | 0u);
+    if (c->x[2] == 0) goto L_700550b18c;
+    c->x[19] = (uint64_t)(0ull | c->x[3]);
+    if (c->x[3] == 0) goto L_700550b18c;
+    c->x[21] = (uint32_t)(0u | (uint32_t)c->x[4]);
+    (void)(subs32(c, (uint32_t)c->x[4], 0x98ull));
+    if (COND_HI(c)) goto L_700550b18c;
+    { uint64_t ea = c->x[19] + ((uint64_t)(uint32_t)c->x[21] << 1); uint64_t v = LD16(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_700550b1a8;
+L_700550b188:;
+    c->x[0] = (uint32_t)(0u | 0u);
+L_700550b18c:;
+    { uint64_t ea = c->sp + 256; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xc0ull; uint64_t v = LD64(ea); c->x[29] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 240; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x110ull);
+    c->pc = 0; return;
+L_700550b1a8:;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[23] = (uint64_t)(0ull | c->x[2]);
+    c->x[22] = (uint64_t)(0ull | c->x[1]);
+    c->x[30] = 0x700550b1b8ull; f_700550a9d8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550b18c;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[22]);
+    c->x[2] = (uint64_t)(0ull | c->x[23]);
+    c->x[30] = 0x700550b1ccull; f_700550aee4(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550b18c;
+    c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[23] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[23] = (uint64_t)((c->x[23] & 0xffffffffffff0000ull) | 0x0ull);
+    c->x[8] = (uint64_t)(c->x[22] + c->x[8]);
+    { uint64_t ea = c->sp + 0xc8ull; ST64(ea, 0ull); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
+    { uint64_t ea = c->sp + 176; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 0xa8ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->sp + 0xa4ull; ST16(ea, 0u); }
+    if (COND_CC(c)) goto L_700550b18c;
+    c->x[8] = (uint64_t)(c->x[22] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550b18c;
+    c->x[2] = (uint64_t)(c->sp + 0xc8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[22]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550b218ull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550b18c;
+    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xb118ull);
+    { uint64_t ea = c->sp + 0xc8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3910000ull);
+    c->x[9] = (uint64_t)(c->x[9] + c->x[10]);
+    c->x[10] = (uint64_t)(c->x[9] + 0xde8ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[10])));
+    if (COND_EQ(c)) goto L_700550b244;
     (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_7005509338;
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x70055091fcull; f_700550934c(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550933c;
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[8] + 0x68ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    if ((uint32_t)c->x[9] == 0) goto L_7005509338;
-    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    if (c->x[9] == 0) goto L_7005509338;
-    { uint64_t ea = c->x[8] + 0x88ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[10], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_7005509338;
-    { uint64_t ea = c->x[8] + 0x90ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_NE(c)) goto L_7005509338;
-    { uint64_t ea = c->x[8] + 0x78ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_7005509338;
-    c->x[20] = (uint64_t)(0ull | c->x[19]);
-    c->x[9] = (uint32_t)(0x66b0ull);
-    c->x[2] = (uint64_t)(c->sp + 0x18ull);
-    { uint64_t ea = c->x[20]; uint64_t v = LD64(ea); c->x[20] = c->x[20] + 64; c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x3ad0000ull);
+    if (COND_NE(c)) goto L_700550b188;
+L_700550b244:;
+    c->x[24] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[24] = (uint64_t)((c->x[24] & 0xffffffffffff0000ull) | 0xd8ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[24]);
+    c->x[9] = (uint64_t)(c->x[9] + 0xc8ull);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[23])));
+    if (COND_CC(c)) goto L_700550b18c;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_700550b18c;
+    c->x[1] = (uint64_t)(c->x[8] + 0x1a0ull);
+    c->x[2] = (uint64_t)(c->sp + 0xb8ull);
     c->x[0] = (uint64_t)(0ull | c->x[20]);
     c->x[3] = (uint32_t)(0x8ull);
-    { uint64_t ea = c->sp + 0x18ull; ST64(ea, 0ull); }
-    c->x[1] = (uint64_t)(c->x[8] + c->x[9]);
-    c->x[30] = 0x7005509264ull; f_70055080a0(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550933c;
-    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[0], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_7005509338;
-    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[3] = (uint32_t)(0xa387ull);
-    c->x[1] = (uint64_t)(c->sp + 0x10ull);
-    c->x[2] = (uint64_t)(c->x[21] + 0x38ull);
-    c->x[3] = (uint32_t)((c->x[3] & 0xffffffff0000ffffull) | 0x25ef0000ull);
-    { uint64_t ea = c->sp + 0x10ull; ST64(ea, 0ull); }
-    c->x[8] = (uint64_t)(c->x[8] + 0x6e7000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x6d0ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550929cull; rt_dispatch(c); c->pc = 0;
-    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
+    c->x[30] = 0x700550b27cull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550b18c;
+    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xb8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
     c->x[0] = (uint32_t)(0u | 0u);
-    if ((uint32_t)c->x[8] == 0) goto L_700550933c;
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    if (c->x[1] == 0) goto L_700550933c;
-    c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    { uint64_t ea = c->sp + 0xcull; ST8(ea, 0u); }
-    if (COND_CC(c)) goto L_700550933c;
-    { uint64_t ea = c->x[19] + 0x48ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_700550933c;
-    (void)(adds64(c, c->x[1], 0x1ull));
-    c->x[0] = (uint32_t)(0u | 0u);
-    if (COND_EQ(c)) goto L_700550933c;
-    c->x[9] = (uint64_t)(c->x[1] + 0x1ull);
-    c->x[9] = (uint64_t)(ROR64(c->x[9], 39) & 0x1ffffffull);
-    if (c->x[9] != 0) goto L_700550933c;
-    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->sp + 0xcull);
-    c->x[3] = (uint32_t)(0x1ull);
-    c->pc = c->x[8]; c->x[30] = 0x70055092f0ull; rt_dispatch(c); c->pc = 0;
-    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    if ((uint32_t)c->x[8] == 0) goto L_700550933c;
-    { uint64_t ea = c->sp + 0xcull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700550933c;
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->x[21] + 0x58ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x74a000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x390ull);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_700550b18c;
+    c->x[8] = (uint64_t)(c->x[22] + c->x[24]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
+    if (COND_CC(c)) goto L_700550b18c;
+    c->x[1] = (uint64_t)(c->x[22] + 0xd8ull);
+    c->x[2] = (uint64_t)(c->sp + 0xb0ull);
     c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005509314ull; f_7005509134(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550933c;
-    { uint64_t ea = c->x[21] + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[1] = (uint64_t)(a); c->x[2] = (uint64_t)(b); }
-    c->x[3] = (uint32_t)(0x4ull);
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[30] = 0x7005509328ull; f_7005509d00(c);
-    c->x[8] = (uint32_t)(0x3ull);
-    c->x[0] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[21] + 0x54ull; ST32(ea, (uint32_t)c->x[8]); }
-    goto L_700550933c;
-L_7005509338:;
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550b2bcull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550b18c;
+    { uint64_t ea = c->sp + 0xb0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
     c->x[0] = (uint32_t)(0u | 0u);
-L_700550933c:;
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[23])));
+    if (COND_CC(c)) goto L_700550b18c;
+    c->x[8] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550b18c;
+    c->x[8] = (uint64_t)(c->x[24] + c->x[22]);
+    c->x[8] = (uint64_t)(c->x[8] + 0x18ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
+    if (COND_CC(c)) goto L_700550b18c;
+    c->x[1] = (uint64_t)(c->x[22] + 0xf0ull);
+    c->x[2] = (uint64_t)(c->sp + 0xa8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550b304ull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550b18c;
+    { uint64_t ea = c->sp + 0xa8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[23])));
+    if (COND_CC(c)) goto L_700550b18c;
+    c->x[8] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550b18c;
+    c->x[8] = (uint64_t)(0ull | 0x7fffff0000ull);
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[8] = (uint64_t)((c->x[8] & 0xffffffffffff0000ull) | 0xfeedull);
+    (void)(subs64(c, c->x[22], (uint64_t)(c->x[8])));
+    if (COND_HI(c)) goto L_700550b18c;
+    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550b18c;
+    { uint64_t ea = c->x[20] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(c->x[22] + 0x110ull);
+    c->x[2] = (uint64_t)(c->sp + 0xa4ull);
+    c->x[3] = (uint32_t)(0x2ull);
+    c->pc = c->x[8]; c->x[30] = 0x700550b358ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550b18c;
+    { uint64_t ea = c->sp + 0xa4ull; uint64_t v = LD16(ea); c->x[8] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0u | 0u);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x800ull));
+    if (COND_HI(c)) goto L_700550b18c;
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[21])));
+    if (COND_LS(c)) goto L_700550b18c;
+    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xc298ull);
+    c->x[9] = (uint64_t)(0xffffffffffffffffull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x28f0000ull);
+    c->x[1] = (uint64_t)(c->sp + 0x88ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
+    c->x[2] = (uint64_t)(0ull | 0ull);
+    c->x[3] = (uint32_t)(0xffffffffull);
+    c->x[4] = (uint32_t)(0x1ull);
+    c->x[5] = (uint64_t)(0ull | 0ull);
+    { uint64_t ea = c->sp + 0x88ull; ST64(ea, c->x[19]); }
+    { uint64_t ea = c->sp + 144; ST32(ea, (uint32_t)c->x[21]); ST32(ea + 4, 0u); }
+    { uint64_t ea = c->sp + 0x98ull; ST64(ea, c->x[9]); }
+    c->pc = c->x[8]; c->x[30] = 0x700550b3b0ull; rt_dispatch(c); c->pc = 0;
+    c->x[22] = (uint32_t)(0u | (uint32_t)c->x[0]);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x700550b3bcull; f_700550aae0(c);
+    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
+    (void)(subs32(c, (uint32_t)c->x[22], (uint32_t)((uint32_t)c->x[21])));
+    c->x[0] = (uint32_t)(0u | 0u);
+    if (COND_NE(c)) goto L_700550b18c;
+    if ((uint32_t)c->x[8] == 0) goto L_700550b18c;
+    c->x[22] = (uint64_t)(0ull | 0ull);
+    c->x[23] = (uint32_t)(0u | (uint32_t)c->x[21]);
+    c->x[21] = (uint32_t)((uint32_t)c->x[21] + 0x1ull);
+    c->x[25] = (uint32_t)(0x40ull);
+L_700550b3e0:;
+    c->x[8] = (uint32_t)((uint32_t)c->x[21] - (uint32_t)c->x[22]);
+    { uint64_t ea = c->sp + 0xb0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x40ull));
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[8] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[8] : (uint32_t)((uint32_t)c->x[25]));
+    c->x[1] = (uint64_t)(c->x[9] + (c->x[22] << 1));
+    c->x[3] = (uint32_t)(ROR32((uint32_t)c->x[8], 31) & 0xfffffffeull);
+    c->x[24] = (uint64_t)(0ull | c->x[8]);
+    c->x[30] = 0x700550b408ull; f_700550abf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550b18c;
+    c->x[8] = (uint64_t)(0ull | 0ull);
+    c->x[9] = (uint64_t)(c->sp + 0x8ull);
+L_700550b414:;
+    { uint64_t ea = c->x[9] + (c->x[8] << 1); uint64_t v = LD16(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + (c->x[8] << 1); uint64_t v = LD16(ea); c->x[11] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[11])));
+    if (COND_NE(c)) goto L_700550b188;
+    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[24])));
+    if (COND_CC(c)) goto L_700550b414;
+    c->x[22] = (uint64_t)(c->x[22] + 0x40ull);
+    c->x[19] = (uint64_t)(c->x[19] + 0x80ull);
+    (void)(subs64(c, c->x[22], (uint64_t)(c->x[23])));
+    if (COND_LS(c)) goto L_700550b3e0;
+    goto L_700550b18c;
+}
+
+void f_700550c0d0(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x60ull);
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[30]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[19] = (uint64_t)(0ull | c->x[0]);
+    c->x[30] = 0x700550c0f0ull; f_700550a9d8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550c194;
+    c->x[25] = (uint64_t)(0ull | 0x7ffffe0000ull);
+    c->x[21] = (uint64_t)(0ull | 0ull);
+    c->x[20] = (uint32_t)(0u | 0u);
+    /* hint */
+    c->x[22] = (uint64_t)(0x700551192cull);
+    /* hint */
+    c->x[23] = (uint64_t)(0x70055116fcull);
+    c->x[24] = (uint32_t)(0x14ull);
+    c->x[25] = (uint64_t)((c->x[25] & 0xffffffffffff0000ull) | 0xffefull);
+    c->x[26] = (uint64_t)(c->sp + 0x0ull);
+L_700550c11c:;
+    { uint64_t ea = c->x[22] + c->x[21]; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    c->x[27] = (uint64_t)(c->x[23] + (uint64_t)(uint32_t)c->x[8] * (uint64_t)(uint32_t)c->x[24]);
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[27] + 0x0ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(c->x[8] + c->x[9]);
+    c->x[8] = (uint64_t)(c->x[1] - 0x10000ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[25])));
+    if (COND_HI(c)) goto L_700550c190;
+    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550c190;
+    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x0ull);
+    c->x[3] = (uint32_t)(0x10ull);
+    c->pc = c->x[8]; c->x[30] = 0x700550c154ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550c190;
+    c->x[8] = (uint64_t)(0ull | 0ull);
+    c->x[9] = (uint64_t)(c->x[27] + 0x4ull);
+L_700550c160:;
+    { uint64_t ea = c->x[26] + c->x[8]; uint64_t v = LD8(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9] + c->x[8]; uint64_t v = LD8(ea); c->x[11] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[11])));
+    if (COND_NE(c)) goto L_700550c190;
+    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
+    (void)(subs64(c, c->x[8], 0x10ull));
+    if (COND_NE(c)) goto L_700550c160;
+    (void)(subs64(c, c->x[21], 0x5ull));
+    c->x[21] = (uint64_t)(c->x[21] + 0x1ull);
+    c->x[20] = (uint32_t)((COND_LS(c)) ? 0u : (uint32_t)(0u + 1));
+    (void)(subs64(c, c->x[21], 0x7ull));
+    if (COND_NE(c)) goto L_700550c11c;
+L_700550c190:;
+    c->x[0] = (uint32_t)((uint32_t)c->x[20] & 0x1ull);
+L_700550c194:;
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x60ull);
+    c->pc = 0; return;
+}
+
+void f_700550c34c(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x50ull);
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[30]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[23] = (uint64_t)(0ull | 0x7ffffe0000ull);
+    c->x[8] = (uint64_t)(c->x[1] - 0x10000ull);
+    c->x[21] = (uint64_t)(0ull | c->x[0]);
+    c->x[23] = (uint64_t)((c->x[23] & 0xffffffffffff0000ull) | 0xfff8ull);
+    c->x[0] = (uint32_t)(0u | 0u);
+    { uint64_t ea = c->sp + 16; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
+    { uint64_t ea = c->sp + 0x8ull; ST64(ea, 0ull); }
+    if (COND_CS(c)) goto L_700550c44c;
+    c->x[20] = (uint64_t)(0ull | c->x[1]);
+    c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550c44c;
+    { uint64_t ea = c->x[21] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550c448;
+    { uint64_t ea = c->x[21] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[22] = (uint32_t)(0u | (uint32_t)c->x[3]);
+    c->x[19] = (uint64_t)(0ull | c->x[2]);
+    c->x[2] = (uint64_t)(c->sp + 0x18ull);
+    c->x[1] = (uint64_t)(0ull | c->x[20]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->pc = c->x[8]; c->x[30] = 0x700550c3b0ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550c44c;
+    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(c->x[8] + (uint64_t)(uint32_t)c->x[22]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_700550c448;
+    c->x[8] = (uint64_t)(0xffffffffffff0018ull);
+    c->x[8] = (uint64_t)(c->x[20] + c->x[8]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
+    if (COND_CS(c)) goto L_700550c448;
+    { uint64_t ea = c->x[21] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550c448;
+    { uint64_t ea = c->x[21] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(c->x[20] + 0x18ull);
+    c->x[2] = (uint64_t)(c->sp + 0x10ull);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->pc = c->x[8]; c->x[30] = 0x700550c3f4ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550c44c;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550c448;
+    c->x[8] = (uint64_t)(0xffffffffffff0020ull);
+    c->x[8] = (uint64_t)(c->x[20] + c->x[8]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
+    if (COND_CS(c)) goto L_700550c448;
+    { uint64_t ea = c->x[21] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550c448;
+    { uint64_t ea = c->x[21] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint64_t)(c->x[20] + 0x20ull);
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->pc = c->x[8]; c->x[30] = 0x700550c434ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550c44c;
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[19])));
+    c->x[0] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
+    goto L_700550c44c;
+L_700550c448:;
+    c->x[0] = (uint32_t)(0u | 0u);
+L_700550c44c:;
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x50ull);
+    c->pc = 0; return;
+}
+
+void f_700550c698(Cpu *c) {
+    c->x[9] = (uint64_t)(0ull | c->x[1]);
+    c->x[1] = (uint64_t)(c->x[1] + 0xb0ull);
+    (void)(subs64(c, c->x[1], 0x10000ull));
+    if (COND_CC(c)) goto L_700550c720;
+    c->x[9] = (uint64_t)(c->x[9] + 0xc8ull);
+    c->x[8] = (uint64_t)(0ull | c->x[0]);
+    c->x[0] = (uint32_t)(0u | 0u);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[1])));
+    if (COND_CC(c)) goto L_700550c724;
+    c->x[9] = (uint64_t)(ROR64(c->x[9], 39) & 0x1ffffffull);
+    if (c->x[9] != 0) goto L_700550c724;
+    { uint64_t ea = c->x[8] + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if (c->x[9] == 0) goto L_700550c720;
+    c->sp = (uint64_t)(c->sp - 0x40ull);
+    { uint64_t ea = c->sp + 0x20ull; ST64(ea, c->x[30]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->x[8] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[19] = (uint64_t)(0ull | c->x[2]);
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[3] = (uint32_t)(0x18ull);
+    c->x[20] = (uint64_t)(c->sp + 0x8ull);
+    c->pc = c->x[9]; c->x[30] = 0x700550c6f0ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550c72c;
+    c->x[8] = (uint64_t)(0ull | 0ull);
+L_700550c6f8:;
+    { uint64_t ea = c->x[20] + c->x[8]; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + c->x[8]; uint64_t v = LD8(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
+    if (COND_NE(c)) goto L_700550c718;
+    if ((uint32_t)c->x[9] == 0) goto L_700550c728;
+    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
+    (void)(subs64(c, c->x[8], 0x18ull));
+    if (COND_NE(c)) goto L_700550c6f8;
+L_700550c718:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    goto L_700550c72c;
+L_700550c720:;
+    c->x[0] = (uint32_t)(0u | 0u);
+L_700550c724:;
+    c->pc = 0; return;
+L_700550c728:;
+    c->x[0] = (uint32_t)(0x1ull);
+L_700550c72c:;
     { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0x20ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x40ull);
     c->pc = 0; return;
 }
 
-void f_7005509c04(Cpu *c) {
-    c->x[8] = (uint32_t)(0u | 0u);
-    if (c->x[0] == 0) goto L_7005509c84;
-    if (c->x[1] == 0) goto L_7005509c84;
-    { uint64_t ea = c->x[0] + 0x68ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_7005509c84;
-    { uint64_t ea = c->x[1] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_7005509c60;
-    c->x[9] = (uint32_t)(0u | 0u);
-    c->x[10] = (uint32_t)(0u | (uint32_t)c->x[8]);
-L_7005509c28:;
-    c->x[11] = (uint32_t)(ROR32((uint32_t)c->x[10], 1) & 0x7fffffffull);
-    c->x[12] = (uint32_t)((uint32_t)c->x[10] & 0x1ull);
-    (void)(subs32(c, (uint32_t)c->x[10], 0x2ull));
-    c->x[9] = (uint32_t)((uint32_t)c->x[12] + (uint32_t)c->x[9]);
-    c->x[10] = (uint32_t)(0u | (uint32_t)c->x[11]);
-    if (COND_CS(c)) goto L_7005509c28;
-    (void)(subs32(c, (uint32_t)c->x[8], 0x400ull));
-    if (COND_CS(c)) goto L_7005509c70;
-    if ((uint32_t)c->x[8] == 0) goto L_7005509c60;
-    (void)(subs32(c, (uint32_t)c->x[9], 0x2ull));
-    if (COND_CC(c)) goto L_7005509c70;
-    { uint64_t ea = c->x[1] + 0x4ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    (void)(logic32(c, (uint32_t)((uint32_t)c->x[9] & (uint32_t)c->x[8])));
-    if (COND_NE(c)) goto L_7005509c70;
-L_7005509c60:;
-    { uint64_t ea = c->x[1] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] - 0x259ull);
-    (void)(adds32(c, (uint32_t)c->x[8], 0x23bull));
-    if (COND_CS(c)) goto L_7005509c78;
-L_7005509c70:;
-    c->x[8] = (uint32_t)(0u | 0u);
-    goto L_7005509c84;
-L_7005509c78:;
-    { uint64_t ea = c->x[1] + 0x0ull; c->v[0] = LD128(ea); }
-    c->x[8] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[0] + 168; ST128(ea, c->v[0]); }
-L_7005509c84:;
-    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[8]);
-    c->pc = 0; return;
-}
-
-void f_7005509d00(Cpu *c) {
-    if (c->x[0] == 0) goto L_7005509d80;
-    if (c->x[1] == 0) goto L_7005509d80;
-    { uint64_t ea = c->x[0] + 0x88ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[1])));
-    if (COND_NE(c)) goto L_7005509d80;
-    { uint64_t ea = c->x[0] + 0x90ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[2])));
-    if (COND_NE(c)) goto L_7005509d80;
-    (void)(subs32(c, (uint32_t)c->x[3], 0x6ull));
-    if (COND_HI(c)) goto L_7005509d80;
-    c->x[8] = (uint32_t)(0x1ull);
-    c->x[9] = (uint32_t)(0x74ull);
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] << ((uint32_t)c->x[3] & 31));
-    (void)(logic32(c, (uint32_t)((uint32_t)c->x[8] & (uint32_t)c->x[9])));
-    if (COND_EQ(c)) goto L_7005509d80;
-    { uint64_t ea = c->x[0] + 0x78ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[3], 0x6ull));
-    { uint64_t ea = c->x[0] + 0x88ull; ST64(ea, 0ull); }
-    c->x[9] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[2])));
-    { uint64_t ea = c->x[0] + 0x60ull; ST32(ea, (uint32_t)c->x[9]); }
-    if (COND_NE(c)) goto L_7005509d80;
-    { uint64_t ea = c->x[0] + 0x4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x4ull));
-    if (COND_EQ(c)) goto L_7005509d78;
-    (void)(subs32(c, (uint32_t)c->x[8], 0x5ull));
-    if (COND_NE(c)) goto L_7005509d80;
-    { uint64_t ea = c->x[0] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x6ull));
-    if (COND_NE(c)) goto L_7005509d80;
-L_7005509d78:;
-    c->x[8] = (uint32_t)(0x5ull);
-    { uint64_t ea = c->x[0] + 4; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[3]); }
-L_7005509d80:;
-    c->pc = 0; return;
-}
-
-void f_700550a39c(Cpu *c) {
-    { uint64_t ea = c->x[0] + 0xcull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[10] = (uint64_t)(c->x[0] + 0x14ull);
-    { uint64_t ea = c->x[10] + (c->x[8] << 2); uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(adds32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[1])));
-    if (COND_MI(c)) goto L_700550a410;
-    { uint64_t ea = c->x[0] + 0x98ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    c->x[12] = (uint32_t)(ROR32((uint32_t)c->x[8], 28) & 0xfffffff0ull);
-    c->x[13] = (uint32_t)(0x851full);
-    c->x[13] = (uint32_t)((c->x[13] & 0xffffffff0000ffffull) | 0x51eb0000ull);
-    c->x[11] = (uint64_t)(c->x[11] + c->x[12]);
-    { uint64_t ea = c->x[11] + 0x24ull; uint64_t v = LD32(ea); c->x[12] = (uint64_t)(v); }
-    c->x[12] = (uint32_t)((uint32_t)c->x[12] + 0x18ull);
-    c->x[12] = (uint64_t)(0ull + (uint64_t)(uint32_t)c->x[12] * (uint64_t)(uint32_t)c->x[13]);
-    c->x[12] = (uint64_t)(ROR64(c->x[12], 35) & 0x1fffffffull);
-    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[12])));
-    if (COND_CS(c)) goto L_700550a410;
-    { uint64_t ea = c->x[10] + (c->x[8] << 2); ST32(ea, (uint32_t)c->x[9]); }
-    c->x[10] = (uint32_t)(0xffffffe7ull);
-    c->x[12] = (uint32_t)(0x19ull);
-    { uint64_t ea = c->x[11] + 36; uint64_t v = LD32(ea); c->x[11] = (uint64_t)(v); }
-    c->x[10] = (uint32_t)((uint32_t)c->x[11] + (uint32_t)c->x[9] * (uint32_t)c->x[10]);
-    c->x[9] = (uint64_t)(c->x[0] + 0x34ull);
-    { uint64_t ea = c->x[9] + (c->x[8] << 2); uint64_t v = LD32(ea); c->x[11] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[10], 0x19ull));
-    c->x[10] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[10] : (uint32_t)((uint32_t)c->x[12]));
-    (void)(subs32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_CC(c)) goto L_700550a410;
-    c->x[10] = (uint32_t)((uint32_t)c->x[10] - 0x1ull);
-    { uint64_t ea = c->x[9] + (c->x[8] << 2); ST32(ea, (uint32_t)c->x[10]); }
-L_700550a410:;
-    c->pc = 0; return;
-}
-
-void f_700550a414(Cpu *c) {
-    if (c->x[0] == 0) goto L_700550a488;
-    c->x[8] = (uint64_t)(0ull | c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    if (c->x[1] == 0) goto L_700550a488;
-    { uint64_t ea = c->x[8] + 0x68ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    if ((uint32_t)c->x[9] == 0) goto L_700550a488;
-    { uint64_t ea = c->x[8] + 0x98ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[11] = (uint64_t)(0ull | 0ull);
-    c->x[10] = (uint32_t)(0x1ull);
-    c->x[12] = (uint32_t)(0x18ull);
-    c->x[9] = (uint64_t)(c->x[8] + 0xa0ull);
-L_700550a440:;
-    c->x[14] = (uint64_t)(0ull + c->x[11] * c->x[12]);
-    c->x[13] = (uint64_t)(0ull | 0ull);
-    { uint64_t ea = c->x[9] + c->x[14]; uint64_t v = LD32(ea); c->x[14] = (uint64_t)(v); }
-    c->x[14] = (uint64_t)(c->x[8] + c->x[14]);
-L_700550a450:;
-    { uint64_t ea = c->x[1] + c->x[13]; uint64_t v = LD8(ea); c->x[15] = (uint64_t)(v); }
-    { uint64_t ea = c->x[14] + c->x[13]; uint64_t v = LD8(ea); c->x[16] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[15], (uint32_t)((uint32_t)c->x[16])));
-    if (COND_NE(c)) goto L_700550a470;
-    if ((uint32_t)c->x[15] == 0) goto L_700550a484;
-    c->x[13] = (uint64_t)(c->x[13] + 0x1ull);
-    (void)(subs64(c, c->x[13], 0x40ull));
-    if (COND_NE(c)) goto L_700550a450;
-L_700550a470:;
-    (void)(subs64(c, c->x[11], 0x176ull));
-    c->x[11] = (uint64_t)(c->x[11] + 0x1ull);
-    c->x[10] = (uint32_t)((COND_CS(c)) ? 0u : (uint32_t)(0u + 1));
-    (void)(subs64(c, c->x[11], 0x177ull));
-    if (COND_NE(c)) goto L_700550a440;
-L_700550a484:;
-    c->x[0] = (uint32_t)((uint32_t)c->x[10] & 0x1ull);
-L_700550a488:;
-    c->pc = 0; return;
-}
-
-void f_700550a554(Cpu *c) {
-    c->v[0] = 0x0ull;
-    c->x[9] = (uint32_t)(0x1ull);
-    c->v[1] = ((u128)0x100000001ull << 64 | 0x100000001ull);
-    c->v[2] = ((u128)0x400000004ull << 64 | 0x400000004ull);
-    VW(vu64, 1, 3, (vu64){} + (uint64_t)c->x[0]);
-    c->x[10] = (uint64_t)(0x7005510000ull);
-    VW(vu64, 1, 4, (vu64){} + (uint64_t)c->x[9]);
-    { uint64_t ea = c->x[10] + 0xa0ull; c->v[5] = LD128(ea); }
-    c->x[8] = (uint64_t)(0ull | 0ull);
-    /* hint */
-    c->x[9] = (uint64_t)(0x700551149cull);
-L_700550a580:;
-    { uint64_t ea = c->x[9] + c->x[8]; c->v[6] = LD128(ea); }
-    c->x[8] = (uint64_t)(c->x[8] + 0x10ull);
-    (void)(subs64(c, c->x[8], 0x30ull));
-    sl_gen(c, LOP_SHLLI | LOP_U, 2, 2, 7, 3, 0, 0, 6, 2, 0, -1, 0, 0, -1, 0x0ull);
-    sl_gen(c, LOP_SHLLI | LOP_U, 2, 2, 6, 3, 0, 0, 6, 2, 2, -1, 0, 0, -1, 0x0ull);
-    sl_gen(c, LOP_SHL | LOP_U, 3, 2, 6, 3, 0, 0, 4, 3, 0, 6, 3, 0, -1, 0x0ull);
-    sl_gen(c, LOP_SHL | LOP_U, 3, 2, 7, 3, 0, 0, 4, 3, 0, 7, 3, 0, -1, 0x0ull);
-    VW(vu64, 1, 7, VREG(vu64, 7) & VREG(vu64, 3));
-    VW(vu64, 1, 6, VREG(vu64, 6) & VREG(vu64, 3));
-    VW(vu64, 1, 6, (vu64)(VREG(vs64, 6) == 0));
-    VW(vu64, 1, 7, (vu64)(VREG(vs64, 7) == 0));
-    VW(vu32, 1, 6, SHUF(VREG(vu32, 7), VREG(vu32, 6), 0, 2, 4, 6));
-    sl_gen(c, LOP_SHL | LOP_U, 2, 4, 7, 2, 0, 0, 1, 2, 0, 5, 2, 0, -1, 0x0ull);
-    VW(vu32, 1, 5, VREG(vu32, 5) + VREG(vu32, 2));
-    VW(vu64, 1, 6, VREG(vu64, 7) & ~VREG(vu64, 6));
-    VW(vu64, 1, 0, VREG(vu64, 6) | VREG(vu64, 0));
-    if (COND_NE(c)) goto L_700550a580;
-    VW(vu32, 1, 1, (vu32){} + (uint32_t)c->x[0]);
-    c->x[8] = (uint64_t)(0x7005510000ull);
-    { uint64_t ea = c->x[8] + 0x80ull; c->v[2] = LD128(ea); }
-    c->x[8] = (uint64_t)(0x7005510000ull);
-    sl_gen(c, LOP_SHL | LOP_U, 2, 4, 1, 2, 0, 0, 1, 2, 0, 2, 2, 0, -1, 0x0ull);
-    { uint64_t ea = c->x[8] + 0x120ull; c->v[2] = LD128(ea); }
-    VW(vu64, 1, 1, VREG(vu64, 1) & VREG(vu64, 2));
-    VW(vu64, 1, 0, VREG(vu64, 1) | VREG(vu64, 0));
-    VW(vu8, 1, 1, SHUF(VREG(vu8, 0), VREG(vu8, 0), 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23));
-    VW(vu64, 0, 0, VREG(vu64, 0) | VREG(vu64, 1));
-    c->x[8] = (uint64_t)(VS64(0));
-    c->x[9] = (uint64_t)(ROR64(c->x[8], 32) & 0xffffffffull);
-    c->x[0] = (uint32_t)((uint32_t)c->x[8] | (uint32_t)c->x[9]);
-    c->pc = 0; return;
-}
-
-void f_700550a9d8(Cpu *c) {
+void f_700550cd14(Cpu *c) {
+    (void)(subs32(c, (uint32_t)c->x[2], (uint32_t)((uint32_t)c->x[3])));
+    if (COND_CS(c)) goto L_700550ce00;
     c->sp = (uint64_t)(c->sp - 0x60ull);
     { uint64_t ea = c->sp + 0x10ull; ST64(ea, c->x[30]); }
     { uint64_t ea = c->sp + 32; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
     { uint64_t ea = c->sp + 48; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
     { uint64_t ea = c->sp + 64; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
     { uint64_t ea = c->sp + 80; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[20] = (uint64_t)(c->x[1] + (uint64_t)(uint32_t)c->x[2]);
+    c->x[21] = (uint64_t)(0ull | 0x7ffffe0000ull);
+    c->x[25] = (uint32_t)(0xa000ull);
     c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[30] = 0x700550a9f8ull; f_700550aae0(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550aac4;
-    c->x[8] = (uint64_t)(c->sp + 0x0ull);
-    c->x[24] = (uint64_t)(0ull | 0x7ffffe0000ull);
-    c->x[20] = (uint32_t)(0u | 0u);
-    c->x[25] = (uint64_t)(0ull | 0ull);
-    c->x[21] = (uint32_t)(0x14ull);
-    c->x[22] = (uint64_t)(c->x[8] | 0x1ull);
-    /* hint */
-    c->x[23] = (uint64_t)(0x70055114ccull);
-    c->x[24] = (uint64_t)((c->x[24] & 0xffffffffffff0000ull) | 0xffefull);
-L_700550aa20:;
+    c->x[21] = (uint64_t)((c->x[21] & 0xffffffffffff0000ull) | 0xfff8ull);
+    c->x[22] = (uint32_t)(0u | (uint32_t)c->x[2]);
+    c->x[23] = (uint32_t)(0u | (uint32_t)c->x[3]);
+    c->x[24] = (uint64_t)(c->x[20] & 0x7ull);
+    c->x[25] = (uint32_t)((c->x[25] & 0xffffffff0000ffffull) | 0x2bb0000ull);
+    c->x[26] = (uint32_t)(0x3a00000ull);
+L_700550cd5c:;
+    c->x[8] = (uint64_t)(c->x[20] - 0x10000ull);
+    { uint64_t ea = c->sp + 0x18ull; ST64(ea, 0ull); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[21])));
+    { uint64_t ea = c->sp + 0x8ull; ST64(ea, 0ull); }
+    if (COND_CS(c)) goto L_700550ce08;
+    if (c->x[24] != 0) goto L_700550ce08;
     { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint32_t)(0u | 0u);
-    if (c->x[8] == 0) goto L_700550aac4;
-    c->x[26] = (uint64_t)(c->x[23] + c->x[25] * c->x[21]);
-    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[26] + 0x0ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->x[9] + c->x[10]);
-    c->x[9] = (uint64_t)(c->x[1] - 0x10000ull);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[24])));
-    if (COND_HI(c)) goto L_700550aac4;
+    if (c->x[8] == 0) goto L_700550ce08;
     { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->sp + 0x0ull);
-    c->x[3] = (uint32_t)(0x10ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550aa58ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550aac4;
-    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[26] + 0x4ull; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_700550aac0;
-    c->x[8] = (uint64_t)(c->x[23] + c->x[25] * c->x[21]);
-    c->x[10] = (uint64_t)(0ull | 0ull);
-    c->x[9] = (uint64_t)(c->x[8] + 0x5ull);
-L_700550aa78:;
-    c->x[8] = (uint64_t)(0ull | c->x[10]);
-    (void)(subs64(c, c->x[10], 0xfull));
-    if (COND_EQ(c)) goto L_700550aa98;
-    { uint64_t ea = c->x[22] + c->x[8]; uint64_t v = LD8(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->x[9] + c->x[8]; uint64_t v = LD8(ea); c->x[11] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[11])));
-    c->x[10] = (uint64_t)(c->x[8] + 0x1ull);
-    if (COND_EQ(c)) goto L_700550aa78;
-L_700550aa98:;
-    (void)(subs64(c, c->x[8], 0xeull));
-    c->x[10] = (uint32_t)((uint32_t)c->x[20] ^ 0x1ull);
-    c->x[20] = (uint32_t)(0x1ull);
-    c->x[9] = (uint32_t)((COND_LS(c)) ? 0u : (uint32_t)(0u + 1));
-    c->x[25] = (uint32_t)(0x1ull);
-    c->x[9] = (uint32_t)((uint32_t)c->x[9] & (uint32_t)c->x[10]);
-    if (((c->x[9] >> 0) & 1) != 0) goto L_700550aa20;
-    (void)(subs64(c, c->x[8], 0xeull));
-    c->x[0] = (uint32_t)((COND_LS(c)) ? 0u : (uint32_t)(0u + 1));
-    goto L_700550aac4;
-L_700550aac0:;
+    c->x[2] = (uint64_t)(c->sp + 0x18ull);
+    c->x[1] = (uint64_t)(0ull | c->x[20]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->pc = c->x[8]; c->x[30] = 0x700550cd90ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550ce08;
+    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(c->x[1] - 0x10000ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[21])));
+    if (COND_CS(c)) goto L_700550ce08;
+    c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
+    if (c->x[8] != 0) goto L_700550ce08;
+    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550ce08;
+    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->pc = c->x[8]; c->x[30] = 0x700550cdc4ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550ce08;
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint64_t)(c->x[9] + c->x[25]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[10])));
+    if (COND_CC(c)) goto L_700550ce08;
+    c->x[9] = (uint64_t)(c->x[9] + c->x[26]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_HI(c)) goto L_700550ce08;
+    c->x[22] = (uint64_t)(c->x[22] + 0x8ull);
+    c->x[20] = (uint64_t)(c->x[20] + 0x8ull);
+    (void)(subs64(c, c->x[22], (uint64_t)(c->x[23])));
+    if (COND_CC(c)) goto L_700550cd5c;
+    c->x[0] = (uint32_t)(0x1ull);
+    goto L_700550ce0c;
+L_700550ce00:;
+    c->x[0] = (uint32_t)(0x1ull);
+    c->pc = 0; return;
+L_700550ce08:;
     c->x[0] = (uint32_t)(0u | 0u);
-L_700550aac4:;
+L_700550ce0c:;
     { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
@@ -8088,1685 +8991,927 @@ L_700550aac4:;
     c->pc = 0; return;
 }
 
-void f_700550abf8(Cpu *c) {
-    if (c->x[0] == 0) goto L_700550ac18;
+void f_700550ce28(Cpu *c) {
+    if (c->x[0] == 0) goto L_700550ce44;
+    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[1])));
+    if (COND_NE(c)) goto L_700550ce44;
+    c->v[0] = 0x0ull;
+    { uint64_t ea = c->x[0] + 0; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
+    { uint64_t ea = c->x[0] + 32; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
+L_700550ce44:;
+    c->pc = 0; return;
+}
+
+void f_700550d630(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x40ull);
+    { uint64_t ea = c->sp + 0x20ull; ST64(ea, c->x[30]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[19] = (uint64_t)(0ull | c->x[2]);
+    c->x[1] = (uint64_t)(c->x[1] + 0xb0ull);
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[3] = (uint32_t)(0x18ull);
+    c->x[20] = (uint64_t)(c->sp + 0x8ull);
+    c->x[30] = 0x700550d654ull; f_700550d8dc(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550d688;
+    c->x[8] = (uint64_t)(0ull | 0ull);
+L_700550d65c:;
+    { uint64_t ea = c->x[20] + c->x[8]; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + c->x[8]; uint64_t v = LD8(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
+    if (COND_NE(c)) goto L_700550d67c;
+    if ((uint32_t)c->x[9] == 0) goto L_700550d684;
+    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
+    (void)(subs64(c, c->x[8], 0x18ull));
+    if (COND_NE(c)) goto L_700550d65c;
+L_700550d67c:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    goto L_700550d688;
+L_700550d684:;
+    c->x[0] = (uint32_t)(0x1ull);
+L_700550d688:;
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0x20ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x40ull);
+    c->pc = 0; return;
+}
+
+void f_700550d698(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x150ull);
+    { uint64_t ea = c->sp + 256; ST64(ea, c->x[29]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 272; ST64(ea, c->x[30]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 288; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 304; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 320; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[22] = (uint64_t)(0ull | 0x7ffffe0000ull);
+    c->x[24] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[25] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[19] = (uint64_t)(0ull | c->x[2]);
+    c->x[20] = (uint64_t)(0ull | c->x[0]);
+    c->x[21] = (uint64_t)(0ull | 0ull);
+    c->x[22] = (uint64_t)((c->x[22] & 0xffffffffffff0000ull) | 0xffffull);
+    c->x[23] = (uint64_t)(c->sp + 0x0ull);
+    c->x[24] = (uint64_t)((c->x[24] & 0xffffffffffff0000ull) | 0x18ull);
+    c->x[25] = (uint64_t)((c->x[25] & 0xffffffffffff0000ull) | 0x0ull);
+L_700550d6d8:;
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(c->x[8] - 0x10000ull);
+    c->x[10] = (uint64_t)(c->x[8] & 0x7ull);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[22])));
+    if (COND_LS(c)) (void)subs64(c, c->x[10], 0x0ull); else c->nzcv = 0x0ull;
+    if (COND_EQ(c)) (void)subs64(c, c->x[21], 0x1full); else c->nzcv = 0x20000000ull;
+    if (COND_HI(c)) goto L_700550d74c;
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[19])));
+    if (COND_EQ(c)) goto L_700550d76c;
+    if (c->x[21] == 0) goto L_700550d71c;
+    c->x[9] = (uint64_t)(0ull | 0ull);
+L_700550d704:;
+    { uint64_t ea = c->x[23] + (c->x[9] << 3); uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[10], (uint64_t)(c->x[8])));
+    if (COND_EQ(c)) goto L_700550d74c;
+    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
+    (void)(subs64(c, c->x[21], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550d704;
+L_700550d71c:;
+    c->x[9] = (uint64_t)(c->x[8] + c->x[24]);
+    { uint64_t ea = c->x[23] + (c->x[21] << 3); ST64(ea, c->x[8]); }
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[25])));
+    if (COND_CC(c)) goto L_700550d74c;
+    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
+    c->x[2] = (uint64_t)(c->sp + 0x108ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[21] = (uint64_t)(c->x[21] + 0x1ull);
+    c->x[30] = 0x700550d744ull; f_700550d8dc(c);
+    if ((uint32_t)c->x[0] != 0) goto L_700550d6d8;
+    goto L_700550d750;
+L_700550d74c:;
+    c->x[0] = (uint32_t)(0u | 0u);
+L_700550d750:;
+    { uint64_t ea = c->sp + 320; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[29] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 304; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 288; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 272; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x150ull);
+    c->pc = 0; return;
+L_700550d76c:;
+    c->x[0] = (uint32_t)(0x1ull);
+    goto L_700550d750;
+}
+
+void f_700550d8dc(Cpu *c) {
+    if (c->x[0] == 0) goto L_700550d928;
     (void)(subs64(c, c->x[1], 0x10000ull));
     c->x[8] = (uint32_t)(0u | 0u);
-    if (COND_CC(c)) goto L_700550ac1c;
+    if (COND_CC(c)) goto L_700550d92c;
     { uint64_t ea = c->x[0] + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    if (c->x[9] == 0) goto L_700550ac1c;
-    c->x[10] = (uint64_t)(adds64(c, c->x[1], (uint64_t)((uint64_t)(uint32_t)c->x[3])));
-    if (COND_CC(c)) goto L_700550ac24;
-L_700550ac18:;
+    if (c->x[9] == 0) goto L_700550d92c;
+    c->x[10] = (uint64_t)(c->x[1] + (uint64_t)(uint32_t)c->x[3]);
     c->x[8] = (uint32_t)(0u | 0u);
-L_700550ac1c:;
-    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[8]);
-    c->pc = 0; return;
-L_700550ac24:;
-    (void)(subs32(c, (uint32_t)c->x[3], 0x100ull));
-    c->x[8] = (uint32_t)(0u | 0u);
-    if (COND_HI(c)) goto L_700550ac1c;
+    (void)(subs64(c, c->x[10], (uint64_t)(c->x[1])));
+    if (COND_CC(c)) goto L_700550d92c;
     c->x[10] = (uint64_t)(ROR64(c->x[10], 39) & 0x1ffffffull);
-    if (c->x[10] != 0) goto L_700550ac1c;
+    if (c->x[10] != 0) goto L_700550d92c;
     { uint64_t ea = c->sp - 16; ST64(ea, c->x[30]); c->sp = ea; }
     { uint64_t ea = c->x[0] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->pc = c->x[9]; c->x[30] = 0x700550ac44ull; rt_dispatch(c); c->pc = 0;
+    c->pc = c->x[9]; c->x[30] = 0x700550d918ull; rt_dispatch(c); c->pc = 0;
     (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
     c->x[8] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
     { uint64_t ea = c->sp; uint64_t v = LD64(ea); c->sp = c->sp + 16; c->x[30] = (uint64_t)(v); }
-    goto L_700550ac1c;
-}
-
-void f_700550aee4(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x160ull);
-    { uint64_t ea = c->sp + 256; ST64(ea, c->x[29]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 272; ST64(ea, c->x[30]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 288; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 304; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 320; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 336; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->x[24] = (uint64_t)(0ull | 0x7ffffe0000ull);
-    c->x[26] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[27] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    c->x[19] = (uint64_t)(0ull | c->x[2]);
-    c->x[20] = (uint64_t)(0ull | c->x[0]);
-    c->x[23] = (uint64_t)(0ull | 0ull);
-    c->x[22] = (uint32_t)(0u | 0u);
-    c->x[24] = (uint64_t)((c->x[24] & 0xffffffffffff0000ull) | 0xffffull);
-    c->x[21] = (uint64_t)(0x7005510000ull);
-    c->x[21] = (uint64_t)(c->x[21] + 0xfc0ull);
-    c->x[25] = (uint64_t)(c->sp + 0x0ull);
-    c->x[26] = (uint64_t)((c->x[26] & 0xffffffffffff0000ull) | 0x18ull);
-    c->x[27] = (uint64_t)((c->x[27] & 0xffffffffffff0000ull) | 0x0ull);
-L_700550af34:;
-    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[1] - 0x10000ull);
-    c->x[9] = (uint64_t)(c->x[1] & 0x7ull);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[24])));
-    if (COND_LS(c)) (void)subs64(c, c->x[9], 0x0ull); else c->nzcv = 0x0ull;
-    if (COND_EQ(c)) (void)subs64(c, c->x[23], 0x1full); else c->nzcv = 0x20000000ull;
-    if (COND_HI(c)) goto L_700550afd4;
-    if (c->x[23] == 0) goto L_700550af70;
-    c->x[8] = (uint64_t)(0ull | 0ull);
-L_700550af58:;
-    { uint64_t ea = c->x[25] + (c->x[8] << 3); uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[1])));
-    if (COND_EQ(c)) goto L_700550afd4;
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    (void)(subs64(c, c->x[23], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_700550af58;
-L_700550af70:;
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint64_t)(0ull | c->x[19]);
-    { uint64_t ea = c->x[25] + (c->x[23] << 3); ST64(ea, c->x[1]); }
-    c->x[30] = 0x700550af80ull; f_700550bc40(c);
-    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint64_t)(0ull | c->x[21]);
-    c->x[22] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[22] : (uint32_t)(0u + 1));
-    c->x[30] = 0x700550af98ull; f_700550bc40(c);
-    if ((uint32_t)c->x[0] != 0) goto L_700550aff8;
-    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(c->x[8] + c->x[26]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[27])));
-    if (COND_CC(c)) goto L_700550afd8;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550afd8;
-    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
-    c->x[2] = (uint64_t)(c->sp + 0x108ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[23] = (uint64_t)(c->x[23] + 0x1ull);
-    c->x[30] = 0x700550afccull; f_700550abf8(c);
-    if ((uint32_t)c->x[0] != 0) goto L_700550af34;
-    goto L_700550afd8;
-L_700550afd4:;
-    c->x[0] = (uint32_t)(0u | 0u);
-L_700550afd8:;
-    { uint64_t ea = c->sp + 336; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[29] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 320; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 304; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 288; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 272; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0x160ull);
+    goto L_700550d92c;
+L_700550d928:;
+    c->x[8] = (uint32_t)(0u | 0u);
+L_700550d92c:;
+    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[8]);
     c->pc = 0; return;
-L_700550aff8:;
-    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[22]);
-    goto L_700550afd8;
 }
 
-void f_700550b000(Cpu *c) {
+void f_700550d934(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x50ull);
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[30]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 24; ST64(ea, 0ull); ST64(ea + 8, c->x[30]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
     { uint64_t ea = c->sp + 64; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->x[21] = (uint64_t)(0ull | c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs32(c, (uint32_t)c->x[2], 0x176ull));
-    { uint64_t ea = c->sp + 0x28ull; ST64(ea, c->x[3]); }
-    if (COND_HI(c)) goto L_700550b100;
-    c->x[19] = (uint64_t)(0ull | c->x[1]);
-    if (c->x[1] == 0) goto L_700550b100;
-    if (c->x[3] == 0) goto L_700550b100;
-    c->x[20] = (uint32_t)(0u | (uint32_t)c->x[2]);
-    c->x[8] = (uint64_t)(0ull | 0ull);
-L_700550b034:;
-    { uint64_t ea = c->x[3] + c->x[8]; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[9], 0x5full));
-    if (COND_EQ(c)) goto L_700550b070;
-    if ((uint32_t)c->x[9] == 0) goto L_700550b080;
-    c->x[10] = (uint32_t)((uint32_t)c->x[9] & 0xffffffdfull);
-    c->x[9] = (uint32_t)((uint32_t)c->x[9] - 0x3aull);
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->x[10] = (uint32_t)((uint32_t)c->x[10] - 0x5bull);
-    (void)(adds32(c, (uint32_t)c->x[10], 0x1aull));
-    if (COND_CC(c)) (void)adds32(c, (uint32_t)c->x[9], 0xaull); else c->nzcv = 0x20000000ull;
-    if (COND_CC(c)) goto L_700550b100;
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    (void)(subs64(c, c->x[8], 0x40ull));
-    if (COND_NE(c)) goto L_700550b034;
-    goto L_700550b100;
-L_700550b070:;
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    (void)(subs64(c, c->x[8], 0x40ull));
-    if (COND_NE(c)) goto L_700550b034;
-    goto L_700550b0fc;
-L_700550b080:;
-    c->x[9] = (uint32_t)(0xffbfull);
-    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x7fff0000ull);
-    (void)(logic64(c, (uint64_t)(c->x[8] & c->x[9])));
-    if (COND_EQ(c)) goto L_700550b0fc;
-    c->v[0] = 0x0ull;
-    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->sp + 0x0ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    { uint64_t ea = c->sp + 0x20ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->sp + 0; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
-    c->x[30] = 0x700550b0acull; f_700550ac54(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b100;
-    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[0], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_700550b0fc;
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550b0fc;
-    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550b0fc;
-    { uint64_t ea = c->x[19] + 0x24ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700550b110;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[20])));
-    if (COND_NE(c)) goto L_700550b110;
-    c->x[0] = (uint32_t)(0x1ull);
-    goto L_700550b100;
-L_700550b0fc:;
-    c->x[0] = (uint32_t)(0u | 0u);
-L_700550b100:;
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0x50ull);
-    c->pc = 0; return;
-L_700550b110:;
-    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(0x8258ull);
-    c->x[1] = (uint64_t)(c->sp + 0x28ull);
-    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x2100000ull);
-    c->x[2] = (uint32_t)(0u | 0u);
-    c->x[3] = (uint32_t)(0u | 0u);
-    c->x[8] = (uint64_t)(c->x[8] + c->x[9]);
-    c->pc = c->x[8]; c->x[30] = 0x700550b130ull; rt_dispatch(c); c->pc = 0;
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[30] = 0x700550b138ull; f_700550aae0(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b100;
-    c->x[0] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[19] + 32; ST32(ea, (uint32_t)c->x[20]); ST32(ea + 4, (uint32_t)c->x[0]); }
-    goto L_700550b100;
-}
-
-void f_700550b444(Cpu *c) {
-    { uint64_t ea = c->sp - 96; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[28]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->sp = (uint64_t)(c->sp - 0x360ull);
-    c->x[21] = (uint64_t)(0ull | c->x[0]);
-    c->x[0] = (uint64_t)(0ull | 0ull);
-    { uint64_t ea = c->sp + 0x38ull; ST64(ea, c->x[1]); }
-    if (c->x[2] == 0) goto L_700550b888;
-    c->x[19] = (uint64_t)(0ull | c->x[3]);
-    if (c->x[3] == 0) goto L_700550b888;
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[20] = (uint64_t)(0ull | c->x[2]);
-    c->x[22] = (uint64_t)(0ull | c->x[1]);
-    c->x[30] = 0x700550b488ull; f_700550aae0(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[1] = (uint64_t)(0ull | c->x[22]);
-    c->x[2] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550b49cull; f_700550b8b0(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[10] = (uint32_t)(0x1920ull);
-    c->x[0] = (uint64_t)(0ull | 0ull);
-    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x400000ull);
-    c->x[1] = (uint64_t)(c->x[9] + c->x[10]);
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    if (COND_CC(c)) goto L_700550b888;
-    { uint64_t ea = c->x[21] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_700550b888;
-    c->x[9] = (uint64_t)(c->x[10] + c->x[9]);
-    c->x[0] = (uint64_t)(0ull | 0ull);
-    c->x[9] = (uint64_t)(c->x[9] + 0x10ull);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[1])));
-    if (COND_CC(c)) goto L_700550b888;
-    c->x[9] = (uint64_t)(ROR64(c->x[9], 39) & 0x1ffffffull);
-    if (c->x[9] != 0) goto L_700550b888;
-    { uint64_t ea = c->x[21] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->sp + 0x28ull);
-    c->x[3] = (uint32_t)(0x10ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550b4f0ull; rt_dispatch(c); c->pc = 0;
-    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[0] = (uint64_t)(0ull | 0ull);
-    if ((uint32_t)c->x[8] == 0) goto L_700550b888;
-    { uint64_t ea = c->sp + 0x28ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0xfdull));
-    if (COND_NE(c)) goto L_700550b888;
-    c->x[9] = (uint64_t)(c->sp + 0x28ull);
-    c->x[8] = (uint64_t)(0ull | 0ull);
-    /* hint */
-    c->x[10] = (uint64_t)(0x70055114ccull);
-    c->x[9] = (uint64_t)(c->x[9] | 0x1ull);
-L_700550b51c:;
-    (void)(subs64(c, c->x[8], 0xfull));
-    if (COND_EQ(c)) goto L_700550b548;
-    c->x[11] = (uint64_t)(c->x[10] + c->x[8]);
-    { uint64_t ea = c->x[9] + c->x[8]; uint64_t v = LD8(ea); c->x[12] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    { uint64_t ea = c->x[11] + 0xe1ull; uint64_t v = LD8(ea); c->x[11] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[12], (uint32_t)((uint32_t)c->x[11])));
-    if (COND_EQ(c)) goto L_700550b51c;
-    c->x[8] = (uint64_t)(c->x[8] - 0x1ull);
-    (void)(subs64(c, c->x[8], 0xfull));
-    if (COND_CC(c)) goto L_700550b884;
-L_700550b548:;
-    c->x[22] = (uint32_t)(0u | 0u);
-    c->x[23] = (uint64_t)(c->sp + 0x10ull);
-L_700550b550:;
-    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700550b884;
-    c->x[24] = (uint64_t)(0ull | 0ull);
-    c->x[9] = (uint64_t)(c->x[20] + 0x1ull);
-L_700550b560:;
-    (void)(subs64(c, c->x[24], 0x16ull));
-    if (COND_HI(c)) goto L_700550b590;
-    (void)(subs32(c, (uint32_t)c->x[8], 0x2full));
-    if (COND_EQ(c)) goto L_700550b590;
-    { uint64_t ea = c->x[23] + c->x[24]; ST8(ea, (uint32_t)c->x[8]); }
-    { uint64_t ea = c->x[9] + c->x[24]; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[28] = (uint64_t)(c->x[24] + 0x1ull);
-    c->x[24] = (uint64_t)(0ull | c->x[28]);
-    if ((uint32_t)c->x[8] != 0) goto L_700550b560;
-    { uint64_t ea = c->x[23] + c->x[28]; ST8(ea, 0u); }
-    c->x[24] = (uint32_t)(0u | (uint32_t)c->x[28]);
-    goto L_700550b59c;
-L_700550b590:;
-    { uint64_t ea = c->x[23] + c->x[24]; ST8(ea, 0u); }
-    if (c->x[24] == 0) goto L_700550b884;
-    c->x[28] = (uint64_t)(0ull | c->x[24]);
-L_700550b59c:;
-    { uint64_t ea = c->x[20] + c->x[28]; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x2full));
-    if (COND_EQ(c)) goto L_700550b5ac;
-    if ((uint32_t)c->x[8] != 0) goto L_700550b884;
-L_700550b5ac:;
-    { uint64_t ea = c->sp + 0x38ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[10] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0x10ull);
-    c->x[10] = (uint64_t)((c->x[10] & 0xffffffffffff0000ull) | 0x0ull);
-    { uint64_t ea = c->sp + 0x358ull; ST64(ea, 0ull); }
-    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
-    c->x[9] = (uint64_t)(c->x[9] + 0x8ull);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_CC(c)) goto L_700550b884;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550b884;
-    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
-    c->x[2] = (uint64_t)(c->sp + 0x358ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550b5f0ull; f_700550abf8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    { uint64_t ea = c->sp + 0x358ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[2] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550b604ull; f_700550aee4(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    { uint64_t ea = c->sp + 0x358ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[10] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0x10ull);
-    c->x[10] = (uint64_t)((c->x[10] & 0xffffffffffff0000ull) | 0x0ull);
-    { uint64_t ea = c->sp + 0xcull; ST32(ea, (uint32_t)c->x[22]); }
-    c->x[9] = (uint64_t)(c->x[9] + c->x[8]);
-    { uint64_t ea = c->sp + 0x50ull; ST64(ea, 0ull); }
-    c->x[9] = (uint64_t)(c->x[9] + 0x18ull);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_CC(c)) goto L_700550b884;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550b884;
-    c->x[1] = (uint64_t)(c->x[8] + 0x28ull);
-    c->x[2] = (uint64_t)(c->sp + 0x50ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550b650ull; f_700550abf8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    { uint64_t ea = c->sp + 0x358ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x50ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[29] = (uint64_t)(0ull | 0ull);
-    c->x[27] = (uint32_t)(0x1ull);
-    c->x[25] = (uint32_t)(0x1ull);
-    c->x[10] = (uint32_t)(0x18ull);
-    { uint64_t ea = c->sp + 88; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 0x68ull; ST32(ea, 0u); }
-L_700550b674:;
-    c->x[8] = (uint32_t)((uint32_t)c->x[27] - 0x1ull);
-    c->x[9] = (uint64_t)(c->sp + 0x58ull);
-    c->x[26] = (uint64_t)(c->x[9] + (uint64_t)(uint32_t)c->x[8] * (uint64_t)(uint32_t)c->x[10]);
-    { uint64_t ea = c->x[26] + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    c->x[9] = (uint64_t)(c->x[22] + 0x20ull);
-    (void)(subs64(c, c->x[23], (uint64_t)(c->x[9])));
-    if (COND_EQ(c)) goto L_700550b7d8;
-    { uint64_t ea = c->x[26] + 0x10ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[11] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    c->x[9] = (uint64_t)(c->x[23] + c->x[9]);
-    c->x[11] = (uint64_t)((c->x[11] & 0xffffffffffff0000ull) | 0x0ull);
-    c->x[10] = (uint64_t)(c->x[23] & 0x7ull);
-    (void)(subs32(c, (uint32_t)c->x[8], 0x80ull));
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
-    if (COND_NE(c)) (void)subs64(c, c->x[9], c->x[11]); else c->nzcv = 0x0ull;
-    { uint64_t ea = c->x[26] + 0x10ull; ST32(ea, (uint32_t)c->x[8]); }
-    if (COND_CS(c)) (void)subs64(c, c->x[10], 0x0ull); else c->nzcv = 0x0ull;
-    if (COND_NE(c)) goto L_700550b884;
-    (void)(subs32(c, (uint32_t)c->x[27], 0x20ull));
-    if (COND_EQ(c)) goto L_700550b884;
-    (void)(subs32(c, (uint32_t)c->x[25], 0x1000ull));
-    if (COND_EQ(c)) goto L_700550b884;
-    c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[9] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    { uint64_t ea = c->sp + 64; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
-    c->x[8] = (uint64_t)((c->x[8] & 0xffffffffffff0000ull) | 0x10ull);
-    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0x0ull);
-    c->x[8] = (uint64_t)(c->x[23] + c->x[8]);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_CC(c)) goto L_700550b884;
-    c->x[1] = (uint64_t)(c->x[23] + 0x10ull);
-    c->x[2] = (uint64_t)(c->sp + 0x48ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550b704ull; f_700550abf8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    { uint64_t ea = c->sp + 0x48ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
-    if (COND_NE(c)) goto L_700550b884;
-    c->x[1] = (uint64_t)(c->x[23] + 0x8ull);
-    c->x[2] = (uint64_t)(c->sp + 0x40ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550b728ull; f_700550abf8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[9] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    c->x[8] = (uint64_t)((c->x[8] & 0xffffffffffff0000ull) | 0x10ull);
-    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0x0ull);
-    c->x[8] = (uint64_t)(c->x[8] + c->x[23]);
-    c->x[8] = (uint64_t)(c->x[8] + 0x10ull);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_CC(c)) goto L_700550b884;
-    c->x[1] = (uint64_t)(c->x[23] + 0x20ull);
-    c->x[2] = (uint64_t)(c->sp + 0x50ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550b760ull; f_700550abf8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    c->x[22] = (uint32_t)(0u | (uint32_t)c->x[27]);
-    c->x[25] = (uint32_t)((uint32_t)c->x[25] + 0x1ull);
-    c->x[23] = (uint64_t)(c->x[23] - 0x8ull);
-    c->x[8] = (uint64_t)(c->sp + 0x58ull);
-    c->x[9] = (uint64_t)(0ull | c->x[22]);
-L_700550b778:;
-    { uint64_t ea = c->x[8]; uint64_t v = LD64(ea); c->x[8] = c->x[8] + 24; c->x[10] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[10], (uint64_t)(c->x[23])));
-    if (COND_EQ(c)) goto L_700550b884;
-    c->x[9] = (uint64_t)(subs64(c, c->x[9], 0x1ull));
-    if (COND_NE(c)) goto L_700550b778;
-    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->sp + 0x10ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[1] = (uint64_t)(0ull | c->x[23]);
-    { uint64_t ea = c->x[26] + 0x8ull; ST64(ea, c->x[8]); }
-    c->x[30] = 0x700550b7a4ull; f_700550bc40(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b7b4;
-    c->x[0] = (uint64_t)(0ull | c->x[23]);
-    if (c->x[29] == 0) goto L_700550b7b8;
-    goto L_700550b884;
-L_700550b7b4:;
-    c->x[0] = (uint64_t)(0ull | c->x[29]);
-L_700550b7b8:;
-    c->x[10] = (uint32_t)(0x18ull);
-    c->x[8] = (uint64_t)(c->sp + 0x58ull);
-    c->x[29] = (uint64_t)(0ull | c->x[0]);
-    c->x[9] = (uint64_t)(c->x[8] + (uint64_t)(uint32_t)c->x[22] * (uint64_t)(uint32_t)c->x[10]);
-    { uint64_t ea = c->sp + 0x50ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[9] + 0; ST64(ea, c->x[23]); ST64(ea + 8, c->x[8]); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[27] + 0x1ull);
-    { uint64_t ea = c->x[9] + 0x10ull; ST32(ea, 0u); }
-L_700550b7d8:;
-    c->x[27] = (uint32_t)(0u | (uint32_t)c->x[8]);
-    if ((uint32_t)c->x[8] != 0) goto L_700550b674;
-    if (c->x[29] == 0) goto L_700550b884;
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[1] = (uint64_t)(0ull | c->x[29]);
-    c->x[2] = (uint64_t)(0ull | c->x[19]);
-    c->x[23] = (uint64_t)(0ull | c->x[29]);
-    c->x[30] = 0x700550b7f8ull; f_700550aee4(c);
-    { uint64_t ea = c->sp + 0xcull; uint64_t v = LD32(ea); c->x[22] = (uint64_t)(v); }
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    { uint64_t ea = c->x[20] + c->x[28]; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700550b8a8;
-    c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[9] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    c->x[0] = (uint64_t)(0ull | 0ull);
-    c->x[8] = (uint64_t)((c->x[8] & 0xffffffffffff0000ull) | 0x10ull);
-    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0x0ull);
-    c->x[8] = (uint64_t)(c->x[8] + c->x[23]);
-    c->x[8] = (uint64_t)(c->x[8] + 0xd8ull);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_CC(c)) goto L_700550b888;
-    c->x[10] = (uint64_t)(0ull | c->x[23]);
-    c->x[8] = (uint64_t)(c->x[23] & 0x7ull);
-    c->x[23] = (uint64_t)(c->sp + 0x10ull);
-    if (c->x[8] != 0) goto L_700550b888;
-    c->x[1] = (uint64_t)(c->x[10] + 0xe8ull);
-    c->x[2] = (uint64_t)(c->sp + 0x38ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550b850ull; f_700550abf8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    { uint64_t ea = c->sp + 0x38ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[2] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550b864ull; f_700550b8b0(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550b884;
-    c->x[22] = (uint32_t)((uint32_t)c->x[22] + 0x1ull);
-    c->x[8] = (uint32_t)((uint32_t)c->x[24] + 0x1ull);
-    c->x[0] = (uint64_t)(0ull | 0ull);
-    (void)(subs32(c, (uint32_t)c->x[22], 0x8ull));
-    c->x[20] = (uint64_t)(c->x[20] + c->x[8]);
-    if (COND_NE(c)) goto L_700550b550;
-    goto L_700550b888;
-L_700550b884:;
-    c->x[0] = (uint64_t)(0ull | 0ull);
-L_700550b888:;
-    c->sp = (uint64_t)(c->sp + 0x360ull);
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 96; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-L_700550b8a8:;
-    c->x[0] = (uint64_t)(0ull | c->x[23]);
-    goto L_700550b888;
-}
-
-void f_700550c460(Cpu *c) {
-    if (c->x[0] == 0) goto L_700550c68c;
-    c->sp = (uint64_t)(c->sp - 0x160ull);
-    { uint64_t ea = c->sp + 0x110ull; ST64(ea, c->x[29]); }
-    { uint64_t ea = c->sp + 288; ST64(ea, c->x[30]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 304; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 320; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 336; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 8; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    { uint64_t ea = c->sp + 0x28ull; ST64(ea, 0ull); }
+    if (c->x[0] == 0) goto L_700550db80;
     { uint64_t ea = c->x[0] + 0x40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     c->x[19] = (uint64_t)(0ull | c->x[0]);
-    if (c->x[8] == 0) goto L_700550c670;
+    if (c->x[8] == 0) goto L_700550db80;
+    { uint64_t ea = c->x[19] + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550db80;
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550db80;
     c->x[20] = (uint64_t)(0ull | c->x[1]);
-    { uint64_t ea = c->x[19] + 8; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[1] = (uint64_t)(a); c->x[2] = (uint64_t)(b); }
-    { uint64_t ea = c->x[19] + 0x38ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->pc = c->x[8]; c->x[30] = 0x700550c498ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550c674;
-    c->x[8] = (uint64_t)(0xffffffffffff0018ull);
-    c->x[21] = (uint64_t)(0ull | 0x7ffffe0000ull);
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->x[21] = (uint64_t)((c->x[21] & 0xffffffffffff0000ull) | 0xfff8ull);
-    c->x[8] = (uint64_t)(c->x[20] + c->x[8]);
-    { uint64_t ea = c->sp + 0x118ull; ST64(ea, 0ull); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[21])));
-    { uint64_t ea = c->sp + 256; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
-    if (COND_CS(c)) goto L_700550c674;
-    c->x[8] = (uint64_t)(c->x[20] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550c674;
-    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_700550c670;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->x[20] + 0x18ull);
-    c->x[2] = (uint64_t)(c->sp + 0x118ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550c4e4ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550c674;
-    { uint64_t ea = c->sp + 0x118ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550c670;
-    c->x[8] = (uint64_t)(0xffffffffffff0020ull);
-    c->x[8] = (uint64_t)(c->x[20] + c->x[8]);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[21])));
-    if (COND_CS(c)) goto L_700550c670;
-    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_700550c670;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->x[20] + 0x20ull);
-    c->x[2] = (uint64_t)(c->sp + 0x108ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550c524ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550c674;
-    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(0xffffffffffff0080ull);
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[21])));
-    if (COND_CS(c)) goto L_700550c674;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550c674;
-    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    if (c->x[9] == 0) goto L_700550c670;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->x[8] + 0x80ull);
-    c->x[2] = (uint64_t)(c->sp + 0x118ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->pc = c->x[9]; c->x[30] = 0x700550c564ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550c674;
-    { uint64_t ea = c->sp + 0x118ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550c670;
-    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(0xffffffffffff0018ull);
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[21])));
-    if (COND_CS(c)) goto L_700550c674;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550c674;
-    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    if (c->x[9] == 0) goto L_700550c670;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
-    c->x[2] = (uint64_t)(c->sp + 0x100ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->pc = c->x[9]; c->x[30] = 0x700550c5b4ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550c674;
-    c->x[23] = (uint64_t)(0ull | 0x7ffffe0000ull);
-    c->x[22] = (uint64_t)(0ull | 0ull);
-    c->x[20] = (uint64_t)(0x7005510000ull);
-    c->x[20] = (uint64_t)(c->x[20] + 0xfc0ull);
-    c->x[23] = (uint64_t)((c->x[23] & 0xffffffffffff0000ull) | 0xffffull);
-    c->x[24] = (uint64_t)(c->sp + 0x0ull);
-    c->x[25] = (uint64_t)(0xffffffffffff0018ull);
-L_700550c5d4:;
-    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[1] - 0x10000ull);
-    c->x[9] = (uint64_t)(c->x[1] & 0x7ull);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
-    if (COND_LS(c)) (void)subs64(c, c->x[9], 0x0ull); else c->nzcv = 0x0ull;
-    if (COND_EQ(c)) (void)subs64(c, c->x[22], 0x1full); else c->nzcv = 0x20000000ull;
-    if (COND_HI(c)) goto L_700550c670;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[2] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x700550c5fcull; f_700550c698(c);
-    if ((uint32_t)c->x[0] != 0) goto L_700550c690;
-    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[22] == 0) goto L_700550c624;
-    c->x[9] = (uint64_t)(0ull | 0ull);
-L_700550c60c:;
-    { uint64_t ea = c->x[24] + (c->x[9] << 3); uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[10], (uint64_t)(c->x[8])));
-    if (COND_EQ(c)) goto L_700550c670;
-    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
-    (void)(subs64(c, c->x[22], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550c60c;
-L_700550c624:;
-    c->x[9] = (uint64_t)(c->x[8] + c->x[25]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    { uint64_t ea = c->x[24] + (c->x[22] << 3); ST64(ea, c->x[8]); }
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[21])));
-    if (COND_CS(c)) goto L_700550c674;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550c674;
-    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    if (c->x[9] == 0) goto L_700550c670;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
-    c->x[2] = (uint64_t)(c->sp + 0x100ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[22] = (uint64_t)(c->x[22] + 0x1ull);
-    c->pc = c->x[9]; c->x[30] = 0x700550c660ull; rt_dispatch(c); c->pc = 0;
-    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    if ((uint32_t)c->x[8] != 0) goto L_700550c5d4;
-    goto L_700550c674;
-L_700550c670:;
-    c->x[0] = (uint32_t)(0u | 0u);
-L_700550c674:;
-    { uint64_t ea = c->sp + 336; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0x110ull; uint64_t v = LD64(ea); c->x[29] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 320; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 304; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 288; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[30] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0x160ull);
-L_700550c68c:;
-    c->pc = 0; return;
-L_700550c690:;
-    c->x[0] = (uint32_t)(0x1ull);
-    goto L_700550c674;
-}
-
-void f_700550ce48(Cpu *c) {
-    { uint64_t ea = c->sp - 96; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[28]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->sp = (uint64_t)(c->sp - 0x8f0ull);
-    c->x[20] = (uint64_t)(0ull | c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    if (c->x[20] == 0) goto L_700550d540;
-    c->x[21] = (uint64_t)(0ull | c->x[1]);
-    if (c->x[1] == 0) goto L_700550d540;
-    c->x[19] = (uint64_t)(0ull | c->x[2]);
-    if (c->x[2] == 0) goto L_700550d540;
-    { uint64_t ea = c->x[19] + 0x7e8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] != 0) goto L_700550d53c;
-    { uint64_t ea = c->x[21] + 0x38ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x2ull));
-    if (COND_NE(c)) goto L_700550d53c;
-    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550d53c;
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x700550ceacull; f_700550a9d8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[1] = (uint32_t)(0x3ull);
-    c->x[30] = 0x700550cebcull; f_700550d560(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[1] = (uint32_t)(0x4ull);
-    c->x[30] = 0x700550ceccull; f_700550d560(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    c->x[8] = (uint64_t)(c->sp + 0xa0ull);
-    c->x[23] = (uint64_t)(0ull | 0xffffff800001ffffull);
-    c->x[24] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[0] = (uint64_t)(c->x[8] + 0x18ull);
-    c->x[1] = (uint32_t)(0u | 0u);
-    c->x[2] = (uint32_t)(0x838ull);
-    c->x[23] = (uint64_t)((c->x[23] & 0xffffffffffff0000ull) | 0x0ull);
-    c->x[24] = (uint64_t)((c->x[24] & 0xffffffffffff0000ull) | 0x18ull);
-    c->x[30] = 0x700550cef4ull; f_700550ff50(c);
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint32_t)(0u | 0u);
-    { uint64_t ea = c->x[20] + 8; c->v[0] = LD128(ea); }
-    { uint64_t ea = c->sp + 144; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
-    { uint64_t ea = c->sp + 0xb0ull; ST64(ea, c->x[9]); }
-    c->x[9] = (uint64_t)(c->x[8] + c->x[24]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[23])));
-    { uint64_t ea = c->sp + 0xa0ull; ST128(ea, c->v[0]); }
-    { uint64_t ea = c->sp + 0xd0ull; ST64(ea, c->x[8]); }
-    if (COND_CC(c)) goto L_700550d540;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550d540;
-    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
-    c->x[2] = (uint64_t)(c->sp + 0x98ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550cf3cull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->x[9] = (uint64_t)(c->x[8] + c->x[24]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d540;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550d540;
-    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
-    c->x[2] = (uint64_t)(c->sp + 0x90ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550cf70ull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    { uint64_t ea = c->sp + 0x98ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(0ull | 0x7ffffe0000ull);
-    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0xffffull);
-    c->x[8] = (uint64_t)(c->x[1] - 0x10000ull);
-    { uint64_t ea = c->sp + 0x30ull; ST64(ea, c->x[1]); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_HI(c)) goto L_700550d018;
-    c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550d018;
-    c->x[26] = (uint64_t)(0ull | 0x7ffffe0000ull);
-    c->x[25] = (uint64_t)(0ull | 0ull);
-    /* hint */
-    c->x[22] = (uint64_t)(0x7005510fc0ull);
-    c->x[26] = (uint64_t)((c->x[26] & 0xffffffffffff0000ull) | 0xffffull);
-L_700550cfac:;
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint64_t)(0ull | c->x[22]);
-    c->x[30] = 0x700550cfb8ull; f_700550d630(c);
-    { uint64_t ea = c->sp + 0x30ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[0] != 0) goto L_700550d014;
-    c->x[9] = (uint64_t)(c->x[8] + c->x[24]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d53c;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550d53c;
-    c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
-    c->x[2] = (uint64_t)(c->sp + 0x30ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550cfe8ull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x30ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[1] - 0x10000ull);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[26])));
-    if (COND_HI(c)) goto L_700550d018;
-    c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550d018;
-    (void)(subs64(c, c->x[25], 0x1eull));
-    c->x[25] = (uint64_t)(c->x[25] + 0x1ull);
-    if (COND_LS(c)) goto L_700550cfac;
-    goto L_700550d018;
-L_700550d014:;
-    { uint64_t ea = c->sp + 0xb8ull; ST64(ea, c->x[8]); }
-L_700550d018:;
-    { uint64_t ea = c->sp + 0xb8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    if (c->x[1] == 0) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x90ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x700550d02cull; f_700550d698(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    { uint64_t ea = c->sp + 0xb8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfc8ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x700550d044ull; f_700550d774(c);
-    { uint64_t ea = c->sp + 0x88ull; ST64(ea, 0ull); }
-    if (c->x[0] == 0) goto L_700550d540;
+    c->x[30] = 0x700550d974ull; f_7005507d50(c);
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[0], (uint64_t)(c->x[8])));
+    if (COND_NE(c)) goto L_700550db80;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
     c->x[8] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    c->x[1] = (uint64_t)(0ull | c->x[0]);
-    c->x[8] = (uint64_t)(c->x[0] + c->x[8]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d540;
+    c->x[21] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    c->x[21] = (uint64_t)((c->x[21] & 0xffffffffffff0000ull) | 0x0ull);
+    c->x[8] = (uint64_t)(c->x[1] + c->x[8]);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[21])));
+    if (COND_CC(c)) goto L_700550db80;
     c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550d540;
-    c->x[2] = (uint64_t)(c->sp + 0x88ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    if (c->x[8] != 0) goto L_700550db80;
+    c->x[8] = (uint64_t)(0ull | 0x7fffff0000ull);
+    c->x[8] = (uint64_t)((c->x[8] & 0xffffffffffff0000ull) | 0xfff7ull);
+    (void)(subs64(c, c->x[1], (uint64_t)(c->x[8])));
+    if (COND_HI(c)) goto L_700550db80;
+    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700550db80;
+    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x28ull);
     c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550d07cull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[10] = (uint32_t)(0xbf00ull);
-    { uint64_t ea = c->sp + 0x88ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3910000ull);
-    c->x[10] = (uint64_t)(c->x[8] + c->x[10]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_NE(c)) goto L_700550d53c;
-    c->x[8] = (uint64_t)(c->x[8] + 0x406000ull);
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(0x7005511000ull);
-    c->x[1] = (uint64_t)(c->x[1] + 0xcfull);
-    c->x[8] = (uint64_t)(c->x[8] + 0xaccull);
-    c->pc = c->x[8]; c->x[30] = 0x700550d0b4ull; rt_dispatch(c); c->pc = 0;
-    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[22] = (uint64_t)(0ull | c->x[0]);
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(0x7005511000ull);
-    c->x[1] = (uint64_t)(c->x[1] + 0xffull);
-    c->x[8] = (uint64_t)(c->x[8] + 0xb4c000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0xf10ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550d0d4ull; rt_dispatch(c); c->pc = 0;
-    c->x[8] = (uint64_t)(c->x[22] + c->x[24]);
-    c->x[21] = (uint64_t)(0ull | c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d540;
-    c->x[8] = (uint64_t)(c->x[22] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550d540;
-    c->x[8] = (uint64_t)(c->sp + 0xa0ull);
-    c->x[1] = (uint64_t)(c->x[22] + 0x18ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint64_t)(c->x[8] + 0x20ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550d108ull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    c->x[8] = (uint64_t)(c->x[21] + c->x[24]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d540;
-    c->x[8] = (uint64_t)(c->x[21] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550d540;
-    c->x[22] = (uint64_t)(c->sp + 0xa0ull);
-    c->x[1] = (uint64_t)(c->x[21] + 0x18ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint64_t)(c->x[22] + 0x28ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550d13cull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    c->x[8] = (uint64_t)(c->x[22] + 0x38ull);
-    c->x[9] = (uint32_t)(0x1ull);
-    c->x[27] = (uint64_t)(0ull | 0xffffff8000000000ull);
-    { uint64_t ea = c->sp + 0x8ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[29] = (uint64_t)(c->sp + 0x18ull);
-    c->x[22] = (uint64_t)(0x7005511000ull);
-    c->x[22] = (uint64_t)(c->x[22] + 0x9bull);
-L_700550d160:;
-    c->x[28] = (uint32_t)(0u | (uint32_t)c->x[9]);
-    (void)(logic32(c, (uint32_t)c->x[9] & 0x1ull));
-    c->x[9] = (uint32_t)(0x118ull);
-    c->x[10] = (uint32_t)(0x100ull);
-    c->x[2] = (uint64_t)(c->sp + 0x84ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[25] = (uint64_t)((COND_NE(c)) ? c->x[10] : (uint64_t)(c->x[9]));
-    c->x[3] = (uint32_t)(0x4ull);
-    { uint64_t ea = c->sp + 120; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
-    c->x[8] = (uint64_t)(c->x[25] + c->x[8]);
-    c->x[1] = (uint64_t)(c->x[8] + 0x10ull);
-    c->x[30] = 0x700550d190ull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x84ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x200ull));
-    if (COND_HI(c)) goto L_700550d53c;
-    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->sp + 0x80ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x4ull);
-    c->x[8] = (uint64_t)(c->x[25] + c->x[8]);
-    c->x[1] = (uint64_t)(c->x[8] + 0x14ull);
-    c->x[30] = 0x700550d1bcull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x80ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x8ull));
-    if (COND_NE(c)) goto L_700550d53c;
-    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(logic64(c, c->x[8] & 0x7ull));
-    if (COND_NE(c)) goto L_700550d53c;
-    c->x[8] = (uint64_t)(c->x[8] + c->x[25]);
-    c->x[9] = (uint64_t)(c->x[24] + c->x[8]);
-    c->x[9] = (uint64_t)(c->x[9] - 0x10ull);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d53c;
-    c->x[1] = (uint64_t)(c->x[8] + 0x8ull);
-    c->x[2] = (uint64_t)(c->sp + 0x78ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550d200ull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d53c;
-    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x78ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[10] = (uint64_t)(c->x[8] + c->x[25]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_NE(c)) goto L_700550d234;
-    c->x[26] = (uint32_t)(0u | 0u);
-L_700550d21c:;
-    { uint64_t ea = c->sp + 0x84ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[26], (uint32_t)((uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_700550d53c;
-    c->x[9] = (uint32_t)(0u | 0u);
-    if (((c->x[28] >> 0) & 1) != 0) goto L_700550d160;
-    goto L_700550d460;
-L_700550d234:;
-    c->x[26] = (uint32_t)(0u | 0u);
-L_700550d238:;
-    { uint64_t ea = c->sp + 0x84ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[26] = (uint32_t)((uint32_t)c->x[26] + 0x1ull);
-    (void)(subs32(c, (uint32_t)c->x[26], (uint32_t)((uint32_t)c->x[8])));
-    if (COND_HI(c)) goto L_700550d53c;
-    c->x[8] = (uint64_t)(c->x[9] + c->x[27]);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d53c;
-    c->x[8] = (uint64_t)(c->x[9] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x80ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 104; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
-    { uint64_t ea = c->sp + 0x60ull; ST64(ea, 0ull); }
-    c->x[21] = (uint64_t)(c->x[9] - c->x[8]);
-    c->x[8] = (uint64_t)(c->x[21] + c->x[27]);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d53c;
-    c->x[8] = (uint64_t)(c->x[21] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550d53c;
-    c->x[2] = (uint64_t)(c->sp + 0x70ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[1] = (uint64_t)(0ull | c->x[21]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550d294ull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d53c;
-    c->x[8] = (uint64_t)(c->x[21] + c->x[24]);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d53c;
-    c->x[1] = (uint64_t)(c->x[21] + 0x18ull);
-    c->x[2] = (uint64_t)(c->sp + 0x68ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550d2b8ull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x68ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x78ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(c->x[24] + c->x[8]);
-    c->x[9] = (uint64_t)(c->x[9] - 0x10ull);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d53c;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550d53c;
-    c->x[1] = (uint64_t)(c->x[8] + 0x8ull);
-    c->x[2] = (uint64_t)(c->sp + 0x60ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550d2fcull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d53c;
-    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[10] = (uint32_t)(0xd5a0ull);
-    { uint64_t ea = c->sp + 0x70ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3710000ull);
+    c->pc = c->x[8]; c->x[30] = 0x700550d9ccull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] == 0) goto L_700550db80;
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xf150ull);
+    { uint64_t ea = c->sp + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3720000ull);
     c->x[8] = (uint64_t)(c->x[8] + c->x[10]);
     (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_700550d444;
-    c->v[0] = 0x0ull;
-    c->x[2] = (uint64_t)(c->sp + 0x30ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[1] = (uint64_t)(0ull | c->x[21]);
-    { uint64_t ea = c->sp + 0x50ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->sp + 48; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
-    c->x[30] = 0x700550d338ull; f_700550ac54(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d444;
-    { uint64_t ea = c->sp + 0x880ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700550d364;
-    (void)(subs32(c, (uint32_t)c->x[8], 0x23ull));
-    if (COND_EQ(c)) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-L_700550d350:;
-    { uint64_t ea = c->x[9]; uint64_t v = LD64(ea); c->x[9] = c->x[9] + 56; c->x[10] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[10], (uint64_t)(c->x[21])));
-    if (COND_EQ(c)) goto L_700550d53c;
-    c->x[8] = (uint64_t)(subs64(c, c->x[8], 0x1ull));
-    if (COND_NE(c)) goto L_700550d350;
-L_700550d364:;
-    { uint64_t ea = c->sp + 0x48ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x10ull; ST64(ea, 0ull); }
-    c->x[1] = (uint64_t)(c->x[9] + 0xb0ull);
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    if (COND_CC(c)) goto L_700550d53c;
-    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_700550d53c;
-    c->x[9] = (uint64_t)(c->x[9] + 0xc8ull);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[1])));
-    if (COND_CC(c)) goto L_700550d53c;
-    c->x[9] = (uint64_t)(ROR64(c->x[9], 39) & 0x1ffffffull);
-    if (c->x[9] != 0) goto L_700550d53c;
-    { uint64_t ea = c->x[20] + 0x20ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->sp + 0x18ull);
-    c->x[3] = (uint32_t)(0x18ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550d3a4ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x48ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(c->x[8] + c->x[24]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[23])));
-    if (COND_CC(c)) goto L_700550d53c;
+    if (COND_NE(c)) goto L_700550db80;
+    { uint64_t ea = c->x[19] + 56; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[8] = (uint64_t)(b); }
+    { uint64_t ea = c->x[19] + 8; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[1] = (uint64_t)(a); c->x[2] = (uint64_t)(b); }
+    c->pc = c->x[8]; c->x[30] = 0x700550d9f8ull; rt_dispatch(c); c->pc = 0;
+    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
+    c->x[0] = (uint32_t)(0u | 0u);
+    if (c->x[20] == 0) goto L_700550db84;
+    if ((uint32_t)c->x[8] == 0) goto L_700550db84;
+    { uint64_t ea = c->x[20] + 0x7e4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_700550db80;
+    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550db80;
+    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x10ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
+    if (COND_NE(c)) goto L_700550db80;
+    c->x[22] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[22] = (uint64_t)((c->x[22] & 0xffffffffffff0000ull) | 0x18ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[22]);
+    c->x[9] = (uint64_t)(c->x[9] + 0x10ull);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[21])));
+    if (COND_CC(c)) goto L_700550db84;
     c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550d53c;
+    if (c->x[9] != 0) goto L_700550db84;
+    c->x[1] = (uint64_t)(c->x[8] + 0x28ull);
+    c->x[2] = (uint64_t)(c->sp + 0x18ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550da68ull; f_700550d8dc(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550db84;
+    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[20] + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550db80;
+    c->x[9] = (uint64_t)(c->x[22] + c->x[8]);
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[9] = (uint64_t)(c->x[9] + 0x68ull);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[21])));
+    if (COND_CC(c)) goto L_700550db84;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_700550db84;
+    c->x[1] = (uint64_t)(c->x[8] + 0x80ull);
+    c->x[2] = (uint64_t)(c->sp + 0x8ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[30] = 0x700550daacull; f_700550d8dc(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550db84;
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550db80;
+    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[22]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[21])));
+    if (COND_CC(c)) goto L_700550db84;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_700550db84;
     c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
     c->x[2] = (uint64_t)(c->sp + 0x10ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
     c->x[3] = (uint32_t)(0x8ull);
-    c->x[30] = 0x700550d3d4ull; f_700550d8dc(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d53c;
-    c->x[8] = (uint64_t)(0ull | 0ull);
-L_700550d3dc:;
-    { uint64_t ea = c->x[29] + c->x[8]; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[22] + c->x[8]; uint64_t v = LD8(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_NE(c)) goto L_700550d53c;
-    c->x[8] = (uint64_t)(c->x[8] + 0x1ull);
-    (void)(subs64(c, c->x[8], 0xcull));
-    if (COND_NE(c)) goto L_700550d3dc;
-    { uint64_t ea = c->sp + 0x24ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)((uint32_t)c->x[8] - 0x35ull);
-    (void)(adds32(c, (uint32_t)c->x[9], 0x5ull));
-    if (COND_CC(c)) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x25ull; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
-    if ((uint32_t)c->x[9] != 0) goto L_700550d53c;
-    { uint64_t ea = c->sp + 0x880ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    c->x[11] = (uint32_t)(0x38ull);
-    { uint64_t ea = c->sp + 48; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] - 0x30ull);
-    c->x[10] = (uint64_t)(c->x[10] + (uint64_t)(uint32_t)c->x[9] * (uint64_t)(uint32_t)c->x[11]);
-    c->x[9] = (uint32_t)((uint32_t)c->x[9] + 0x1ull);
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x880ull; ST32(ea, (uint32_t)c->x[9]); }
-    { uint64_t ea = c->sp + 0x50ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[10] + 0; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->x[10] + 32; ST64(ea, c->x[9]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->x[10] + 48; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, 0u); }
-L_700550d444:;
-    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x60ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[10] = (uint64_t)(c->x[8] + c->x[25]);
-    { uint64_t ea = c->sp + 0x78ull; ST64(ea, c->x[9]); }
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_NE(c)) goto L_700550d238;
-    goto L_700550d21c;
-L_700550d460:;
-    { uint64_t ea = c->sp + 0x880ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[30] = 0x700550daf0ull; f_700550d8dc(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550db84;
+    { uint64_t ea = c->x[20] + 0x18ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    /* hint */
+    c->x[2] = (uint64_t)(0x7005510fc0ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x700550db08ull; f_700550d630(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550db84;
+    { uint64_t ea = c->x[20] + 0x20ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(0x7005511000ull);
+    c->x[2] = (uint64_t)(c->x[2] + 0xcfull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x700550db20ull; f_700550d630(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550db84;
+    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(0x7005511000ull);
+    c->x[2] = (uint64_t)(c->x[2] + 0xffull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x700550db38ull; f_700550d630(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550db84;
+    { uint64_t ea = c->x[20] + 0x18ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x700550db4cull; f_700550d698(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550db84;
+    { uint64_t ea = c->x[20] + 0x20ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x700550db60ull; f_700550d698(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550db84;
+    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x700550db74ull; f_700550d698(c);
+    (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
+    c->x[0] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
+    goto L_700550db84;
+L_700550db80:;
     c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs32(c, (uint32_t)c->x[8], 0x19ull));
-    if (COND_CC(c)) goto L_700550d540;
-    c->x[9] = (uint32_t)(0xcccdull);
-    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0xcccc0000ull);
-    c->x[9] = (uint64_t)(0ull + (uint64_t)(uint32_t)c->x[8] * (uint64_t)(uint32_t)c->x[9]);
-    c->x[9] = (uint64_t)(ROR64(c->x[9], 34) & 0x3fffffffull);
-    c->x[9] = (uint32_t)((uint32_t)c->x[9] + ((uint32_t)c->x[9] << 2));
-    c->x[9] = (uint32_t)((uint32_t)c->x[8] - (uint32_t)c->x[9]);
-    if ((uint32_t)c->x[9] != 0) goto L_700550d540;
-    c->x[10] = (uint64_t)(c->sp + 0xa0ull);
+L_700550db84:;
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0x20ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x50ull);
+    c->pc = 0; return;
+}
+
+void f_700550e020(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x1a0ull);
+    { uint64_t ea = c->sp + 288; ST64(ea, VS64(11)); ST64(ea + 8, VS64(10)); }
+    { uint64_t ea = c->sp + 304; ST64(ea, VS64(9)); ST64(ea + 8, VS64(8)); }
+    { uint64_t ea = c->sp + 320; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
+    { uint64_t ea = c->sp + 336; ST64(ea, c->x[28]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 352; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 368; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 384; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 400; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->x[19] = (uint64_t)(0ull | c->x[1]);
+    c->x[20] = (uint64_t)(0ull | c->x[0]);
+    c->x[30] = 0x700550e050ull; f_700550d934(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e500;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x700550e05cull; f_700550a9d8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e500;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint32_t)(0xbull);
+    c->x[30] = 0x700550e06cull; f_700550d560(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e500;
+    { uint64_t ea = c->x[19] + 0x7e0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x809ull; ST8(ea, 0u); }
+    if ((uint32_t)c->x[8] == 0) goto L_700550e4fc;
+    c->x[23] = (uint64_t)(0ull | 0ull);
+    c->x[21] = (uint64_t)(0ull | 0ull);
+    c->x[24] = (uint64_t)(c->x[19] + 0x38ull);
+    c->x[25] = (uint32_t)(0x38ull);
+    c->x[27] = (uint64_t)(c->sp + 0x18ull);
+L_700550e090:;
+    c->x[8] = (uint64_t)(c->x[24] + c->x[23] * c->x[25]);
+    c->x[28] = (uint64_t)(0ull | c->x[21]);
+    { uint64_t ea = c->x[8] + 0x30ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    if ((uint32_t)c->x[9] == 0) goto L_700550e0b8;
+    c->x[21] = (uint64_t)(0ull | c->x[28]);
+L_700550e0a4:;
+    { uint64_t ea = c->x[19] + 0x7e0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[23] = (uint64_t)(c->x[23] + 0x1ull);
+    (void)(subs64(c, c->x[23], (uint64_t)(c->x[8])));
+    if (COND_CC(c)) goto L_700550e090;
+    goto L_700550e1a4;
+L_700550e0b8:;
+    { uint64_t ea = c->x[8] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[26] = (uint64_t)(v); }
+    c->x[22] = (uint64_t)(0ull | 0ull);
+    c->x[29] = (uint32_t)(0u | 0u);
+    c->x[21] = (uint64_t)(0ull | 0ull);
+    { uint64_t ea = c->sp + 0x118ull; ST64(ea, c->x[8]); }
+L_700550e0d0:;
+    { uint64_t ea = c->sp + 0x118ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[10] = (uint64_t)(0ull | 0x7ffffe0000ull);
+    c->x[10] = (uint64_t)((c->x[10] & 0xffffffffffff0000ull) | 0xffffull);
+    c->x[8] = (uint64_t)(c->x[1] - 0x10000ull);
+    c->x[9] = (uint64_t)(c->x[1] & 0x7ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[10])));
+    if (COND_LS(c)) (void)subs64(c, c->x[9], 0x0ull); else c->nzcv = 0x0ull;
+    if (COND_EQ(c)) (void)subs64(c, c->x[22], 0x1full); else c->nzcv = 0x20000000ull;
+    if (COND_HI(c)) goto L_700550e4fc;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[2] = (uint64_t)(0x7005511000ull);
+    c->x[2] = (uint64_t)(c->x[2] + 0xc4ull);
+    c->x[30] = 0x700550e104ull; f_700550d630(c);
+    { uint64_t ea = c->sp + 0x118ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
+    c->x[29] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[29] : (uint32_t)((uint32_t)c->x[29] + 1));
+    c->x[21] = (uint64_t)((COND_NE(c)) ? c->x[8] : (uint64_t)(c->x[21]));
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[26])));
+    if (COND_EQ(c)) goto L_700550e184;
+    if (c->x[22] == 0) goto L_700550e13c;
     c->x[9] = (uint64_t)(0ull | 0ull);
-    c->x[11] = (uint32_t)(0x38ull);
-    c->x[10] = (uint64_t)(c->x[10] + 0x68ull);
-    c->x[12] = (uint32_t)(0x1ull);
-L_700550d4a0:;
-    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[15] = (uint64_t)(v); }
-    c->x[14] = (uint32_t)(0u | 0u);
-    c->x[13] = (uint32_t)(0u | 0u);
-    c->x[15] = (uint64_t)(c->x[15] + c->x[9] * c->x[11]);
-    c->x[16] = (uint64_t)(0ull | c->x[8]);
-    c->x[17] = (uint64_t)(0ull | c->x[10]);
-    { uint64_t ea = c->x[15] + 0x28ull; uint64_t v = LD64(ea); c->x[15] = (uint64_t)(v); }
-L_700550d4bc:;
-    { uint64_t ea = c->x[17] - 8; uint64_t v = LD64(ea); c->x[18] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[18], (uint64_t)(c->x[15])));
-    if (COND_NE(c)) goto L_700550d4e0;
-    { uint64_t ea = c->x[17] + 0x0ull; uint64_t v = LD32(ea); c->x[18] = (uint64_t)(v); }
-    c->x[18] = (uint32_t)((uint32_t)c->x[12] << ((uint32_t)c->x[18] & 31));
-    (void)(logic32(c, (uint32_t)((uint32_t)c->x[18] & (uint32_t)c->x[13])));
-    if (COND_NE(c)) goto L_700550d53c;
-    c->x[13] = (uint32_t)((uint32_t)c->x[18] | (uint32_t)c->x[13]);
-    c->x[14] = (uint32_t)((uint32_t)c->x[14] + 0x1ull);
-L_700550d4e0:;
-    c->x[16] = (uint64_t)(subs64(c, c->x[16], 0x1ull));
-    c->x[17] = (uint64_t)(c->x[17] + 0x38ull);
-    if (COND_NE(c)) goto L_700550d4bc;
-    (void)(subs32(c, (uint32_t)c->x[14], 0x5ull));
-    c->x[0] = (uint32_t)(0u | 0u);
-    if (COND_NE(c)) goto L_700550d540;
-    (void)(subs32(c, (uint32_t)c->x[13], 0x1full));
-    if (COND_NE(c)) goto L_700550d540;
+L_700550e124:;
+    { uint64_t ea = c->x[27] + (c->x[9] << 3); uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[10], (uint64_t)(c->x[8])));
+    if (COND_EQ(c)) goto L_700550e4fc;
     c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_700550d4a0;
-    c->x[8] = (uint32_t)(0x1ull);
-    c->x[1] = (uint64_t)(c->sp + 0xa0ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    { uint64_t ea = c->sp + 0x884ull; ST32(ea, (uint32_t)c->x[8]); }
-    c->x[30] = 0x700550d520ull; f_700550d934(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550d540;
-    c->x[1] = (uint64_t)(c->sp + 0xa0ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[2] = (uint32_t)(0x850ull);
-    c->x[30] = 0x700550d534ull; f_700550ff34(c);
-    c->x[0] = (uint32_t)(0x1ull);
-    goto L_700550d540;
-L_700550d53c:;
-    c->x[0] = (uint32_t)(0u | 0u);
-L_700550d540:;
-    c->sp = (uint64_t)(c->sp + 0x8f0ull);
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 96; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-}
-
-void f_700550eb08(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x60ull);
-    { uint64_t ea = c->sp + 0x10ull; ST64(ea, c->x[30]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->x[21] = (uint64_t)(0ull | c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    if (c->x[21] == 0) goto L_700550eb78;
-    c->x[20] = (uint64_t)(0ull | c->x[1]);
-    if (c->x[1] == 0) goto L_700550eb78;
-    c->x[19] = (uint64_t)(0ull | c->x[2]);
-    if (c->x[2] == 0) goto L_700550eb78;
-    { uint64_t ea = c->x[19] + 0x940ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700550eb6c;
-    { uint64_t ea = c->x[19] + 0x50ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550eb6c;
-    { uint64_t ea = c->x[19] + 0x58ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550eb6c;
-    c->x[0] = (uint32_t)(0x1ull);
-    goto L_700550eb78;
-L_700550eb6c:;
-    { uint64_t ea = c->x[19] + 0x838ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700550eb94;
-L_700550eb74:;
-    c->x[0] = (uint32_t)(0u | 0u);
-L_700550eb78:;
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0x60ull);
-    c->pc = 0; return;
-L_700550eb94:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint32_t)(0u | 0u);
-    c->x[2] = (uint32_t)(0x950ull);
-    c->x[30] = 0x700550eba4ull; f_700550ff50(c);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[21]);
-    c->x[2] = (uint32_t)(0x50ull);
-    c->x[30] = 0x700550ebb4ull; f_700550ff34(c);
-    { uint64_t ea = c->x[20] + 24; c->v[0] = LD128(ea); }
-    c->x[2] = (uint64_t)(c->x[19] + 0x50ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    { uint64_t ea = c->x[19] + 0x8a0ull; ST128(ea, c->v[0]); }
-    c->x[30] = 0x700550ebccull; f_700550ce48(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550eb78;
-    c->x[1] = (uint64_t)(c->x[19] + 0x50ull);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[30] = 0x700550ebdcull; f_700550e020(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550eb78;
-    { uint64_t ea = c->x[19] + 0x830ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700550ec30;
-    c->x[24] = (uint64_t)(0ull | 0ull);
-    /* hint */
-    c->x[22] = (uint64_t)(0x7005511061ull);
-    c->x[25] = (uint32_t)(0x98ull);
-    c->x[23] = (uint64_t)(0x7005511000ull);
-    c->x[23] = (uint64_t)(c->x[23] + 0xdfull);
-L_700550ec00:;
-    { uint64_t ea = c->x[19] + c->x[25]; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[2] = (uint64_t)(0ull | c->x[22]);
-    c->x[3] = (uint64_t)(0ull | c->x[23]);
-    c->x[4] = (uint32_t)(0u | 0u);
-    c->x[30] = 0x700550ec18ull; f_700550ed64(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550eb78;
-    { uint64_t ea = c->x[19] + 0x830ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[24] = (uint64_t)(c->x[24] + 0x1ull);
-    c->x[25] = (uint64_t)(c->x[25] + 0x38ull);
-    (void)(subs64(c, c->x[24], (uint64_t)(c->x[8])));
-    if (COND_CC(c)) goto L_700550ec00;
-L_700550ec30:;
-    c->x[26] = (uint32_t)(0xb30ull);
-    c->x[25] = (uint64_t)(0xffffffffffffffb8ull);
-    c->x[22] = (uint64_t)(0x7005511000ull);
-    c->x[22] = (uint64_t)(c->x[22] + 0xbaull);
-    c->x[26] = (uint32_t)((c->x[26] & 0xffffffff0000ffffull) | 0x3720000ull);
-    /* hint */
-    c->x[23] = (uint64_t)(0x7005511061ull);
-L_700550ec4c:;
-    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x18ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->sp + 0x8ull; ST64(ea, 0ull); }
-    (void)(logic64(c, c->x[8] & 0x7ull));
-    if (COND_NE(c)) goto L_700550eb74;
-    c->x[8] = (uint64_t)(c->x[25] + c->x[8]);
-    c->x[1] = (uint64_t)(c->x[8] + 0xa8ull);
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    if (COND_CC(c)) goto L_700550eb74;
-    c->x[8] = (uint64_t)(c->x[19] + c->x[25]);
-    { uint64_t ea = c->x[19] + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    c->x[24] = (uint64_t)(c->x[8] + 0x8f8ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[2] = (uint64_t)(0ull | c->x[24]);
-    c->pc = c->x[9]; c->x[30] = 0x700550ec88ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550eb74;
-    { uint64_t ea = c->x[24] + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    if (COND_CC(c)) goto L_700550eb74;
-    c->x[8] = (uint64_t)(c->x[1] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550eb74;
-    { uint64_t ea = c->x[19] + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[8] = (uint64_t)(b); }
-    c->x[2] = (uint64_t)(c->sp + 0x18ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550ecb0ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550eb74;
-    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x18ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[8] + c->x[26]);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
-    if (COND_NE(c)) goto L_700550eb74;
-    { uint64_t ea = c->x[24] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[22], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550e124;
+L_700550e13c:;
+    c->x[9] = (uint64_t)(0ull | 0xffffff8000000000ull);
+    c->x[10] = (uint64_t)(0ull | 0xffffff800001ffffull);
+    { uint64_t ea = c->x[27] + (c->x[22] << 3); ST64(ea, c->x[8]); }
+    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0x18ull);
+    c->x[10] = (uint64_t)((c->x[10] & 0xffffffffffff0000ull) | 0x0ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
+    if (COND_CC(c)) goto L_700550e4fc;
+    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
+    if (c->x[9] != 0) goto L_700550e4fc;
     c->x[1] = (uint64_t)(c->x[8] + 0x18ull);
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    if (COND_CC(c)) goto L_700550eb74;
-    c->x[8] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550eb74;
-    { uint64_t ea = c->x[19] + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[8] = (uint64_t)(b); }
+    c->x[2] = (uint64_t)(c->sp + 0x118ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[3] = (uint32_t)(0x8ull);
+    c->x[22] = (uint64_t)(c->x[22] + 0x1ull);
+    c->x[30] = 0x700550e17cull; f_700550d8dc(c);
+    if ((uint32_t)c->x[0] != 0) goto L_700550e0d0;
+    goto L_700550e4fc;
+L_700550e184:;
+    (void)(subs32(c, (uint32_t)c->x[29], 0x1ull));
+    if (COND_NE(c)) goto L_700550e4fc;
+    if (c->x[21] == 0) goto L_700550e4fc;
+    if (c->x[28] == 0) goto L_700550e0a4;
+    (void)(subs64(c, c->x[28], (uint64_t)(c->x[21])));
+    c->x[21] = (uint64_t)(0ull | c->x[28]);
+    if (COND_EQ(c)) goto L_700550e0a4;
+    goto L_700550e4fc;
+L_700550e1a4:;
+    if (c->x[21] == 0) goto L_700550e4fc;
+    c->x[2] = (uint64_t)(0x7005511000ull);
+    c->x[2] = (uint64_t)(c->x[2] + 0xf3ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x700550e1bcull; f_700550d774(c);
+    c->x[22] = (uint64_t)(0ull | c->x[0]);
+    c->x[2] = (uint64_t)(0x7005511000ull);
+    c->x[2] = (uint64_t)(c->x[2] + 0x10aull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x700550e1d4ull; f_700550d774(c);
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    c->x[21] = (uint64_t)(0ull | c->x[0]);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x700550e1e8ull; f_700550d698(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e500;
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x700550e1fcull; f_700550d698(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e500;
+    c->x[2] = (uint64_t)(c->sp + 0x118ull);
+    c->x[3] = (uint64_t)(c->sp + 0x14ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[22]);
+    { uint64_t ea = c->sp + 0x10ull; ST64(ea, 0ull); }
+    c->x[30] = 0x700550e218ull; f_700550e528(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e500;
+    c->x[2] = (uint64_t)(c->sp + 0x118ull);
+    c->x[3] = (uint64_t)(c->sp + 0x10ull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x700550e230ull; f_700550e528(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e500;
+    { uint64_t ea = c->sp + 16; u128 a = LD32(ea), b = LD32(ea + 4); c->v[9] = a; c->v[8] = b; }
+    c->nzcv = cmp_s(c, VSF32(8), VSF32(9));
+    if (COND_LS(c)) goto L_700550e4fc;
+    { uint64_t ea = c->x[19] + 0x7e0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_700550e4fc;
+    c->v[10] = 0x3e800000ull;
+    c->x[8] = (uint64_t)(c->sp + 0x18ull);
+    c->x[24] = (uint64_t)(0ull | 0ull);
+    c->x[25] = (uint32_t)(0u | 0u);
+    c->x[23] = (uint32_t)(0u | 0u);
+    c->x[26] = (uint64_t)(c->x[19] + 0x38ull);
+    c->x[28] = (uint64_t)(c->x[19] + 0x810ull);
+    c->x[29] = (uint64_t)(c->x[8] + 0x8ull);
+    c->x[27] = (uint32_t)(0x38ull);
+    c->x[21] = (uint64_t)(0x7005511000ull);
+    c->x[21] = (uint64_t)(c->x[21] + 0x1e7ull);
+L_700550e274:;
+    c->x[22] = (uint64_t)(c->x[26] + c->x[24] * c->x[27]);
+    { uint64_t ea = c->x[22] + 0x30ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_700550e294;
+L_700550e280:;
+    { uint64_t ea = c->x[19] + 0x7e0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[24] = (uint64_t)(c->x[24] + 0x1ull);
+    (void)(subs64(c, c->x[24], (uint64_t)(c->x[8])));
+    if (COND_CC(c)) goto L_700550e274;
+    goto L_700550e3d0;
+L_700550e294:;
+    { uint64_t ea = c->x[22] + 0x18ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint64_t)(c->sp + 0x118ull);
+    c->x[3] = (uint64_t)(c->sp + 0xcull);
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    { uint64_t ea = c->sp + 0xcull; ST32(ea, 0u); }
+    c->x[30] = 0x700550e2acull; f_700550e528(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e4fc;
+    { uint64_t ea = c->x[22] + 0x28ull; uint64_t v = LD64(ea); c->x[22] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[2] = (uint64_t)(0ull | c->x[21]);
+    c->x[1] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x700550e2c4ull; f_700550d630(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e4fc;
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x700550e2d8ull; f_700550d698(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e4fc;
+    (void)(subs32(c, (uint32_t)c->x[23], 0x7ull));
+    if (COND_EQ(c)) goto L_700550e4fc;
+    if ((uint32_t)c->x[23] == 0) goto L_700550e30c;
+    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[23]);
+    c->x[10] = (uint64_t)(0ull | c->x[28]);
+    c->x[9] = (uint64_t)(0ull | c->x[8]);
+L_700550e2f4:;
+    { uint64_t ea = c->x[10]; uint64_t v = LD64(ea); c->x[10] = c->x[10] + 8; c->x[11] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[11], (uint64_t)(c->x[22])));
+    if (COND_EQ(c)) goto L_700550e4fc;
+    c->x[9] = (uint64_t)(subs64(c, c->x[9], 0x1ull));
+    if (COND_NE(c)) goto L_700550e2f4;
+    goto L_700550e310;
+L_700550e30c:;
+    c->x[8] = (uint64_t)(0ull | 0ull);
+L_700550e310:;
+    { uint64_t ea = c->sp + 0xcull; c->v[11] = LD32(ea); }
+    c->x[23] = (uint32_t)((uint32_t)c->x[23] + 0x1ull);
+    { uint64_t ea = c->x[28] + (c->x[8] << 3); ST64(ea, c->x[22]); }
+    c->nzcv = cmp_s(c, VSF32(11), VSF32(8));
+    if (COND_GE(c)) goto L_700550e280;
+    c->nzcv = cmp_s(c, VSF32(11), VSF32(9));
+    if (COND_LS(c)) goto L_700550e280;
+    c->x[1] = (uint64_t)(c->x[22] + 0x58ull);
     c->x[2] = (uint64_t)(c->sp + 0x8ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550ecf0ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550eb74;
-    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
-    if (COND_NE(c)) goto L_700550eb74;
-    { uint64_t ea = c->x[24] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->x[8] + 0x20ull);
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    if (COND_CC(c)) goto L_700550eb74;
-    c->x[8] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550eb74;
-    c->x[8] = (uint64_t)(c->x[19] + c->x[25]);
-    { uint64_t ea = c->x[19] + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    c->x[24] = (uint64_t)(c->x[8] + 0x940ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->x[2] = (uint64_t)(0ull | c->x[24]);
-    c->pc = c->x[9]; c->x[30] = 0x700550ed34ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550eb74;
-    { uint64_t ea = c->x[24] + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[2] = (uint64_t)(0ull | c->x[22]);
-    c->x[3] = (uint64_t)(0ull | c->x[23]);
-    c->x[30] = 0x700550ed4cull; f_700550b444(c);
-    if (c->x[0] == 0) goto L_700550eb78;
-    c->x[25] = (uint64_t)(adds64(c, c->x[25], 0x8ull));
-    if (COND_NE(c)) goto L_700550ec4c;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[3] = (uint32_t)(0x1ull);
+    { uint64_t ea = c->sp + 0x8ull; ST8(ea, 0u); }
+    c->x[30] = 0x700550e344ull; f_700550d8dc(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e4fc;
+    if ((uint32_t)c->x[25] == 0) goto L_700550e3ac;
+    c->x[10] = (uint64_t)(0ull | 0ull);
+    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[25]);
+    c->x[9] = (uint32_t)(0xffffffffull);
+    c->x[11] = (uint64_t)(0ull | c->x[29]);
+L_700550e35c:;
+    { uint64_t ea = c->x[11]; c->v[0] = LD32(ea); c->x[11] = c->x[11] + 16; }
+    FP_SETS(0, op_s(c, FOP_ABD, VSF32(11), VSF32(0), 0));
+    c->nzcv = cmp_s(c, VSF32(0), VSF32(10));
+    c->x[9] = (uint32_t)((COND_MI(c)) ? (uint32_t)c->x[10] : (uint32_t)((uint32_t)c->x[9]));
+    c->x[10] = (uint64_t)(c->x[10] + 0x1ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[10])));
+    if (COND_NE(c)) goto L_700550e35c;
+    (void)(adds32(c, (uint32_t)c->x[9], 0x1ull));
+    if (COND_EQ(c)) goto L_700550e3a4;
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    if (((c->x[8] >> 0) & 1) == 0) goto L_700550e280;
+    c->x[8] = (uint64_t)(c->sp + 0x18ull);
+    c->x[8] = (uint64_t)(c->x[8] + ((uint64_t)(uint32_t)c->x[9] << 4));
+    { uint64_t ea = c->x[8] + 0xcull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    if ((uint32_t)c->x[9] != 0) goto L_700550e280;
+    { uint64_t ea = c->x[8] + 0x0ull; ST64(ea, c->x[22]); }
+    c->x[9] = (uint32_t)(0x1ull);
+    goto L_700550e3c4;
+L_700550e3a4:;
+    (void)(subs32(c, (uint32_t)c->x[8], 0x7ull));
+    if (COND_EQ(c)) goto L_700550e4fc;
+L_700550e3ac:;
+    c->x[8] = (uint64_t)(c->sp + 0x18ull);
+    { uint64_t ea = c->sp + 0x8ull; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(c->x[8] + ((uint64_t)(uint32_t)c->x[25] << 4));
+    c->x[25] = (uint32_t)((uint32_t)c->x[25] + 0x1ull);
+    c->x[9] = (uint32_t)((uint32_t)c->x[9] & 0x1ull);
+    { uint64_t ea = c->x[8] + 0x0ull; ST64(ea, c->x[22]); }
+L_700550e3c4:;
+    { uint64_t ea = c->x[8] + 0x8ull; ST32(ea, VS32(11)); }
+    { uint64_t ea = c->x[8] + 0xcull; ST32(ea, (uint32_t)c->x[9]); }
+    goto L_700550e280;
+L_700550e3d0:;
+    (void)(subs32(c, (uint32_t)c->x[25], 0x5ull));
+    c->x[0] = (uint32_t)(0u | 0u);
+    if (COND_NE(c)) goto L_700550e500;
+    c->x[9] = (uint32_t)((uint32_t)c->x[23] - 0x8ull);
+    (void)(adds32(c, (uint32_t)c->x[9], 0x3ull));
+    if (COND_CC(c)) goto L_700550e500;
+    c->x[9] = (uint64_t)(c->sp + 0x18ull);
+    c->x[11] = (uint32_t)(0x1ull);
+    c->x[10] = (uint64_t)(c->x[9] + 0x10ull);
+L_700550e3f4:;
+    c->x[12] = (uint64_t)(c->x[9] + (c->x[11] << 4));
+    c->x[15] = (uint64_t)(0ull | c->x[10]);
+    c->x[14] = (uint64_t)(0ull | c->x[11]);
+    { uint64_t ea = c->x[12] + 0x0ull; uint64_t v = LD64(ea); c->x[13] = (uint64_t)(v); }
+    { uint64_t ea = c->x[12] + 0x8ull; c->v[0] = LD32(ea); }
+    { uint64_t ea = c->x[12] + 0xcull; uint64_t v = LD32(ea); c->x[12] = (uint64_t)(v); }
+L_700550e40c:;
+    { uint64_t ea = c->x[15] - 8; c->v[1] = LD32(ea); }
+    c->nzcv = cmp_s(c, VSF32(1), VSF32(0));
+    if (COND_PL(c)) goto L_700550e430;
+    c->x[16] = (uint64_t)(c->x[15] - 0x10ull);
+    c->x[14] = (uint64_t)(c->x[14] - 0x1ull);
+    { uint64_t ea = c->x[16] + 0x0ull; c->v[1] = LD128(ea); }
+    { uint64_t ea = c->x[15] + 0x0ull; ST128(ea, c->v[1]); }
+    c->x[15] = (uint64_t)(0ull | c->x[16]);
+    if (c->x[14] != 0) goto L_700550e40c;
+L_700550e430:;
+    c->x[14] = (uint64_t)(c->x[9] + ((uint64_t)(uint32_t)c->x[14] << 4));
+    c->x[11] = (uint64_t)(c->x[11] + 0x1ull);
+    c->x[10] = (uint64_t)(c->x[10] + 0x10ull);
+    (void)(subs64(c, c->x[11], 0x5ull));
+    { uint64_t ea = c->x[14] + 0x0ull; ST64(ea, c->x[13]); }
+    { uint64_t ea = c->x[14] + 0x8ull; ST32(ea, VS32(0)); }
+    { uint64_t ea = c->x[14] + 0xcull; ST32(ea, (uint32_t)c->x[12]); }
+    if (COND_NE(c)) goto L_700550e3f4;
+    c->x[9] = (uint64_t)(0ull | 0ull);
+    c->x[10] = (uint64_t)(c->x[19] + 0x7f0ull);
+    c->x[11] = (uint64_t)(c->x[19] + 0x68ull);
+    c->x[12] = (uint64_t)(c->sp + 0x18ull);
+L_700550e460:;
+    c->x[13] = (uint64_t)(c->x[12] + (c->x[9] << 4));
+    c->x[14] = (uint64_t)(c->x[9] + (c->x[9] << 2));
+    c->x[15] = (uint64_t)(0ull | 0ull);
+L_700550e46c:;
+    if ((uint32_t)c->x[8] == 0) goto L_700550e4fc;
+    { uint64_t ea = c->x[13] + 0x0ull; uint64_t v = LD64(ea); c->x[18] = (uint64_t)(v); }
+    c->x[17] = (uint64_t)(0ull | 0ull);
+    c->x[16] = (uint32_t)(0xffffffffull);
+    c->x[0] = (uint64_t)(0ull | c->x[11]);
+L_700550e480:;
+    { uint64_t ea = c->x[0] - 8; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[1], (uint64_t)(c->x[18])));
+    if (COND_NE(c)) goto L_700550e4a4;
+    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[15], (uint64_t)(c->x[1])));
+    if (COND_NE(c)) goto L_700550e4a4;
+    (void)(adds32(c, (uint32_t)c->x[16], 0x1ull));
+    if (COND_NE(c)) goto L_700550e4fc;
+    c->x[16] = (uint32_t)(0u | (uint32_t)c->x[17]);
+L_700550e4a4:;
+    c->x[17] = (uint64_t)(c->x[17] + 0x1ull);
+    c->x[0] = (uint64_t)(c->x[0] + 0x38ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[17])));
+    if (COND_NE(c)) goto L_700550e480;
+    (void)(adds32(c, (uint32_t)c->x[16], 0x1ull));
+    if (COND_EQ(c)) goto L_700550e4fc;
+    c->x[17] = (uint64_t)(c->x[15] + c->x[14]);
+    c->x[15] = (uint64_t)(c->x[15] + 0x1ull);
+    (void)(subs64(c, c->x[15], 0x5ull));
+    { uint64_t ea = c->x[10] + c->x[17]; ST8(ea, (uint32_t)c->x[16]); }
+    if (COND_NE(c)) goto L_700550e46c;
+    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
+    (void)(subs64(c, c->x[9], 0x5ull));
+    if (COND_NE(c)) goto L_700550e460;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x700550e4e8ull; f_700550d934(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550e500;
     c->x[0] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[19] + 0x940ull; ST32(ea, (uint32_t)c->x[0]); }
-    goto L_700550eb78;
+    { uint64_t ea = c->x[19] + 0x84full; ST8(ea, (uint32_t)c->x[23]); }
+    { uint64_t ea = c->x[19] + 0x809ull; ST8(ea, (uint32_t)c->x[0]); }
+    goto L_700550e500;
+L_700550e4fc:;
+    c->x[0] = (uint32_t)(0u | 0u);
+L_700550e500:;
+    { uint64_t ea = c->sp + 400; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 384; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 368; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 352; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 336; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 320; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 304; u128 a = LD64(ea), b = LD64(ea + 8); c->v[9] = a; c->v[8] = b; }
+    { uint64_t ea = c->sp + 288; u128 a = LD64(ea), b = LD64(ea + 8); c->v[11] = a; c->v[10] = b; }
+    c->sp = (uint64_t)(c->sp + 0x1a0ull);
+    c->pc = 0; return;
 }
 
-void f_700550f5e4(Cpu *c) {
-    if (c->x[1] == 0) goto L_700550f7c4;
-    { uint64_t ea = c->sp - 80; ST64(ea, VS64(8)); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
+void f_700550f1e4(Cpu *c) {
+    (void)(subs32(c, (uint32_t)c->x[1], 0x18ull));
+    if (COND_LS(c)) goto L_700550f1f4;
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->pc = 0; return;
+L_700550f1f4:;
+    { uint64_t ea = c->sp - 80; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
     { uint64_t ea = c->sp + 32; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
     { uint64_t ea = c->sp + 48; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
     { uint64_t ea = c->sp + 64; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->sp = (uint64_t)(c->sp - 0x380ull);
-    c->x[20] = (uint64_t)(0ull | c->x[1]);
-    { uint64_t ea = c->x[0] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[23] = (uint64_t)(0x7005510000ull);
-    c->x[23] = (uint64_t)(c->x[23] + 0xfe3ull);
-    c->x[21] = (uint32_t)(0u | (uint32_t)c->x[3]);
-    c->x[22] = (uint32_t)(0u | (uint32_t)c->x[2]);
-    c->x[2] = (uint64_t)(0x7005511000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0x198ull);
-    c->x[3] = (uint64_t)(0ull | c->x[23]);
+    c->sp = (uint64_t)(c->sp - 0x210ull);
+    { uint64_t ea = c->x[0] + 0x859ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
     c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[30] = 0x700550f62cull; f_700550b444(c);
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[24] = (uint64_t)(0ull | c->x[0]);
-    c->x[2] = (uint64_t)(0x7005511000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0x89ull);
+    if ((uint32_t)c->x[8] == 0) goto L_700550f32c;
+    c->x[21] = (uint32_t)(0u | (uint32_t)c->x[1]);
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[3] = (uint64_t)(0ull | c->x[23]);
-    { uint64_t ea = c->sp + 0x388ull; ST64(ea, 0ull); }
-    c->x[30] = 0x700550f64cull; f_700550b444(c);
-    { uint64_t ea = c->sp + 0x378ull; ST64(ea, 0ull); }
-    if (c->x[24] == 0) goto L_700550f7cc;
-    c->x[1] = (uint64_t)(c->x[24] + 0xe8ull);
-    c->x[23] = (uint64_t)(0ull | c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    if (COND_CC(c)) goto L_700550f7d0;
-    c->x[8] = (uint64_t)(c->x[24] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550f7d0;
-    { uint64_t ea = c->x[19] + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[8] = (uint64_t)(b); }
-    c->x[2] = (uint64_t)(c->sp + 0x388ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550f680ull; rt_dispatch(c); c->pc = 0;
-    c->x[8] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[0] = (uint32_t)(0u | 0u);
-    if (c->x[23] == 0) goto L_700550f7d0;
-    if ((uint32_t)c->x[8] == 0) goto L_700550f7d0;
-    c->x[1] = (uint64_t)(c->x[23] + 0xe8ull);
-    c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    if (COND_CC(c)) goto L_700550f7d0;
-    c->x[8] = (uint64_t)(c->x[23] & 0x7ull);
-    if (c->x[8] != 0) goto L_700550f7d0;
-    { uint64_t ea = c->x[19] + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[8] = (uint64_t)(b); }
-    c->x[2] = (uint64_t)(c->sp + 0x378ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550f6b8ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    c->v[0] = 0x3f800000ull;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x11ull);
+    c->x[1] = (uint32_t)(0x14ull);
+    c->x[23] = (uint32_t)(0u | (uint32_t)c->x[3]);
+    c->x[20] = (uint64_t)(0ull | c->x[2]);
+    c->x[30] = 0x700550f230ull; f_700550fbd8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f6dcull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
+    c->x[1] = (uint32_t)(0x15ull);
+    c->x[30] = 0x700550f240ull; f_700550fbd8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    c->x[8] = (uint64_t)(c->x[19] + (uint64_t)(uint32_t)c->x[21]);
+    c->x[9] = (uint32_t)(0x38ull);
     c->v[0] = 0x0ull;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x69ull);
+    c->x[24] = (uint64_t)(c->sp + 0xf0ull);
+    c->x[2] = (uint64_t)(c->sp + 0x1e0ull);
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f700ull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    c->v[0] = 0x3f800000ull;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x24ull);
+    { uint64_t ea = c->x[8] + 0x840ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[24] + 0x110ull; ST64(ea, 0ull); }
+    c->x[21] = (uint64_t)(c->x[19] + (uint64_t)(uint32_t)c->x[8] * (uint64_t)(uint32_t)c->x[9]);
+    { uint64_t ea = c->x[24] + 240; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
+    { uint64_t ea = c->x[21] + 136; uint64_t v = LD64(ea); c->x[21] = ea; c->x[1] = (uint64_t)(v); }
+    c->x[30] = 0x700550f274ull; f_700550ac54(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    { uint64_t ea = c->x[24] + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550f32c;
+    { uint64_t ea = c->x[24] + 0xf8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_700550f32c;
+    (void)(subs64(c, c->x[20], 0x0ull));
+    { uint64_t ea = c->x[21] + 0x18ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    /* hint */
+    c->x[2] = (uint64_t)(0x7005511061ull);
+    c->x[22] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f724ull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    c->v[0] = 0x3f800000ull;
-    { uint64_t ea = c->sp + 0x378ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x33ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f748ull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
+    c->x[3] = (uint32_t)(0u | (uint32_t)c->x[22]);
+    c->x[30] = 0x700550f2b8ull; f_700550b96c(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(0x3ba0ull);
+    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x20f0000ull);
+    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[22]);
+    c->x[8] = (uint64_t)(c->x[8] + c->x[9]);
+    c->pc = c->x[8]; c->x[30] = 0x700550f2d8ull; rt_dispatch(c); c->pc = 0;
+    /* hint */
+    c->x[1] = (uint64_t)(0x7005512018ull);
+    c->x[0] = (uint64_t)(c->sp + 0x120ull);
+    c->x[2] = (uint32_t)(0xc0ull);
+    c->x[30] = 0x700550f2ecull; f_700550ff34(c);
     c->v[0] = 0x0ull;
-    { uint64_t ea = c->sp + 0x378ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x1bull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f76cull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    { uint64_t ea = c->x[20] + 0x28ull; c->v[0] = LD32(ea); }
-    { uint64_t ea = c->sp + 0x388ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005510000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0xfebull);
-    FP_SETS(0, fromint_s(c, VS32(0), 32, 1, 0));
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f794ull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
+    c->v[1] = 0x0ull;
+    { uint64_t ea = c->x[24] + 0x0ull; ST64(ea, 0ull); }
+    { uint64_t ea = c->x[24] + 0x8ull; ST32(ea, 0u); }
+    if (c->x[20] == 0) goto L_700550f364;
     { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x388ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->v[1] = 0x3f800000ull;
     (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
-    if (COND_NE(c)) goto L_700550f7ec;
+    if (COND_NE(c)) goto L_700550f364;
     { uint64_t ea = c->x[20] + 0x30ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
     (void)(subs32(c, (uint32_t)c->x[8], 0x2ull));
-    if (COND_EQ(c)) goto L_700550f7f4;
+    if (COND_EQ(c)) goto L_700550f34c;
     (void)(subs32(c, (uint32_t)c->x[8], 0x3ull));
-    if (COND_NE(c)) goto L_700550f7fc;
-    c->x[8] = (uint32_t)(0x2ull);
-    goto L_700550f808;
-L_700550f7c4:;
+    if (COND_NE(c)) goto L_700550f354;
+    c->v[1] = 0x40400000ull;
+    goto L_700550f364;
+L_700550f32c:;
     c->x[0] = (uint32_t)(0u | 0u);
-    c->pc = 0; return;
-L_700550f7cc:;
-    c->x[0] = (uint32_t)(0u | 0u);
-L_700550f7d0:;
-    c->sp = (uint64_t)(c->sp + 0x380ull);
+L_700550f330:;
+    c->sp = (uint64_t)(c->sp + 0x210ull);
     { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; c->v[8] = LD64(ea); c->sp = c->sp + 80; }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 80; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
     c->pc = 0; return;
-L_700550f7ec:;
-    c->x[8] = (uint32_t)(0u | 0u);
-    goto L_700550f808;
-L_700550f7f4:;
-    c->x[8] = (uint32_t)(0x1ull);
-    goto L_700550f808;
-L_700550f7fc:;
+L_700550f34c:;
+    c->v[1] = 0x40000000ull;
+    goto L_700550f364;
+L_700550f354:;
     (void)(subs32(c, (uint32_t)c->x[8], 0x5ull));
-    c->x[8] = (uint32_t)(0x3ull);
-    c->x[8] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[8] : (uint32_t)(0u));
-L_700550f808:;
-    FP_SETS(0, fromint_s(c, (uint32_t)c->x[8], 32, 1, 0));
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x57ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f824ull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    c->v[0] = 0x0ull;
-    { uint64_t ea = c->sp + 0x388ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005510000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0xfdcull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->v[8] = 0x0ull;
-    c->x[30] = 0x700550f84cull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
+    c->x[8] = (uint32_t)(0x4ull);
+    c->x[8] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[8] : (uint32_t)(0u + 1));
+    FP_SETS(1, fromint_s(c, (uint32_t)c->x[8], 32, 1, 0));
+L_700550f364:;
+    (void)(subs64(c, c->x[20], 0x0ull));
+    c->x[9] = (uint64_t)(0x7005510000ull);
+    { uint64_t ea = c->x[24] + 0xcull; ST32(ea, VS32(1)); }
+    if (COND_NE(c)) (void)subs32(c, (uint32_t)c->x[23], 0x0ull); else c->nzcv = 0x40000000ull;
+    { uint64_t ea = c->x[9] + 0x160ull; c->v[4] = LD128(ea); }
+    c->x[8] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
+    VW(vu16, 0, 2, (vu16){} + (uint16_t)c->x[8]);
+    c->x[8] = (uint64_t)(0x7005510000ull);
+    { uint64_t ea = c->x[8] + 0x100ull; c->v[3] = LD128(ea); }
+    c->x[8] = (uint64_t)(0x700550f000ull);
+    sl_gen(c, LOP_SHLLI | LOP_U, 1, 4, 2, 2, 0, 0, 2, 1, 0, -1, 0, 0, -1, 0x0ull);
+    VW(vu32, 1, 2, VREG(vu32, 2) << 31);
+    VW(vu32, 1, 2, (vu32)(VREG(vs32, 2) < 0));
+    VW(vu64, 1, 2, (VREG(vu64, 2) & VREG(vu64, 4)) | (~VREG(vu64, 2) & VREG(vu64, 3)));
+    { uint64_t ea = c->x[8] + 0xfe0ull; c->v[3] = LD64(ea); }
+    c->x[8] = (uint32_t)(0x428c0000ull);
+    { uint64_t ea = c->x[24] + 0x18ull; ST32(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->x[24] + 0x10ull; ST64(ea, VS64(3)); }
+    { uint64_t ea = c->x[24] + 28; ST128(ea, c->v[2]); }
+    if (c->x[20] == 0) goto L_700550f3c8;
     { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x388ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] != 0) goto L_700550f868;
+    if ((uint32_t)c->x[8] != 0) goto L_700550f3c8;
     { uint64_t ea = c->x[19] + 0x944ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
     c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
-    FP_SETS(8, fromint_s(c, (uint32_t)c->x[8], 32, 1, 0));
-L_700550f868:;
-    c->v[0] = VS32(8);
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x6ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f884ull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005511000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xe8ull);
-    c->x[3] = (uint64_t)(0x7005510000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0xfe3ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f8a4ull; f_700550b444(c);
-    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(0ull | c->x[0]);
-    { uint64_t ea = c->sp + 0x370ull; ST64(ea, 0ull); }
-    (void)(subs32(c, (uint32_t)c->x[9], 0x3ull));
-    if (COND_NE(c)) goto L_700550f8c8;
-    { uint64_t ea = c->x[20] + 0x34ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(subs32(c, (uint32_t)c->x[9], 0x1ull));
-    c->x[23] = (uint32_t)((COND_CC(c)) ? 0u : (uint32_t)((uint32_t)c->x[9]));
-    goto L_700550f8cc;
-L_700550f8c8:;
-    c->x[23] = (uint32_t)(0u | 0u);
-L_700550f8cc:;
-    c->x[0] = (uint32_t)(0u | 0u);
-    if (c->x[8] == 0) goto L_700550f7d0;
-    (void)(subs32(c, (uint32_t)c->x[23], 0x4ull));
-    if (COND_HI(c)) goto L_700550f7d0;
-    c->x[1] = (uint64_t)(c->x[8] + 0xe8ull);
-    c->x[0] = (uint32_t)(0u | 0u);
-    (void)(subs64(c, c->x[1], 0x10000ull));
-    if (COND_CC(c)) goto L_700550f7d0;
-    c->x[9] = (uint64_t)(c->x[8] & 0x7ull);
-    if (c->x[9] != 0) goto L_700550f7d0;
-    { uint64_t ea = c->sp + 0x0ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->x[19] + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[8] = (uint64_t)(b); }
-    c->x[2] = (uint64_t)(c->sp + 0x370ull);
-    c->x[3] = (uint32_t)(0x8ull);
-    c->pc = c->x[8]; c->x[30] = 0x700550f908ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    FP_SETS(0, fromint_s(c, (uint32_t)c->x[23], 32, 1, 0));
-    { uint64_t ea = c->sp + 0x370ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005510000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0xff9ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f92cull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    c->v[0] = 0x3f800000ull;
-    { uint64_t ea = c->sp + 0x370ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005510000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0xff6ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f950ull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    c->v[0] = 0x0ull;
-    { uint64_t ea = c->sp + 0x370ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x48ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f974ull; f_700550ba18(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    (void)(subs32(c, (uint32_t)c->x[23], 0x0ull));
-    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550f994ull; f_700550b96c(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    (void)(subs32(c, (uint32_t)c->x[22], 0x3ull));
-    if (COND_EQ(c)) goto L_700550f9d0;
-    (void)(subs32(c, (uint32_t)c->x[22], 0x5ull));
-    if (COND_EQ(c)) goto L_700550f9b8;
-    (void)(subs32(c, (uint32_t)c->x[22], 0x4ull));
-    if (COND_NE(c)) goto L_700550f9d8;
-    c->x[8] = (uint32_t)(0x1ull);
-    goto L_700550f9f4;
-L_700550f9b8:;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x2ull));
-    if (COND_EQ(c)) goto L_700550f9e0;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x4ull));
-    if (COND_NE(c)) goto L_700550f9e8;
-    c->x[8] = (uint32_t)(0x2ull);
-    goto L_700550f9f4;
-L_700550f9d0:;
-    c->x[8] = (uint64_t)(0ull | 0ull);
-    goto L_700550f9f4;
-L_700550f9d8:;
-    { uint64_t ea = c->x[20] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    goto L_700550fa00;
-L_700550f9e0:;
-    c->x[8] = (uint32_t)(0x3ull);
-    goto L_700550f9f4;
-L_700550f9e8:;
-    (void)(subs32(c, (uint32_t)c->x[21], 0x6ull));
-    c->x[8] = (uint32_t)(0x4ull);
-    c->x[8] = (uint64_t)((COND_EQ(c)) ? c->x[8] : (uint64_t)(c->x[8] + 1));
-L_700550f9f4:;
+    FP_SETS(0, fromint_s(c, (uint32_t)c->x[8], 32, 1, 0));
+L_700550f3c8:;
+    c->x[25] = (uint64_t)(0ull | 0ull);
+    { uint64_t ea = c->x[24] + 0x2cull; ST32(ea, VS32(0)); }
+    c->x[23] = (uint64_t)(c->sp + 0x120ull);
+    c->x[26] = (uint64_t)(c->sp + 0xf0ull);
     /* hint */
-    c->x[9] = (uint64_t)(0x70055121b0ull);
-    c->x[0] = (uint64_t)(c->x[9] + (c->x[8] << 7));
-L_700550fa00:;
-    c->x[1] = (uint64_t)(c->sp + 0x23eull);
-    c->x[30] = 0x700550fa08ull; f_700550fe9c(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD64(ea); c->x[4] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x1c9ull);
+    c->x[24] = (uint64_t)(0x7005511061ull);
+L_700550f3e0:;
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->x[26] + c->x[25]; c->v[0] = LD32(ea); }
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550fa2cull; f_700550fc88(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x12aull);
-    c->x[4] = (uint64_t)(c->sp + 0x23eull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550fa50ull; f_700550fc88(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x1c9ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[4] = (uint32_t)(0x1ull);
-    c->x[30] = 0x700550fa74ull; f_700550ed64(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x12aull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[4] = (uint32_t)(0x1ull);
-    c->x[30] = 0x700550fa98ull; f_700550ed64(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
+    c->x[2] = (uint64_t)(0ull | c->x[24]);
+    c->x[3] = (uint64_t)(0ull | c->x[23]);
+    c->x[30] = 0x700550f3f8ull; f_700550ba18(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    c->x[25] = (uint64_t)(c->x[25] + 0x4ull);
+    c->x[23] = (uint64_t)(c->x[23] + 0x10ull);
+    (void)(subs64(c, c->x[25], 0x30ull));
+    if (COND_NE(c)) goto L_700550f3e0;
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
     /* hint */
-    c->x[1] = (uint64_t)(0x70055124b0ull);
-    c->x[0] = (uint64_t)(c->sp + 0x136ull);
-    c->x[2] = (uint32_t)(0x108ull);
-    c->x[22] = (uint64_t)(c->sp + 0x136ull);
-    c->x[30] = 0x700550fab4ull; f_700550ff34(c);
-    c->x[23] = (uint64_t)(0ull | 0ull);
-    c->x[21] = (uint64_t)(0x7005510000ull);
-    c->x[21] = (uint64_t)(c->x[21] + 0xfe3ull);
-L_700550fac0:;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[3] = (uint64_t)(c->x[22] + c->x[23]);
+    c->x[2] = (uint64_t)(0x7005511061ull);
+    c->x[3] = (uint64_t)(0x7005511000ull);
+    c->x[3] = (uint64_t)(c->x[3] + 0x166ull);
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[2] = (uint64_t)(0ull | c->x[21]);
-    c->x[30] = 0x700550fad4ull; f_700550fcf8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    c->x[23] = (uint64_t)(c->x[23] + 0x18ull);
-    (void)(subs64(c, c->x[23], 0x108ull));
-    if (COND_NE(c)) goto L_700550fac0;
+    c->x[4] = (uint32_t)(0u | (uint32_t)c->x[22]);
+    c->x[30] = 0x700550f42cull; f_700550ed64(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    /* hint */
+    c->x[2] = (uint64_t)(0x7005511061ull);
+    c->x[3] = (uint64_t)(0x7005511000ull);
+    c->x[3] = (uint64_t)(c->x[3] + 0x1aaull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[4] = (uint32_t)(0u | (uint32_t)c->x[22]);
+    c->x[30] = 0x700550f450ull; f_700550ed64(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    /* hint */
+    c->x[1] = (uint64_t)(0x70055120d8ull);
+    c->x[0] = (uint64_t)(c->sp + 0x18ull);
+    c->x[2] = (uint32_t)(0xd8ull);
+    c->x[23] = (uint64_t)(c->sp + 0x18ull);
+    c->x[30] = 0x700550f46cull; f_700550ff34(c);
+    c->x[24] = (uint64_t)(0ull | 0ull);
+    /* hint */
+    c->x[22] = (uint64_t)(0x7005511061ull);
+L_700550f478:;
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[3] = (uint64_t)(c->x[23] + c->x[24]);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[2] = (uint64_t)(0ull | c->x[22]);
+    c->x[30] = 0x700550f48cull; f_700550fcf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    c->x[24] = (uint64_t)(c->x[24] + 0x18ull);
+    (void)(subs64(c, c->x[24], 0xd8ull));
+    if (COND_NE(c)) goto L_700550f478;
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    if (c->x[20] == 0) goto L_700550f4c8;
+    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
+    if (COND_NE(c)) goto L_700550f4c8;
+    { uint64_t ea = c->x[20] + 0x30ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)((uint32_t)c->x[8] & 0xfffffffeull);
+    (void)(subs32(c, (uint32_t)c->x[9], 0x2ull));
+    if (COND_NE(c)) goto L_700550f5d8;
+    c->x[4] = (uint32_t)(0x1ull);
+    goto L_700550f4cc;
+L_700550f4c8:;
+    c->x[4] = (uint32_t)(0u | 0u);
+L_700550f4cc:;
+    /* hint */
+    c->x[2] = (uint64_t)(0x7005511061ull);
+    c->x[3] = (uint64_t)(0x7005511000ull);
+    c->x[3] = (uint64_t)(c->x[3] + 0x137ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x700550f4e4ull; f_700550ed64(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    if (c->x[20] == 0) goto L_700550f5b4;
     { uint64_t ea = c->x[20] + 0x24ull; uint64_t v = LD32(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(c->sp + 0x120ull);
-    c->x[30] = 0x700550faf0ull; f_700550fe20(c);
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x171ull);
-    c->x[4] = (uint64_t)(c->sp + 0x120ull);
+    c->x[1] = (uint64_t)(c->sp + 0x2ull);
+    c->x[30] = 0x700550f4f8ull; f_700550fe20(c);
+    { uint64_t ea = c->x[20] + 0x20ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
+    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[3] = (uint64_t)(v); }
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550fb10ull; f_700550fc88(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->x[20] + 0x10ull; uint64_t v = LD64(ea); c->x[4] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
-    c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0xa8ull);
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550fb34ull; f_700550fc88(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
+    c->x[1] = (uint64_t)(0ull | c->x[21]);
+    c->x[30] = 0x700550f50cull; f_700550b000(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0x7005511000ull);
+    c->x[9] = (uint64_t)(c->x[9] + 0x80ull);
     /* hint */
-    c->x[1] = (uint64_t)(0x70055125b8ull);
-    c->x[0] = (uint64_t)(c->sp + 0x8ull);
-    c->x[2] = (uint32_t)(0x118ull);
-    c->x[22] = (uint64_t)(c->sp + 0x8ull);
-    c->x[30] = 0x700550fb50ull; f_700550ff34(c);
-    c->x[23] = (uint64_t)(0ull | 0ull);
-    c->x[21] = (uint64_t)(0x7005510000ull);
-    c->x[21] = (uint64_t)(c->x[21] + 0xfe3ull);
-L_700550fb5c:;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->x[3] = (uint64_t)(c->x[22] + c->x[23]);
+    c->x[2] = (uint64_t)(0x7005511061ull);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x0ull));
+    c->x[8] = (uint64_t)(0x7005511000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x18full);
+    c->x[3] = (uint64_t)((COND_EQ(c)) ? c->x[8] : (uint64_t)(c->x[9]));
+    c->x[4] = (uint64_t)(c->sp + 0x2ull);
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[2] = (uint64_t)(0ull | c->x[21]);
-    c->x[30] = 0x700550fb70ull; f_700550fcf8(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700550f7d0;
-    c->x[23] = (uint64_t)(c->x[23] + 0x28ull);
-    (void)(subs64(c, c->x[23], 0x118ull));
-    if (COND_NE(c)) goto L_700550fb5c;
-    { uint64_t ea = c->x[19] + 0x8a8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->x[20] + 0x2cull; uint64_t v = LD32(ea); c->x[4] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(0x7005510000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0xfe3ull);
+    c->x[30] = 0x700550f544ull; f_700550fc88(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    /* hint */
+    c->x[2] = (uint64_t)(0x7005511061ull);
     c->x[3] = (uint64_t)(0x7005511000ull);
-    c->x[3] = (uint64_t)(c->x[3] + 0x147ull);
+    c->x[3] = (uint64_t)(c->x[3] + 0x80ull);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x0ull));
     c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[30] = 0x700550fba0ull; f_700550fd48(c);
-    goto L_700550f7d0;
+    c->x[4] = (uint32_t)((COND_EQ(c)) ? 0u : (uint32_t)(0u + 1));
+    c->x[30] = 0x700550f570ull; f_700550ed64(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    /* hint */
+    c->x[2] = (uint64_t)(0x7005511061ull);
+    c->x[3] = (uint64_t)(0x7005511000ull);
+    c->x[3] = (uint64_t)(c->x[3] + 0x1b5ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x700550f590ull; f_700550fcf8(c);
+    if ((uint32_t)c->x[0] == 0) goto L_700550f330;
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->x[20] + 0x2cull; uint64_t v = LD32(ea); c->x[4] = (uint64_t)(v); }
+    /* hint */
+    c->x[2] = (uint64_t)(0x7005511061ull);
+    c->x[3] = (uint64_t)(0x7005511000ull);
+    c->x[3] = (uint64_t)(c->x[3] + 0x159ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    goto L_700550f5d0;
+L_700550f5b4:;
+    { uint64_t ea = c->x[21] + 0x10ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    /* hint */
+    c->x[2] = (uint64_t)(0x7005511061ull);
+    c->x[3] = (uint64_t)(0x7005511000ull);
+    c->x[3] = (uint64_t)(c->x[3] + 0x159ull);
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[4] = (uint32_t)(0u | 0u);
+L_700550f5d0:;
+    c->x[30] = 0x700550f5d4ull; f_700550fd48(c);
+    goto L_700550f330;
+L_700550f5d8:;
+    (void)(subs32(c, (uint32_t)c->x[8], 0x5ull));
+    c->x[4] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
+    goto L_700550f4cc;
 }
 
-void f_7005604000(Cpu *c) {
+void f_7005601000(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x140ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -9784,9 +9929,10 @@ void f_7005604000(Cpu *c) {
     { uint64_t ea = c->sp + 208; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
     { uint64_t ea = c->sp + 240; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
     { uint64_t ea = c->sp + 272; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint32_t)(0x1ull);
-    c->x[30] = 0x7005604050ull; f_7005609000(c);
+    c->x[0] = (uint64_t)(0ull | c->x[10]);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[11]);
+    c->x[3] = (uint32_t)(VS32(0));
+    c->x[30] = 0x7005601054ull; f_7005607400(c);
     { uint64_t ea = c->sp + 176; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 208; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 240; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -9804,11 +9950,142 @@ void f_7005604000(Cpu *c) {
     { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
     c->sp = (uint64_t)(c->sp + 0x140ull);
-    { uint64_t ea = c->x[19] + 0xcc0ull; uint64_t v = LD32(ea); c->x[20] = (uint64_t)(v); }
-    c->pc = 0x7000a742c0ull; return;
+    { uint64_t ea = c->x[10] + 0x158ull; ST32(ea, (uint32_t)c->x[11]); }
+    c->pc = 0x7001b2e458ull; return;
 }
 
-void f_7005605a00(Cpu *c) {
+void f_7005602800(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x140ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[30]); }
+    c->x[8] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xa0ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 176; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 208; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 240; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 272; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[1] = (uint64_t)(0ull | c->x[19]);
+    c->x[30] = 0x7005602850ull; f_7005608800(c);
+    if ((uint32_t)c->x[0] != 0) goto L_70056028a0;
+    { uint64_t ea = c->sp + 176; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 208; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 240; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 0xa0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->nzcv = c->x[8] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x140ull);
+    { uint64_t ea = c->x[20] + 0x154ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->pc = 0x7000306590ull; return;
+L_70056028a0:;
+    { uint64_t ea = c->sp + 176; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 208; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 240; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 0xa0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->nzcv = c->x[8] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x140ull);
+    c->pc = 0x7000306594ull; return;
+}
+
+void f_7005605200(Cpu *c) {
+    if (c->x[0] == 0) goto L_700560524c;
+    { uint64_t ea = c->x[0] + 0x20ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] != 0) goto L_700560524c;
+    { uint64_t ea = c->x[0] + 0x1acull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(0xe165ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x9a880000ull);
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_700560524c;
+    { uint64_t ea = c->x[0] + 0x1b0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(0x37d1ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0xbd8f0000ull);
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_700560524c;
+    { uint64_t ea = c->x[0] + 0x1b4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(0x29b8ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0xc5fd0000ull);
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    c->x[0] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
+    c->pc = 0; return;
+L_700560524c:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->pc = 0; return;
+}
+
+void f_7005605e00(Cpu *c) {
+    c->x[9] = (uint64_t)(c->x[0] + 0x48ull);
+L_7005605e04:;
+    c->x[8] = (uint64_t)(ldx32(c, c->x[9]));
+    if ((uint32_t)c->x[8] != 0) goto L_7005605e04;
+    c->x[8] = (uint32_t)(0x1ull);
+    { uint32_t st = stx32(c, c->x[9], c->x[8]); c->x[10] = (uint32_t)(st); }
+    if ((uint32_t)c->x[10] != 0) goto L_7005605e04;
+    c->pc = 0; return;
+}
+
+void f_7005606400(Cpu *c) {
+    { uint64_t ea = c->x[0] + 0x154ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)((uint32_t)c->x[8] - 0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[9], 0x47ull));
+    if (COND_CS(c)) goto L_7005606464;
+    c->x[9] = (uint64_t)(c->x[1] + 0x100ull);
+    c->x[9] = (uint64_t)(c->x[9] + ((uint64_t)(uint32_t)c->x[8] << 4));
+    { uint64_t ea = c->x[0] + 0x158ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[10], 0x1ull));
+    if (COND_LT(c)) goto L_7005606468;
+    { uint64_t ea = c->x[0] + 0x15cull; c->v[0] = LD32(ea); }
+    c->x[11] = (uint32_t)(0x34000000ull);
+    c->v[1] = (uint32_t)c->x[11];
+    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
+    if (COND_LE(c)) goto L_7005606468;
+    c->x[11] = (uint32_t)(VS32(0));
+    c->x[12] = (uint32_t)((uint32_t)c->x[11] & 0x7f800000ull);
+    c->x[13] = (uint32_t)(0x7f800000ull);
+    (void)(subs32(c, (uint32_t)c->x[12], (uint32_t)((uint32_t)c->x[13])));
+    if (COND_EQ(c)) goto L_7005606468;
+    { uint64_t ea = c->x[9] + 0x0ull; ST32(ea, (uint32_t)c->x[10]); }
+    c->x[12] = (uint64_t)(c->x[0] + 0x15cull);
+    { uint64_t ea = c->x[12] + 0x0ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9] + 4; ST64(ea, c->x[10]); }
+    { uint64_t ea = c->x[0] + 0x164ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9] + 0xcull; ST32(ea, (uint32_t)c->x[10]); }
+L_7005606464:;
+    c->pc = 0; return;
+L_7005606468:;
+    { uint64_t ea = c->x[9] + 0; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
+    c->pc = 0; return;
+}
+
+void f_7005606c00(Cpu *c) {
     { uint64_t ea = c->sp - 112; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
     { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
@@ -9817,123 +10094,85 @@ void f_7005605a00(Cpu *c) {
     { uint64_t ea = c->sp + 80; ST64(ea, c->x[27]); ST64(ea + 8, c->x[28]); }
     c->x[29] = (uint64_t)(c->sp + 0x0ull);
     c->x[19] = (uint64_t)(0ull | c->x[0]);
-    if (c->x[19] != 0) goto L_7005605a40;
+    c->x[30] = 0x7005606c24ull; f_7005605200(c);
+    if ((uint32_t)c->x[0] == 0) goto L_7005606d90;
+    c->x[20] = (uint64_t)(0x700560e000ull);
+    c->x[20] = (uint64_t)(c->x[20] + 0x180ull);
+    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
     c->x[8] = (uint64_t)(0x700560e000ull);
     c->x[8] = (uint64_t)(c->x[8] + 0x148ull);
     { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     c->x[9] = (uint64_t)(0x66b0ull);
     c->x[9] = (uint64_t)((c->x[9] & 0xffffffff0000ffffull) | 0x3ad0000ull);
-    { uint64_t ea = c->x[8] + c->x[9]; uint64_t v = LD64(ea); c->x[19] = (uint64_t)(v); }
-    if (c->x[19] == 0) goto L_7005605aac;
-L_7005605a40:;
-    c->x[0] = (uint64_t)(c->x[19] + 0x128ull);
-    c->x[1] = (uint32_t)(0x41a1ull);
-    c->x[1] = (uint32_t)((c->x[1] & 0xffffffff0000ffffull) | 0xd6da0000ull);
-    c->x[30] = 0x7005605a50ull; f_7005605600(c);
-    c->x[20] = (uint64_t)(0ull | c->x[0]);
-    c->x[21] = (uint64_t)(0ull | c->x[1]);
-    c->x[22] = (uint64_t)(0ull | c->x[2]);
-    if (c->x[20] == 0) goto L_7005605aac;
-    c->x[0] = (uint64_t)(c->x[19] + 0x1e8ull);
-    c->x[1] = (uint32_t)(0xfd6ull);
-    c->x[1] = (uint32_t)((c->x[1] & 0xffffffff0000ffffull) | 0x1c2d0000ull);
-    c->x[30] = 0x7005605a70ull; f_7005605600(c);
-    c->x[3] = (uint64_t)(0ull | c->x[1]);
-    c->x[1] = (uint64_t)(0ull | c->x[0]);
-    c->x[5] = (uint64_t)(0ull | c->x[2]);
-    c->x[4] = (uint64_t)(0ull | c->x[22]);
-    c->x[6] = (uint64_t)(0ull | c->x[19]);
-    c->x[2] = (uint64_t)(0ull | c->x[21]);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    if (c->x[1] == 0) goto L_7005605aac;
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[27] = (uint64_t)(a); c->x[28] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[25] = (uint64_t)(a); c->x[26] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 112; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-L_7005605aac:;
+    { uint64_t ea = c->x[8] + c->x[9]; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_7005606d90;
+    { uint64_t ea = c->x[8] + 0xcc8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_7005606d90;
+    { uint64_t ea = c->x[8] + 0x78ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    if (((c->x[8] >> 1) & 1) != 0) goto L_7005606d90;
     c->x[0] = (uint64_t)(0ull | 0ull);
-    c->x[1] = (uint64_t)(0ull | 0ull);
-    c->x[2] = (uint64_t)(0ull | 0ull);
-    c->x[3] = (uint64_t)(0ull | 0ull);
-    c->x[4] = (uint64_t)(0ull | 0ull);
-    c->x[5] = (uint64_t)(0ull | 0ull);
-    c->x[6] = (uint64_t)(0ull | 0ull);
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[27] = (uint64_t)(a); c->x[28] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[25] = (uint64_t)(a); c->x[26] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 112; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-}
-
-void f_7005608000(Cpu *c) {
-    { uint64_t ea = c->sp - 112; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[23]); ST64(ea + 8, c->x[24]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[25]); ST64(ea + 8, c->x[26]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[27]); ST64(ea + 8, c->x[28]); }
-    c->x[29] = (uint64_t)(c->sp + 0x0ull);
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[20] = (uint64_t)(0x700560e000ull);
-    c->x[20] = (uint64_t)(c->x[20] + 0x180ull);
-    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
-    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_7005608128;
-    { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[19])));
-    if (COND_NE(c)) goto L_7005608128;
+    c->x[30] = 0x7005606c68ull; f_7005605a00(c);
+    c->x[23] = (uint64_t)(0ull | c->x[0]);
+    c->x[24] = (uint64_t)(0ull | c->x[1]);
     c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005608048ull; f_7005605e00(c);
-    { uint64_t ea = c->x[20] + 0x30ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_70056080ec;
-    { uint64_t ea = c->x[20] + 0x38ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[19])));
-    if (COND_NE(c)) goto L_70056080ec;
-    { uint64_t ea = c->x[20] + 0x30ull; ST32(ea, 0u); }
-    { uint64_t ea = c->x[20] + 0x34ull; c->v[0] = LD32(ea); }
-    { uint64_t ea = c->x[19] + 0x15cull; c->v[1] = LD32(ea); }
-    fp_op_s(c, FOP_SUB, 2, 0, 1);
-    c->nzcv = cmp_s(c, VSF32(2), 0);
-    if (COND_LE(c)) goto L_70056080ec;
-    { uint64_t ea = c->x[19] + 0x154ull; uint64_t v = LD32(ea); c->x[23] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005608084ull; f_7005606400(c);
+    c->x[30] = 0x7005606c78ull; f_7005605e00(c);
+    if (c->x[23] == 0) goto L_7005606d70;
+    c->x[27] = (uint32_t)(0u | 0u);
+    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[20] + 0xcull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_7005606ca4;
+    if ((uint32_t)c->x[9] != 0) goto L_7005606ca4;
+    { uint64_t ea = c->x[19] + 0x154ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] != 0) goto L_7005606d08;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x7005606ca0ull; f_7005606800(c);
+    goto L_7005606d08;
+L_7005606ca4:;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x7005606cacull; f_7005606800(c);
+    { uint64_t ea = c->x[23] + 0x0ull; uint64_t v = LD32(ea); c->x[27] = (uint64_t)(v); }
     c->x[21] = (uint32_t)(0x1ull);
     c->x[22] = (uint64_t)(c->x[20] + 0x110ull);
-L_700560808c:;
-    (void)(subs32(c, (uint32_t)c->x[21], (uint32_t)((uint32_t)c->x[23])));
-    if (COND_EQ(c)) goto L_70056080c4;
-    { uint64_t ea = c->x[22] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_70056080c4;
-    { uint64_t ea = c->x[22] + 0x4ull; c->v[0] = LD32(ea); }
-    fp_op_s(c, FOP_SUB, 1, 0, 2);
-    c->x[8] = (uint32_t)(0x34000000ull);
-    c->v[3] = (uint32_t)c->x[8];
-    c->nzcv = cmp_s(c, VSF32(1), VSF32(3));
-    if (COND_LE(c)) goto L_70056080c0;
-    { uint64_t ea = c->x[22] + 0x8ull; ST32(ea, VS32(0)); }
-    { uint64_t ea = c->x[22] + 0x4ull; ST32(ea, VS32(1)); }
-    goto L_70056080c4;
-L_70056080c0:;
-    { uint64_t ea = c->x[22] + 0; ST64(ea, 0ull); ST64(ea + 8, 0ull); }
-L_70056080c4:;
+L_7005606cb8:;
+    { uint64_t ea = c->x[23] + ((uint64_t)(uint32_t)c->x[21] << 2); uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
+    if (COND_LT(c)) goto L_7005606cf8;
+    { uint64_t ea = c->x[24] + ((uint64_t)(uint32_t)c->x[21] << 2); c->v[0] = LD32(ea); }
+    c->nzcv = cmp_s(c, VSF32(0), 0);
+    if (COND_LE(c)) goto L_7005606cf8;
+    c->x[9] = (uint32_t)(VS32(0));
+    c->x[10] = (uint32_t)((uint32_t)c->x[9] & 0x7f800000ull);
+    c->x[11] = (uint32_t)(0x7f800000ull);
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[11])));
+    if (COND_EQ(c)) goto L_7005606cf8;
+    { uint64_t ea = c->x[22] + 0x0ull; ST32(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->x[22] + 0x4ull; ST32(ea, (uint32_t)c->x[9]); }
+    { uint64_t ea = c->x[22] + 0x8ull; ST32(ea, (uint32_t)c->x[9]); }
+    c->x[8] = (uint32_t)(0xbf800000ull);
+    { uint64_t ea = c->x[22] + 0xcull; ST32(ea, (uint32_t)c->x[8]); }
+L_7005606cf8:;
     c->x[21] = (uint32_t)((uint32_t)c->x[21] + 0x1ull);
     c->x[22] = (uint64_t)(c->x[22] + 0x10ull);
     (void)(subs32(c, (uint32_t)c->x[21], 0x48ull));
-    if (COND_CC(c)) goto L_700560808c;
+    if (COND_CC(c)) goto L_7005606cb8;
+L_7005606d08:;
+    { uint64_t ea = c->x[20] + 0x0ull; ST64(ea, c->x[19]); }
+    c->x[8] = (uint32_t)(0x1ull);
+    { uint64_t ea = c->x[20] + 0x8ull; ST32(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->x[20] + 0xcull; ST32(ea, 0u); }
+    { uint64_t ea = c->x[20] + 0x30ull; ST32(ea, 0u); }
+    (void)(subs32(c, (uint32_t)c->x[27], 0x1ull));
+    if (COND_EQ(c)) goto L_7005606d30;
     c->x[0] = (uint64_t)(0ull | c->x[19]);
     c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x70056080e0ull; f_7005606000(c);
-    { uint64_t ea = c->x[20] + 0x18ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[30] = 0x7005606d30ull; f_7005606400(c);
+L_7005606d30:;
+    c->x[0] = (uint64_t)(0ull | c->x[19]);
+    c->x[1] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x7005606d3cull; f_7005606000(c);
+    { uint64_t ea = c->x[20] + 0x24ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
     c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
-    { uint64_t ea = c->x[20] + 0x18ull; ST32(ea, (uint32_t)c->x[8]); }
-L_70056080ec:;
+    { uint64_t ea = c->x[20] + 0x24ull; ST32(ea, (uint32_t)c->x[8]); }
     { uint64_t ea = c->x[19] + 0x154ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
     { uint64_t ea = c->x[19] + 0x158ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
     { uint64_t ea = c->x[19] + 0x15cull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
@@ -9941,15 +10180,19 @@ L_70056080ec:;
     { uint64_t ea = c->x[20] + 0x74ull; ST32(ea, (uint32_t)c->x[10]); }
     c->x[11] = (uint32_t)(0x1ull);
     { uint64_t ea = c->x[20] + 0x78ull; ST32(ea, (uint32_t)c->x[11]); }
-    { uint64_t ea = c->x[20] + 0xacull; uint64_t v = LD32(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[20] + 0x80ull; ST32(ea, (uint32_t)c->x[11]); }
-    { uint64_t ea = c->x[20] + 0x84ull; ST32(ea, (uint32_t)c->x[10]); }
-    { uint64_t ea = c->x[20] + 136; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[9]); }
-    c->x[11] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[20] + 0x90ull; ST32(ea, (uint32_t)c->x[11]); }
     c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005608128ull; f_7005605f00(c);
-L_7005608128:;
+    c->x[30] = 0x7005606d6cull; f_7005605f00(c);
+    goto L_7005606d90;
+L_7005606d70:;
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x7005606d78ull; f_7005606800(c);
+    { uint64_t ea = c->x[20] + 0x8ull; ST32(ea, 0u); }
+    { uint64_t ea = c->x[20] + 0x28ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
+    { uint64_t ea = c->x[20] + 0x28ull; ST32(ea, (uint32_t)c->x[8]); }
+    c->x[0] = (uint64_t)(0ull | c->x[20]);
+    c->x[30] = 0x7005606d90ull; f_7005605f00(c);
+L_7005606d90:;
     { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[27] = (uint64_t)(a); c->x[28] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[25] = (uint64_t)(a); c->x[26] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
@@ -9959,7 +10202,7 @@ L_7005608128:;
     c->pc = 0; return;
 }
 
-void f_7005609800(Cpu *c) {
+void f_700560a000(Cpu *c) {
     { uint64_t ea = c->sp - 112; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
     { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
@@ -9967,43 +10210,88 @@ void f_7005609800(Cpu *c) {
     { uint64_t ea = c->sp + 64; ST64(ea, c->x[25]); ST64(ea + 8, c->x[26]); }
     { uint64_t ea = c->sp + 80; ST64(ea, c->x[27]); ST64(ea + 8, c->x[28]); }
     c->x[29] = (uint64_t)(c->sp + 0x0ull);
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[30] = 0x7005609824ull; f_7005605a00(c);
-    c->x[21] = (uint64_t)(0ull | c->x[0]);
-    c->x[22] = (uint64_t)(0ull | c->x[1]);
-    c->x[25] = (uint64_t)(0ull | c->x[2]);
-    c->x[26] = (uint64_t)(0ull | c->x[3]);
     c->x[20] = (uint64_t)(0x700560e000ull);
     c->x[20] = (uint64_t)(c->x[20] + 0x180ull);
     { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
+    { uint64_t ea = c->x[20] + 0x8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_700560a148;
     c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005609848ull; f_7005605e00(c);
-    if (c->x[21] == 0) goto L_700560986c;
-    c->x[23] = (uint32_t)(0u | 0u);
-L_7005609850:;
-    { uint64_t ea = c->x[21] + ((uint64_t)(uint32_t)c->x[23] << 2); ST32(ea, 0u); }
-    { uint64_t ea = c->x[22] + ((uint64_t)(uint32_t)c->x[23] << 2); ST32(ea, 0u); }
-    { uint64_t ea = c->x[25] + ((uint64_t)(uint32_t)c->x[23] << 2); ST32(ea, 0u); }
-    { uint64_t ea = c->x[26] + ((uint64_t)(uint32_t)c->x[23] << 2); ST32(ea, 0u); }
-    c->x[23] = (uint32_t)((uint32_t)c->x[23] + 0x1ull);
-    (void)(subs32(c, (uint32_t)c->x[23], 0x48ull));
-    if (COND_CC(c)) goto L_7005609850;
-L_700560986c:;
+    c->x[30] = 0x700560a038ull; f_7005605e00(c);
+    { uint64_t ea = c->x[20] + 0x4cull; uint64_t v = LD32(ea); c->x[21] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[21] - 0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x47ull));
+    if (COND_CS(c)) goto L_700560a0b4;
+    c->x[22] = (uint64_t)(c->x[20] + ((uint64_t)(uint32_t)c->x[21] << 4));
+    c->x[22] = (uint64_t)(c->x[22] + 0x100ull);
+    { uint64_t ea = c->x[22] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_700560a0b4;
+    { uint64_t ea = c->x[22] + 0x4ull; c->v[0] = LD32(ea); }
+    c->nzcv = cmp_s(c, VSF32(0), 0);
+    if (COND_LE(c)) goto L_700560a0b4;
+    c->x[8] = (uint64_t)(0x700560e000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x148ull);
+    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0xa848ull);
+    c->x[9] = (uint64_t)((c->x[9] & 0xffffffff0000ffffull) | 0x3ad0000ull);
+    { uint64_t ea = c->x[8] + c->x[9]; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_700560a0fc;
+    { uint64_t ea = c->x[8] + 0x0ull; c->v[0] = LD32(ea); }
+    { uint64_t ea = c->x[20] + 0x50ull; c->v[1] = LD32(ea); }
+    fp_op_s(c, FOP_ADD, 0, 0, 1);
+    { uint64_t ea = c->x[20] + 0x50ull; ST32(ea, VS32(0)); }
+    c->x[8] = (uint32_t)(0x42b40000ull);
+    c->v[1] = (uint32_t)c->x[8];
+    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
+    if (COND_LT(c)) goto L_700560a0fc;
+    { uint64_t ea = c->x[20] + 0x50ull; ST32(ea, 0u); }
+    c->x[21] = (uint32_t)((uint32_t)c->x[21] + 0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[21], 0x48ull));
+    c->x[21] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[21] : (uint32_t)(0u + 1));
+    goto L_700560a0bc;
+L_700560a0b4:;
+    c->x[21] = (uint32_t)(0x1ull);
+    { uint64_t ea = c->x[20] + 0x50ull; ST32(ea, 0u); }
+L_700560a0bc:;
+    c->x[23] = (uint32_t)(0x47ull);
+L_700560a0c0:;
+    c->x[22] = (uint64_t)(c->x[20] + ((uint64_t)(uint32_t)c->x[21] << 4));
+    c->x[22] = (uint64_t)(c->x[22] + 0x100ull);
+    { uint64_t ea = c->x[22] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_700560a0dc;
+    { uint64_t ea = c->x[22] + 0x4ull; c->v[0] = LD32(ea); }
+    c->nzcv = cmp_s(c, VSF32(0), 0);
+    if (COND_HI(c)) goto L_700560a0fc;
+L_700560a0dc:;
+    c->x[21] = (uint32_t)((uint32_t)c->x[21] + 0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[21], 0x48ull));
+    c->x[21] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[21] : (uint32_t)(0u + 1));
+    c->x[23] = (uint32_t)(subs32(c, (uint32_t)c->x[23], 0x1ull));
+    if (COND_NE(c)) goto L_700560a0c0;
     c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005609874ull; f_7005606800(c);
-    { uint64_t ea = c->x[20] + 0x0ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->x[20] + 0x8ull; ST32(ea, 0u); }
-    { uint64_t ea = c->x[20] + 0x78ull; ST32(ea, 0u); }
-    { uint64_t ea = c->x[20] + 0x90ull; ST32(ea, 0u); }
-    { uint64_t ea = c->x[20] + 0x94ull; ST32(ea, 0u); }
-    { uint64_t ea = c->x[20] + 0xacull; ST32(ea, 0u); }
-    c->x[8] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[20] + 0xcull; ST32(ea, (uint32_t)c->x[8]); }
-    { uint64_t ea = c->x[20] + 0x20ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[30] = 0x700560a0f8ull; f_7005605f00(c);
+    goto L_700560a148;
+L_700560a0fc:;
+    { uint64_t ea = c->x[20] + 0x4cull; ST32(ea, (uint32_t)c->x[21]); }
+    c->x[24] = (uint32_t)(0u | (uint32_t)c->x[21]);
+    { uint64_t ea = c->x[22] + 0x0ull; uint64_t v = LD32(ea); c->x[25] = (uint64_t)(v); }
+    { uint64_t ea = c->x[22] + 0x4ull; uint64_t v = LD32(ea); c->x[26] = (uint64_t)(v); }
+    { uint64_t ea = c->x[20] + 0x54ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
     c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
-    { uint64_t ea = c->x[20] + 0x20ull; ST32(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->x[20] + 0x54ull; ST32(ea, (uint32_t)c->x[8]); }
     c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x70056098a8ull; f_7005605f00(c);
+    c->x[30] = 0x700560a120ull; f_7005605f00(c);
+    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[24]);
+    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[25]);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[26]);
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[27] = (uint64_t)(a); c->x[28] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[25] = (uint64_t)(a); c->x[26] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
+    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 112; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    c->pc = 0; return;
+L_700560a148:;
+    c->x[0] = (uint32_t)(0u | 0u);
     { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[27] = (uint64_t)(a); c->x[28] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[25] = (uint64_t)(a); c->x[26] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
@@ -10013,840 +10301,935 @@ L_700560986c:;
     c->pc = 0; return;
 }
 
-void f_700560b000(Cpu *c) {
-    { uint64_t ea = c->x[0] + 0x24ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700560b078;
-    { uint64_t ea = c->x[0] + 0x18ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    if (c->x[9] == 0) goto L_700560b078;
-    c->x[10] = (uint32_t)(udiv32((uint32_t)c->x[1], (uint32_t)c->x[8]));
-    c->x[10] = (uint32_t)((uint32_t)c->x[1] - (uint32_t)c->x[10] * (uint32_t)c->x[8]);
-    c->x[11] = (uint32_t)(0u | (uint32_t)c->x[10]);
-L_700560b01c:;
-    c->x[12] = (uint64_t)(c->x[9] + ((uint64_t)(uint32_t)c->x[11] << 3));
-    { uint64_t ea = c->x[12] + 0x0ull; uint64_t v = LD32(ea); c->x[13] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[13], (uint32_t)((uint32_t)c->x[1])));
-    if (COND_EQ(c)) goto L_700560b048;
-    if ((uint32_t)c->x[13] == 0) goto L_700560b078;
-    c->x[11] = (uint32_t)((uint32_t)c->x[11] + 0x1ull);
-    (void)(subs32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[8])));
-    c->x[11] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[11] : (uint32_t)(0u));
-    (void)(subs32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_NE(c)) goto L_700560b01c;
-    goto L_700560b078;
-L_700560b048:;
-    { uint64_t ea = c->x[12] + 0x4ull; uint64_t v = LD32(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[0] + 0x8ull; uint64_t v = LD32(ea); c->x[12] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[12])));
-    if (COND_CS(c)) goto L_700560b078;
-    { uint64_t ea = c->x[0] + 0x10ull; uint64_t v = LD64(ea); c->x[12] = (uint64_t)(v); }
-    c->x[13] = (uint32_t)(0x28ull);
-    c->x[12] = (uint64_t)(c->x[12] + (uint64_t)(uint32_t)c->x[11] * (uint64_t)(uint32_t)c->x[13]);
-    { uint64_t ea = c->x[12] + 0x10ull; uint64_t v = LD32(ea); c->x[13] = (uint64_t)(v); }
-    if ((uint32_t)c->x[13] != 0) goto L_700560b078;
-    { uint64_t ea = c->x[12] + 0x1cull; uint64_t v = LD32(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint32_t)(0x1ull);
-    c->pc = 0; return;
-L_700560b078:;
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->x[1] = (uint32_t)(0u | 0u);
+void f_700560b800(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x140ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[30]); }
+    c->x[8] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xa0ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 176; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 208; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 240; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 272; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    c->x[2] = (uint32_t)(VS32(0));
+    c->x[30] = 0x700560b84cull; f_700560bc00(c);
+    { uint64_t ea = c->sp + 176; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 208; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 240; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 272; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 0xa0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->nzcv = c->x[8] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    c->sp = (uint64_t)(c->sp + 0x140ull);
+    c->x[10] = (uint32_t)(0xff00000ull);
+    c->pc = 0x700031d8b8ull; return;
+}
+
+void f_7005701600(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x320ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
+    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
+    c->x[8] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0x100ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->fpcr);
+    { uint64_t ea = c->sp + 0x108ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->fpsr);
+    { uint64_t ea = c->sp + 0x110ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 288; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 320; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 352; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 384; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    { uint64_t ea = c->sp + 416; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
+    { uint64_t ea = c->sp + 448; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
+    { uint64_t ea = c->sp + 480; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
+    { uint64_t ea = c->sp + 512; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
+    { uint64_t ea = c->sp + 544; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
+    { uint64_t ea = c->sp + 576; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
+    { uint64_t ea = c->sp + 608; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
+    { uint64_t ea = c->sp + 640; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
+    { uint64_t ea = c->sp + 672; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
+    { uint64_t ea = c->sp + 704; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
+    { uint64_t ea = c->sp + 736; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
+    { uint64_t ea = c->sp + 768; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint64_t)(0ull | c->x[20]);
+    c->x[2] = (uint64_t)(0x7005707000ull);
+    c->x[2] = (uint64_t)(c->x[2] + 0x100ull);
+    c->x[30] = 0x70057016b0ull; f_7005703000(c);
+    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 768; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0x108ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->fpcr = c->x[8] & 0x7c00000ull; rt_fpcr_sync(c);
+    { uint64_t ea = c->sp + 0x110ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->fpsr = c->x[8] & 0xf800009full;
+    { uint64_t ea = c->sp + 0x100ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->nzcv = c->x[8] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x320ull);
+    { uint64_t ea = c->x[19] + 0x210ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->pc = 0x700213dc18ull; return;
+}
+
+void f_7005801800(Cpu *c) {
+    { uint64_t ea = c->sp + 0x1cull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp - 0x340ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
+    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
+    c->x[16] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
+    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
+    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
+    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
+    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
+    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
+    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
+    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
+    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
+    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
+    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
+    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
+    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
+    c->x[9] = (uint64_t)(0x700580e000ull);
+    c->x[9] = (uint64_t)(c->x[9] + 0x148ull);
+    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xf678ull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3a60000ull);
+    { uint64_t ea = c->x[9] + c->x[10]; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if (c->x[9] == 0) goto L_7005801914;
+    { uint64_t ea = c->x[9] + 0x20ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if (c->x[9] == 0) goto L_7005801914;
+    { uint64_t ea = c->x[9] + 0x20ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9] + 0x28ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    if (c->x[11] == 0) goto L_7005801914;
+    { uint64_t ea = c->sp + 0xa0ull; uint64_t v = LD64(ea); c->x[12] = (uint64_t)(v); }
+    { uint64_t ea = c->x[12] + 0x18ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[3], (uint32_t)((uint32_t)c->x[10])));
+    if (COND_CS(c)) goto L_7005801914;
+    c->x[13] = (uint32_t)(0x30ull);
+    c->x[11] = (uint64_t)(c->x[11] + (uint64_t)(uint32_t)c->x[3] * (uint64_t)(uint32_t)c->x[13]);
+    { uint64_t ea = c->x[11] + 0x10ull; uint64_t v = LD32(ea); c->x[13] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)((uint32_t)c->x[13] - 0x1eull);
+    (void)(subs32(c, (uint32_t)c->x[0], 0x2ull));
+    if (COND_HI(c)) goto L_7005801914;
+    c->x[0] = (uint32_t)((uint32_t)c->x[0] + 0x1ull);
+    { uint64_t ea = c->sp + 0x318ull; ST32(ea, (uint32_t)c->x[0]); }
+    { uint64_t ea = c->sp + 0xa0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0x0ull);
+    c->x[30] = 0x7005801900ull; f_7005803800(c);
+    { uint64_t ea = c->sp + 0x318ull; uint64_t v = LD32(ea); c->x[0] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint32_t)(0x1ull);
+    { uint64_t ea = c->sp + 0x40ull; ST64(ea, c->x[2]); }
+    c->x[30] = 0x7005801914ull; f_7005803000(c);
+L_7005801914:;
+    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->nzcv = c->x[16] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x340ull);
+    c->pc = 0x700073644cull; return;
+}
+
+void f_7005803800(Cpu *c) {
+    c->x[8] = (uint64_t)(0x700580e000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x180ull);
+    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(c->x[8] + 0x30ull);
+L_7005803810:;
+    c->x[10] = (uint64_t)(ldx32(c, c->x[9]));
+    if ((uint32_t)c->x[10] != 0) goto L_7005803810;
+    c->x[10] = (uint32_t)(0x1ull);
+    { uint32_t st = stx32(c, c->x[9], c->x[10]); c->x[11] = (uint32_t)(st); }
+    if ((uint32_t)c->x[11] != 0) goto L_7005803810;
+    c->x[10] = (uint64_t)(ROR64(c->x[1], 4) & 0xfffffffffffffffull);
+    c->x[10] = (uint32_t)((uint32_t)c->x[10] & 0x7ffull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x100ull);
+    c->x[11] = (uint32_t)(0x800ull);
+L_7005803834:;
+    c->x[12] = (uint64_t)(c->x[8] + (c->x[10] << 4));
+    { uint64_t ea = c->x[12] + 0x0ull; uint64_t v = LD64(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[13], (uint64_t)(c->x[1])));
+    if (COND_EQ(c)) goto L_700580386c;
+    if (c->x[13] == 0) goto L_7005803860;
+    c->x[10] = (uint32_t)((uint32_t)c->x[10] + 0x1ull);
+    c->x[10] = (uint32_t)((uint32_t)c->x[10] & 0x7ffull);
+    c->x[11] = (uint32_t)(subs32(c, (uint32_t)c->x[11], 0x1ull));
+    if (COND_NE(c)) goto L_7005803834;
+    c->x[0] = (uint32_t)(0xffffffffull);
+    goto L_700580389c;
+L_7005803860:;
+    if ((uint32_t)c->x[0] != 0) goto L_7005803898;
+    { uint64_t ea = c->x[12] + 0x0ull; ST64(ea, c->x[1]); }
+    goto L_7005803880;
+L_700580386c:;
+    (void)(subs32(c, (uint32_t)c->x[0], 0x2ull));
+    if (COND_EQ(c)) goto L_7005803890;
+    if ((uint32_t)c->x[0] == 0) goto L_7005803880;
+    { uint64_t ea = c->x[12] + 0x8ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    c->x[2] = (uint32_t)((uint32_t)c->x[2] & (uint32_t)c->x[10]);
+L_7005803880:;
+    c->x[2] = (uint32_t)((uint32_t)c->x[2] & 0x1ull);
+    { uint64_t ea = c->x[12] + 0x8ull; ST32(ea, (uint32_t)c->x[2]); }
+    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[2]);
+    goto L_700580389c;
+L_7005803890:;
+    { uint64_t ea = c->x[12] + 0x8ull; uint64_t v = LD32(ea); c->x[0] = (uint64_t)(v); }
+    goto L_700580389c;
+L_7005803898:;
+    c->x[0] = (uint32_t)(0xffffffffull);
+L_700580389c:;
+    stl32(c->x[9], 0ull);
     c->pc = 0; return;
 }
 
-void f_700560b400(Cpu *c) {
+void f_7005806000(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x340ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
+    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
+    c->x[16] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
+    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
+    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
+    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
+    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
+    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
+    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
+    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
+    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
+    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
+    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
+    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
+    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
+    if (COND_NE(c)) goto L_7005806100;
+    { uint64_t ea = c->sp + 0x98ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9] + 0x51ull; uint64_t v = LD8(ea); c->x[2] = (uint64_t)(v); }
+    if (((c->x[2] >> 0) & 1) == 0) goto L_7005806190;
+    c->x[9] = (uint64_t)(0x700580e000ull);
+    c->x[9] = (uint64_t)(c->x[9] + 0x148ull);
+    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xf678ull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3a60000ull);
+    { uint64_t ea = c->x[9] + c->x[10]; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if (c->x[9] == 0) goto L_7005806190;
+    { uint64_t ea = c->x[9] + 0x20ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if (c->x[9] == 0) goto L_7005806190;
+    { uint64_t ea = c->x[9] + 0x20ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9] + 0x28ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    if (c->x[11] == 0) goto L_7005806190;
+    { uint64_t ea = c->sp + 0xa0ull; uint64_t v = LD64(ea); c->x[12] = (uint64_t)(v); }
+    { uint64_t ea = c->x[12] + 0x18ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[3], (uint32_t)((uint32_t)c->x[10])));
+    if (COND_CS(c)) goto L_7005806190;
+    c->x[13] = (uint32_t)(0x30ull);
+    c->x[11] = (uint64_t)(c->x[11] + (uint64_t)(uint32_t)c->x[3] * (uint64_t)(uint32_t)c->x[13]);
+    { uint64_t ea = c->x[11] + 0x10ull; uint64_t v = LD32(ea); c->x[13] = (uint64_t)(v); }
+    c->x[13] = (uint32_t)((uint32_t)c->x[13] - 0x1eull);
+    (void)(subs32(c, (uint32_t)c->x[13], 0x2ull));
+    if (COND_HI(c)) goto L_7005806190;
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0x7ull);
+    c->x[30] = 0x7005806100ull; f_7005803000(c);
+L_7005806100:;
+    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->nzcv = c->x[16] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x340ull);
+    c->pc = 0x70007363b4ull; return;
+L_7005806190:;
+    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->nzcv = c->x[16] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x340ull);
+    c->pc = 0x7000736450ull; return;
+}
+
+void f_7005808000(Cpu *c) {
+    if (c->x[0] == 0) goto L_700580807c;
+    if (c->x[1] == 0) goto L_700580807c;
+    { uint64_t ea = c->x[1] + 0x51ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    if (((c->x[8] >> 0) & 1) != 0) goto L_700580807c;
+    c->x[9] = (uint64_t)(0x700580e000ull);
+    c->x[9] = (uint64_t)(c->x[9] + 0x148ull);
+    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[10] = (uint32_t)(0xf678ull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x3a60000ull);
+    { uint64_t ea = c->x[9] + c->x[10]; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if (c->x[9] == 0) goto L_700580807c;
+    { uint64_t ea = c->x[9] + 0x20ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    if (c->x[9] == 0) goto L_700580807c;
+    { uint64_t ea = c->x[9] + 0x20ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->x[9] + 0x28ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    if (c->x[11] == 0) goto L_700580807c;
+    { uint64_t ea = c->x[0] + 0x18ull; uint64_t v = LD32(ea); c->x[12] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[12], (uint32_t)((uint32_t)c->x[10])));
+    if (COND_CS(c)) goto L_700580807c;
+    c->x[13] = (uint32_t)(0x30ull);
+    c->x[11] = (uint64_t)(c->x[11] + (uint64_t)(uint32_t)c->x[12] * (uint64_t)(uint32_t)c->x[13]);
+    { uint64_t ea = c->x[11] + 0x10ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] - 0x1eull);
+    (void)(subs32(c, (uint32_t)c->x[8], 0x2ull));
+    if (COND_HI(c)) goto L_700580807c;
+    { uint64_t ea = c->x[1] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_7005808084;
+    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], 0x0ull));
+    c->x[0] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
+    c->pc = 0; return;
+L_700580807c:;
+    c->x[0] = (uint32_t)(0x1ull);
+    c->pc = 0; return;
+L_7005808084:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->pc = 0; return;
+}
+
+void f_7005901000(Cpu *c) {
+    { uint64_t ea = c->x[8] + 48; ST32(ea, VS32(0)); ST32(ea + 4, VS32(1)); }
+    c->sp = (uint64_t)(c->sp - 0x360ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
+    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
+    c->x[16] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
+    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
+    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
+    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
+    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
+    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
+    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
+    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
+    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
+    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
+    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
+    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
+    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
+    c->x[16] = (uint64_t)(c->fpcr);
+    { uint64_t ea = c->sp + 0x340ull; ST64(ea, c->x[16]); }
+    c->x[16] = (uint64_t)(c->fpsr);
+    { uint64_t ea = c->sp + 0x348ull; ST64(ea, c->x[16]); }
+    { uint64_t ea = c->sp + 0x98ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[30] = 0x70059010a8ull; f_7005902c00(c);
+    { uint64_t ea = c->sp + 0x340ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->fpcr = c->x[16] & 0x7c00000ull; rt_fpcr_sync(c);
+    { uint64_t ea = c->sp + 0x348ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->fpsr = c->x[16] & 0xf800009full;
+    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->nzcv = c->x[16] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x360ull);
+    c->pc = 0x70020fc9a4ull; return;
+}
+
+void f_7005902000(Cpu *c) {
+    c->sp = (uint64_t)(c->sp - 0x360ull);
+    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
+    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
+    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
+    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
+    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
+    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
+    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
+    c->x[16] = (uint64_t)(c->nzcv);
+    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
+    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
+    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
+    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
+    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
+    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
+    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
+    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
+    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
+    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
+    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
+    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
+    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
+    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
+    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
+    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
+    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
+    c->x[16] = (uint64_t)(c->fpcr);
+    { uint64_t ea = c->sp + 0x340ull; ST64(ea, c->x[16]); }
+    c->x[16] = (uint64_t)(c->fpsr);
+    { uint64_t ea = c->sp + 0x348ull; ST64(ea, c->x[16]); }
+    { uint64_t ea = c->sp + 0x4d0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
+    c->x[30] = 0x70059020a8ull; f_7005906600(c);
+    if ((uint32_t)c->x[0] == 0) goto L_70059020b4;
+    { uint64_t ea = c->sp + 0xd8ull; ST32(ea, (uint32_t)c->x[1]); }
+    { uint64_t ea = c->sp + 0xdcull; ST32(ea, 0u); }
+L_70059020b4:;
+    { uint64_t ea = c->sp + 0x340ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->fpcr = c->x[16] & 0x7c00000ull; rt_fpcr_sync(c);
+    { uint64_t ea = c->sp + 0x348ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->fpsr = c->x[16] & 0xf800009full;
+    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->nzcv = c->x[16] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x360ull);
+    (void)(subs32(c, (uint32_t)c->x[27], 0x0ull));
+    c->pc = 0x70003f42dcull; return;
+}
+
+void f_7005904000(Cpu *c) {
+    { uint64_t ea = c->x[0] + 0x10ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    { uint64_t ea = c->x[0] + 0x18ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
+    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[14] = (uint64_t)(v); }
+    c->x[15] = (uint64_t)(0x700590e000ull);
+    c->x[15] = (uint64_t)(c->x[15] + 0x148ull);
+    { uint64_t ea = c->x[15] + 0x0ull; uint64_t v = LD64(ea); c->x[15] = (uint64_t)(v); }
+    c->x[14] = (uint64_t)(c->x[14] - c->x[15]);
+    c->x[15] = (uint32_t)(0xdf98ull);
+    c->x[15] = (uint32_t)((c->x[15] & 0xffffffff0000ffffull) | 0x3710000ull);
+    (void)(subs64(c, c->x[14], (uint64_t)(c->x[15])));
+    if (COND_EQ(c)) goto L_7005904044;
+    c->x[15] = (uint32_t)(0xe540ull);
+    c->x[15] = (uint32_t)((c->x[15] & 0xffffffff0000ffffull) | 0x3710000ull);
+    (void)(subs64(c, c->x[14], (uint64_t)(c->x[15])));
+    if (COND_NE(c)) goto L_7005904128;
+    c->x[14] = (uint32_t)(0x1ull);
+    goto L_7005904050;
+L_7005904044:;
+    c->x[14] = (uint32_t)(0u | 0u);
+    (void)(subs32(c, (uint32_t)c->x[3], 0x1000ull));
+    if (COND_CS(c)) goto L_7005904128;
+L_7005904050:;
+    c->x[9] = (uint64_t)(0x700590e000ull);
+    c->x[9] = (uint64_t)(c->x[9] + 0x180ull);
+    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[16] = (uint64_t)(c->x[9] + 0x100ull);
+L_7005904060:;
+    c->x[10] = (uint64_t)(ldx32(c, c->x[16]));
+    if ((uint32_t)c->x[10] != 0) goto L_7005904060;
+    c->x[10] = (uint32_t)(0x1ull);
+    { uint32_t st = stx32(c, c->x[16], c->x[10]); c->x[11] = (uint32_t)(st); }
+    if ((uint32_t)c->x[11] != 0) goto L_7005904060;
+    c->x[4] = (uint64_t)(ROR64(c->x[2], 32) & 0xffffffffull);
+    c->x[4] = (uint32_t)((uint32_t)c->x[4] ^ (uint32_t)c->x[2]);
+    c->x[4] = (uint32_t)((uint32_t)c->x[4] ^ (uint32_t)c->x[3]);
+    c->x[4] = (uint32_t)((uint32_t)c->x[4] & 0x7ffull);
+    c->x[9] = (uint64_t)(c->x[9] + 0x200ull);
+    c->x[7] = (uint32_t)(0x800ull);
+    c->x[6] = (uint32_t)(0x18ull);
+L_7005904090:;
+    c->x[12] = (uint64_t)(c->x[9] + (uint64_t)(uint32_t)c->x[4] * (uint64_t)(uint32_t)c->x[6]);
+    { uint64_t ea = c->x[12] + 0x10ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_70059040d8;
+    { uint64_t ea = c->x[12] + 0x0ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[10], (uint64_t)(c->x[2])));
+    if (COND_NE(c)) goto L_70059040c0;
+    { uint64_t ea = c->x[12] + 0x8ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[3])));
+    if (COND_NE(c)) goto L_70059040c0;
+    { uint64_t ea = c->x[12] + 0x14ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[14])));
+    if (COND_EQ(c)) goto L_70059040f4;
+L_70059040c0:;
+    c->x[4] = (uint32_t)((uint32_t)c->x[4] + 0x1ull);
+    c->x[4] = (uint32_t)((uint32_t)c->x[4] & 0x7ffull);
+    c->x[7] = (uint32_t)(subs32(c, (uint32_t)c->x[7], 0x1ull));
+    if (COND_NE(c)) goto L_7005904090;
+    c->x[0] = (uint32_t)(0u | 0u);
+    goto L_7005904120;
+L_70059040d8:;
+    { uint64_t ea = c->x[12] + 0x0ull; ST64(ea, c->x[2]); }
+    { uint64_t ea = c->x[12] + 8; ST32(ea, (uint32_t)c->x[3]); ST32(ea + 4, (uint32_t)c->x[1]); }
+    { uint64_t ea = c->x[12] + 0x14ull; ST32(ea, (uint32_t)c->x[14]); }
+    c->x[8] = (uint32_t)(0x1ull);
+    { uint64_t ea = c->x[12] + 0x10ull; ST32(ea, (uint32_t)c->x[8]); }
+    c->x[0] = (uint32_t)(0x1ull);
+    goto L_7005904120;
+L_70059040f4:;
+    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
+    if (COND_NE(c)) goto L_7005904108;
+    { uint64_t ea = c->x[12] + 0xcull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[1])));
+    if (COND_EQ(c)) goto L_7005904118;
+L_7005904108:;
+    c->x[10] = (uint32_t)(0x2ull);
+    { uint64_t ea = c->x[12] + 0x10ull; ST32(ea, (uint32_t)c->x[10]); }
+    c->x[0] = (uint32_t)(0u | 0u);
+    goto L_7005904120;
+L_7005904118:;
+    c->x[0] = (uint32_t)(0x1ull);
+    goto L_7005904120;
+L_7005904120:;
+    stl32(c->x[16], 0ull);
+    c->pc = 0; return;
+L_7005904128:;
+    c->x[0] = (uint32_t)(0u | 0u);
+    c->pc = 0; return;
+}
+
+void f_7005908000(Cpu *c) {
     { uint64_t ea = c->sp - 112; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
     { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
     { uint64_t ea = c->sp + 48; ST64(ea, c->x[23]); ST64(ea + 8, c->x[24]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[25]); ST64(ea + 8, c->x[26]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[27]); ST64(ea + 8, c->x[28]); }
-    c->x[29] = (uint64_t)(c->sp + 0x0ull);
     c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[20] = (uint64_t)(0ull | c->x[1]);
-    { uint64_t ea = c->x[20] + 0x78ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if ((uint32_t)c->x[8] == 0) goto L_700560b4d4;
-    { uint64_t ea = c->x[20] + 0xacull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[20] + 0x94ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_700560b4d4;
-    { uint64_t ea = c->x[19] + 0x100ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(logic32(c, (uint32_t)c->x[8] & 0xfffffull));
-    if (COND_NE(c)) goto L_700560b4d4;
-    { uint64_t ea = c->x[19] + 0x1c0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(logic32(c, (uint32_t)c->x[8] & 0xfffffull));
-    if (COND_NE(c)) goto L_700560b4d4;
-    c->x[0] = (uint64_t)(c->x[19] + 0xc8ull);
-    c->x[1] = (uint32_t)(0xe165ull);
-    c->x[1] = (uint32_t)((c->x[1] & 0xffffffff0000ffffull) | 0x9a880000ull);
-    c->x[30] = 0x700560b464ull; f_700560b000(c);
-    if ((uint32_t)c->x[1] == 0) goto L_700560b4d4;
-    { uint64_t ea = c->x[20] + 0x6cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[0], (uint32_t)((uint32_t)c->x[8])));
-    if (COND_NE(c)) goto L_700560b4d4;
-    c->x[0] = (uint64_t)(c->x[19] + 0xc8ull);
-    c->x[1] = (uint32_t)(0x37d1ull);
-    c->x[1] = (uint32_t)((c->x[1] & 0xffffffff0000ffffull) | 0xbd8f0000ull);
-    c->x[30] = 0x700560b484ull; f_700560b000(c);
-    if ((uint32_t)c->x[1] == 0) goto L_700560b4d4;
-    { uint64_t ea = c->x[20] + 0x70ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[0], (uint32_t)((uint32_t)c->x[8])));
-    if (COND_NE(c)) goto L_700560b4d4;
-    c->x[0] = (uint64_t)(c->x[19] + 0x188ull);
-    c->x[1] = (uint32_t)(0x29b8ull);
-    c->x[1] = (uint32_t)((c->x[1] & 0xffffffff0000ffffull) | 0xc5fd0000ull);
-    c->x[30] = 0x700560b4a4ull; f_700560b000(c);
-    if ((uint32_t)c->x[1] == 0) goto L_700560b4d4;
-    { uint64_t ea = c->x[20] + 0x74ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[0], (uint32_t)((uint32_t)c->x[8])));
-    if (COND_NE(c)) goto L_700560b4d4;
-    c->x[0] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[27] = (uint64_t)(a); c->x[28] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[25] = (uint64_t)(a); c->x[26] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 112; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-L_700560b4d4:;
-    c->x[0] = (uint32_t)(0u | 0u);
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[27] = (uint64_t)(a); c->x[28] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[25] = (uint64_t)(a); c->x[26] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 112; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-}
-
-void f_7005703000(Cpu *c) {
-    if (c->x[0] == 0) goto L_7005703288;
-    c->sp = (uint64_t)(c->sp - 0xa0ull);
-    { uint64_t ea = c->sp + 0x50ull; ST64(ea, c->x[30]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->x[22] = (uint64_t)(0ull | c->x[1]);
-    if (c->x[1] == 0) goto L_7005703270;
-    c->x[19] = (uint64_t)(0ull | c->x[2]);
-    if (c->x[2] == 0) goto L_7005703270;
-    { uint64_t ea = c->x[22] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_7005703270;
-    c->x[9] = (uint64_t)(0ull | 0ull);
-    c->x[10] = (uint64_t)(0x7005703000ull);
-    c->x[10] = (uint64_t)(c->x[10] + 0x2beull);
-L_7005703040:;
-    { uint64_t ea = c->x[8] + c->x[9]; uint64_t v = LD8(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[10] + c->x[9]; uint64_t v = LD8(ea); c->x[12] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[12])));
-    if (COND_NE(c)) goto L_7005703270;
-    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
-    (void)(subs64(c, c->x[9], 0xcull));
-    if (COND_NE(c)) goto L_7005703040;
-    { uint64_t ea = c->x[0] + 0x20ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
-    if (c->x[20] == 0) goto L_7005703270;
-    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[22]);
-    c->pc = c->x[8]; c->x[30] = 0x7005703070ull; rt_dispatch(c); c->pc = 0;
-    if (c->x[0] == 0) goto L_7005703270;
-    { uint64_t ea = c->x[0] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[21] = (uint64_t)(0ull | c->x[0]);
-    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
-    if (COND_NE(c)) goto L_7005703270;
-    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->pc = c->x[8]; c->x[30] = 0x7005703090ull; rt_dispatch(c); c->pc = 0;
-    if (c->x[0] == 0) goto L_7005703270;
-    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->pc = c->x[8]; c->x[30] = 0x70057030a0ull; rt_dispatch(c); c->pc = 0;
-    c->x[8] = (uint32_t)((uint32_t)c->x[0] - 0x1ull);
-    c->x[8] = (uint32_t)(ROR32((uint32_t)c->x[8], 4) & 0xfffffffull);
-    (void)(subs32(c, (uint32_t)c->x[8], 0x270ull));
-    if (COND_HI(c)) goto L_70057030d8;
-    (void)(subs32(c, (uint32_t)c->x[0], 0x64ull));
-    c->x[8] = (uint32_t)(0x1ull);
-    c->x[8] = (uint32_t)((COND_LS(c)) ? (uint32_t)c->x[8] : (uint32_t)((uint32_t)c->x[8] + 1));
-    (void)(subs32(c, (uint32_t)c->x[0], 0x96ull));
-    c->x[8] = (uint32_t)((COND_LS(c)) ? (uint32_t)c->x[8] : (uint32_t)((uint32_t)c->x[8] + 1));
-    (void)(subs32(c, (uint32_t)c->x[0], 0xc8ull));
-    c->x[8] = (uint32_t)((COND_LS(c)) ? (uint32_t)c->x[8] : (uint32_t)((uint32_t)c->x[8] + 1));
-    (void)(subs32(c, (uint32_t)c->x[0], 0xfaull));
-    c->x[25] = (uint32_t)((COND_LS(c)) ? (uint32_t)c->x[8] : (uint32_t)((uint32_t)c->x[8] + 1));
-    goto L_70057030dc;
-L_70057030d8:;
-    c->x[25] = (uint32_t)(0u | 0u);
-L_70057030dc:;
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->pc = c->x[8]; c->x[30] = 0x70057030e8ull; rt_dispatch(c); c->pc = 0;
-    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[23] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->pc = c->x[8]; c->x[30] = 0x70057030f8ull; rt_dispatch(c); c->pc = 0;
-    { uint64_t ea = c->x[19] + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[24] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->pc = c->x[8]; c->x[30] = 0x7005703108ull; rt_dispatch(c); c->pc = 0;
-    (void)(subs32(c, (uint32_t)c->x[23], 0x5ull));
-    { uint64_t ea = c->x[19] + 0x40ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[22] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[26] = (uint32_t)((COND_CS(c)) ? 0u : (uint32_t)((uint32_t)c->x[23] + 1));
-    (void)(subs32(c, (uint32_t)c->x[24], 0x5ull));
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[23] = (uint32_t)((COND_CS(c)) ? 0u : (uint32_t)((uint32_t)c->x[24] + 1));
-    c->pc = c->x[8]; c->x[30] = 0x7005703128ull; rt_dispatch(c); c->pc = 0;
-    (void)(subs32(c, (uint32_t)c->x[0], 0xdull));
-    if (COND_HI(c)) goto L_7005703144;
-    c->x[24] = (uint32_t)(0x1ull);
-    c->x[9] = (uint32_t)(0x2014ull);
-    c->x[8] = (uint32_t)((uint32_t)c->x[24] << ((uint32_t)c->x[0] & 31));
-    (void)(logic32(c, (uint32_t)((uint32_t)c->x[8] & (uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_7005703148;
-L_7005703144:;
-    c->x[24] = (uint32_t)(0u | 0u);
-L_7005703148:;
-    { uint64_t ea = c->x[19] + 0x38ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->pc = c->x[8]; c->x[30] = 0x7005703154ull; rt_dispatch(c); c->pc = 0;
-    /* hint */
-    c->x[8] = (uint64_t)(0x7005703298ull);
-    c->x[9] = (uint32_t)((uint32_t)c->x[25] - 0x1ull);
-    { uint64_t ea = c->x[8] + 0; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    c->x[8] = (uint64_t)(0x20ull);
-    c->x[8] = (uint64_t)((c->x[8] & 0xffffffff0000ffffull) | 0x672a0000ull);
-    c->x[10] = (uint32_t)((uint32_t)c->x[25] + 0x30ull);
-    (void)(subs32(c, (uint32_t)c->x[9], 0x5ull));
-    c->x[8] = (uint64_t)((c->x[8] & 0xffff0000ffffffffull) | 0x77e500000000ull);
-    c->x[9] = (uint32_t)(0x3full);
-    c->x[11] = (uint32_t)((uint32_t)c->x[26] + 0x30ull);
-    { uint64_t ea = c->sp + 32; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    c->x[12] = (uint32_t)((uint32_t)c->x[23] - 0x1ull);
-    { uint64_t ea = c->sp + 62; ST64(ea, c->x[8]); }
-    c->x[8] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[10] : (uint32_t)((uint32_t)c->x[9]));
-    c->x[10] = (uint32_t)((uint32_t)c->x[26] - 0x1ull);
-    (void)(subs32(c, (uint32_t)c->x[10], 0x5ull));
-    c->x[10] = (uint32_t)((uint32_t)c->x[22] - 0x1ull);
-    { uint64_t ea = c->sp + 0x22ull; ST16(ea, (uint32_t)c->x[8]); }
-    c->x[11] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[11] : (uint32_t)((uint32_t)c->x[9]));
-    (void)(subs32(c, (uint32_t)c->x[10], 0x5ull));
-    c->x[10] = (uint32_t)((uint32_t)c->x[22] + 0x30ull);
-    c->x[8] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[10] : (uint32_t)((uint32_t)c->x[9]));
-    (void)(subs32(c, (uint32_t)c->x[22], 0x0ull));
-    c->x[10] = (uint32_t)(0x2dull);
-    c->x[8] = (uint32_t)((COND_EQ(c)) ? (uint32_t)c->x[10] : (uint32_t)((uint32_t)c->x[8]));
-    (void)(subs32(c, (uint32_t)c->x[12], 0x5ull));
-    c->x[12] = (uint32_t)((uint32_t)c->x[23] + 0x30ull);
-    c->x[9] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[12] : (uint32_t)((uint32_t)c->x[9]));
-    (void)(subs32(c, (uint32_t)c->x[24], 0x0ull));
-    { uint64_t ea = c->sp + 0x32ull; ST16(ea, (uint32_t)c->x[8]); }
-    c->x[8] = (uint32_t)((COND_NE(c)) ? (uint32_t)c->x[10] : (uint32_t)((uint32_t)c->x[9]));
-    (void)(subs32(c, (uint32_t)c->x[0], 0x1ull));
-    { uint64_t ea = c->sp + 0x2aull; ST16(ea, (uint32_t)c->x[11]); }
-    { uint64_t ea = c->sp + 0x3aull; ST16(ea, (uint32_t)c->x[8]); }
-    if (COND_GT(c)) goto L_70057031fc;
-    if ((uint32_t)c->x[0] == 0) goto L_7005703218;
-    (void)(subs32(c, (uint32_t)c->x[0], 0x1ull));
-    if (COND_NE(c)) goto L_7005703234;
-    c->x[8] = (uint32_t)(0x5c0full);
-    c->x[9] = (uint32_t)(0x80c6ull);
-    goto L_700570322c;
-L_70057031fc:;
-    (void)(subs32(c, (uint32_t)c->x[0], 0x2ull));
-    if (COND_EQ(c)) goto L_7005703224;
-    (void)(subs32(c, (uint32_t)c->x[0], 0x3ull));
-    if (COND_NE(c)) goto L_7005703234;
-    c->x[9] = (uint32_t)(0x2dull);
-    c->x[8] = (uint32_t)(0x2dull);
-    goto L_700570322c;
-L_7005703218:;
-    c->x[8] = (uint32_t)(0x987aull);
-    c->x[9] = (uint32_t)(0x6e29ull);
-    goto L_700570322c;
-L_7005703224:;
-    c->x[8] = (uint32_t)(0x8e81ull);
-    c->x[9] = (uint32_t)(0x6025ull);
-L_700570322c:;
-    { uint64_t ea = c->sp + 0x40ull; ST16(ea, (uint32_t)c->x[9]); }
-    { uint64_t ea = c->sp + 0x42ull; ST16(ea, (uint32_t)c->x[8]); }
-L_7005703234:;
-    c->x[8] = (uint64_t)(0x7005703000ull);
-    c->x[9] = (uint64_t)(c->sp + 0x20ull);
-    /* hint */
-    c->x[1] = (uint64_t)(0x70057032cbull);
-    { uint64_t ea = c->x[8] + 0x290ull; c->v[0] = LD64(ea); }
-    { uint64_t ea = c->sp + 0x8ull; ST64(ea, c->x[9]); }
-    { uint64_t ea = c->x[19] + 0x30ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(0xffffffffffffffffull);
-    c->x[2] = (uint64_t)(c->sp + 0x8ull);
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[3] = (uint32_t)(0x1ull);
-    c->x[4] = (uint64_t)(0ull | 0ull);
-    { uint64_t ea = c->sp + 0x10ull; ST64(ea, VS64(0)); }
-    { uint64_t ea = c->sp + 0x18ull; ST64(ea, c->x[8]); }
-    c->pc = c->x[9]; c->x[30] = 0x7005703270ull; rt_dispatch(c); c->pc = 0;
-L_7005703270:;
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0x50ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0xa0ull);
-L_7005703288:;
-    c->pc = 0; return;
-}
-
-void f_7005802800(Cpu *c) {
-    { uint64_t ea = c->x[8] + 0x18ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp - 0x340ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
-    c->x[16] = (uint64_t)(c->nzcv);
-    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
-    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
-    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
-    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
-    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
-    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
-    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
-    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
-    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
-    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
-    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
-    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
-    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
-    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
-    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    if (c->x[1] == 0) goto L_70058028ac;
-    { uint64_t ea = c->sp + 0xb0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    if (c->x[0] == 0) goto L_70058028ac;
-    { uint64_t ea = c->x[23] + 0x30ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    if (c->x[2] == 0) goto L_70058028ac;
-    { uint64_t ea = c->x[2] + 0x51ull; uint64_t v = LD8(ea); c->x[2] = (uint64_t)(v); }
-    c->x[30] = 0x70058028acull; f_7005804000(c);
-L_70058028ac:;
-    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->nzcv = c->x[16] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x7000732dc4ull; return;
-}
-
-void f_7005805000(Cpu *c) {
-    { uint64_t ea = c->x[8] + 0x18ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp - 0x340ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
-    c->x[16] = (uint64_t)(c->nzcv);
-    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
-    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
-    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
-    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
-    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
-    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
-    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
-    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
-    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
-    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
-    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
-    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
-    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
-    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
-    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    if (c->x[1] == 0) goto L_70058050ac;
-    { uint64_t ea = c->sp + 0x348ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    if (c->x[0] == 0) goto L_70058050ac;
-    { uint64_t ea = c->x[23] + 0x30ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    if (c->x[2] == 0) goto L_70058050ac;
-    { uint64_t ea = c->x[2] + 0x51ull; uint64_t v = LD8(ea); c->x[2] = (uint64_t)(v); }
-    c->x[30] = 0x70058050acull; f_7005804000(c);
-L_70058050ac:;
-    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->nzcv = c->x[16] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x700091bb38ull; return;
-}
-
-void f_7005807000(Cpu *c) {
-    { uint64_t ea = c->x[1] + 0x51ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    if (((c->x[8] >> 0) & 1) != 0) goto L_70058071f0;
-    c->sp = (uint64_t)(c->sp - 0x360ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
-    c->x[16] = (uint64_t)(c->nzcv);
-    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
-    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
-    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
-    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
-    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
-    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
-    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
-    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
-    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
-    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
-    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
-    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
-    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
-    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
-    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    c->x[16] = (uint64_t)(c->fpcr);
-    { uint64_t ea = c->sp + 0x340ull; ST64(ea, c->x[16]); }
-    c->x[16] = (uint64_t)(c->fpsr);
-    { uint64_t ea = c->sp + 0x348ull; ST64(ea, c->x[16]); }
-    c->x[30] = 0x70058070a8ull; f_7005808000(c);
-    if ((uint32_t)c->x[0] == 0) goto L_700580714c;
-    { uint64_t ea = c->sp + 0x340ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->fpcr = c->x[16] & 0x7c00000ull; rt_fpcr_sync(c);
-    { uint64_t ea = c->sp + 0x348ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->fpsr = c->x[16] & 0xf800009full;
-    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->nzcv = c->x[16] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x360ull);
-    c->pc = 0x70007362c4ull; return;
-L_700580714c:;
-    { uint64_t ea = c->sp + 0x340ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->fpcr = c->x[16] & 0x7c00000ull; rt_fpcr_sync(c);
-    { uint64_t ea = c->sp + 0x348ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->fpsr = c->x[16] & 0xf800009full;
-    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->nzcv = c->x[16] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x360ull);
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->pc = 0; return;
-L_70058071f0:;
-    c->pc = 0x70007362c4ull; return;
-}
-
-void f_7005901800(Cpu *c) {
-    { uint64_t ea = c->x[20] + 16; ST32(ea, VS32(0)); ST32(ea + 4, VS32(1)); }
-    c->sp = (uint64_t)(c->sp - 0x360ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
-    c->x[16] = (uint64_t)(c->nzcv);
-    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
-    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
-    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
-    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
-    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
-    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
-    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
-    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
-    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
-    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
-    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
-    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
-    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
-    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
-    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    c->x[16] = (uint64_t)(c->fpcr);
-    { uint64_t ea = c->sp + 0x340ull; ST64(ea, c->x[16]); }
-    c->x[16] = (uint64_t)(c->fpsr);
-    { uint64_t ea = c->sp + 0x348ull; ST64(ea, c->x[16]); }
-    { uint64_t ea = c->sp + 0xa0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x9ccull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
-    c->x[30] = 0x70059018acull; f_7005904000(c);
-    c->x[3] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    { uint64_t ea = c->sp + 0xa0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[8] + 0x18ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x9ccull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
-    c->x[0] = (uint32_t)(0x5ull);
-    c->x[30] = 0x70059018c4ull; f_7005905000(c);
-    { uint64_t ea = c->sp + 0x340ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->fpcr = c->x[16] & 0x7c00000ull; rt_fpcr_sync(c);
-    { uint64_t ea = c->sp + 0x348ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->fpsr = c->x[16] & 0xf800009full;
-    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->nzcv = c->x[16] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x360ull);
-    c->pc = 0x70003f4788ull; return;
-}
-
-void f_7005902c00(Cpu *c) {
-    { uint64_t ea = c->sp - 96; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
-    { uint64_t ea = c->x[0] + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_7005902c58;
-    { uint64_t ea = c->x[8] + 0x18ull; uint64_t v = LD64(ea); c->x[19] = (uint64_t)(v); }
-    if (c->x[19] == 0) goto L_7005902c58;
-    { uint64_t ea = c->x[0] + 0x48ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
-    if (c->x[20] == 0) goto L_7005902c58;
-    c->x[8] = (uint32_t)(0x7fc00000ull);
-    { uint64_t ea = c->sp + 0x34ull; ST32(ea, (uint32_t)c->x[8]); }
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005902c30ull; f_7005904400(c);
-    if ((uint32_t)c->x[0] == 0) goto L_7005902c38;
-    { uint64_t ea = c->sp + 0x34ull; ST32(ea, (uint32_t)c->x[1]); }
-L_7005902c38:;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(c->sp + 0x30ull);
-    c->x[30] = 0x7005902c44ull; f_7005903000(c);
-    c->x[0] = (uint32_t)(0xbull);
-    { uint64_t ea = c->x[20] + 0x18ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x34ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
-    { uint64_t ea = c->x[20] + 0x1dull; uint64_t v = LD8(ea); c->x[3] = (uint64_t)(v); }
-    c->x[30] = 0x7005902c58ull; f_7005905000(c);
-L_7005902c58:;
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 96; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-}
-
-void f_7005903000(Cpu *c) {
-    { uint64_t ea = c->sp - 96; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    { uint64_t ea = c->sp + 0x30ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->sp + 0x38ull; ST32(ea, 0u); }
-    { uint64_t ea = c->sp + 0x44ull; ST32(ea, 0u); }
-    { uint64_t ea = c->x[1] + 0x4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x40ull; ST32(ea, (uint32_t)c->x[8]); }
-    c->x[21] = (uint32_t)(0x4ull);
-    if (c->x[19] == 0) goto L_700590316c;
-    c->x[1] = (uint64_t)(0x7005907000ull);
-    c->x[1] = (uint64_t)(c->x[1] + 0x0ull);
-    c->x[2] = (uint32_t)(0x1ull);
-    c->x[30] = 0x700590303cull; f_7005909800(c);
-    c->x[20] = (uint64_t)(0ull | c->x[0]);
-    if (c->x[20] == 0) goto L_700590316c;
-    { uint64_t ea = c->x[20] + 0x48ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->x[20] + 0x58ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x10ull);
-    { uint64_t ea = c->x[20] + 0x58ull; ST8(ea, (uint32_t)c->x[8]); }
-    c->x[21] = (uint32_t)(0x3ull);
+    { uint64_t ea = c->x[19] + 0x4f0ull; uint64_t v = LD32(ea); c->x[20] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[20], 0x1ccull));
+    if (COND_LE(c)) goto L_70059081e0;
+    c->x[8] = (uint64_t)(0x700590e000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x180ull);
+    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(c->x[8] + 0x100ull);
+L_7005908030:;
+    c->x[10] = (uint64_t)(ldx32(c, c->x[9]));
+    if ((uint32_t)c->x[10] != 0) goto L_7005908030;
+    c->x[10] = (uint32_t)(0x1ull);
+    { uint32_t st = stx32(c, c->x[9], c->x[10]); c->x[11] = (uint32_t)(st); }
+    if ((uint32_t)c->x[11] != 0) goto L_7005908030;
+    c->x[10] = (uint64_t)(c->x[8] + 0x110ull);
+    c->x[11] = (uint32_t)(0x8ull);
+L_700590804c:;
+    { uint64_t ea = c->x[10] + 0x0ull; uint64_t v = LD64(ea); c->x[12] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[12], (uint64_t)(c->x[19])));
+    if (COND_EQ(c)) goto L_700590806c;
+    c->x[10] = (uint64_t)(c->x[10] + 0x10ull);
+    c->x[11] = (uint32_t)(subs32(c, (uint32_t)c->x[11], 0x1ull));
+    if (COND_NE(c)) goto L_700590804c;
+    stl32(c->x[9], 0ull);
+    goto L_70059081e0;
+L_700590806c:;
+    { uint64_t ea = c->x[10] + 0xcull; uint64_t v = LD32(ea); c->x[12] = (uint64_t)(v); }
+    { uint64_t ea = c->x[10] + 0x8ull; uint64_t v = LD32(ea); c->x[13] = (uint64_t)(v); }
+    stl32(c->x[9], 0ull);
+    (void)(subs32(c, (uint32_t)c->x[12], (uint32_t)((uint32_t)c->x[20])));
+    if (COND_NE(c)) goto L_70059081e0;
+    c->x[12] = (uint32_t)((uint32_t)c->x[12] - (uint32_t)c->x[13]);
+    (void)(subs32(c, (uint32_t)c->x[12], 0x1ccull));
+    if (COND_NE(c)) goto L_70059081e0;
+    c->x[20] = (uint32_t)(0u | (uint32_t)c->x[13]);
+    { uint64_t ea = c->x[19] + 0x4f8ull; uint64_t v = LD64(ea); c->x[21] = (uint64_t)(v); }
+    if (c->x[21] == 0) goto L_70059081e0;
+    c->x[8] = (uint32_t)(0x30ull);
+    c->x[21] = (uint64_t)(c->x[21] + (uint64_t)(uint32_t)c->x[20] * (uint64_t)(uint32_t)c->x[8]);
+    { uint64_t ea = c->x[21] + 0x18ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    (void)(adds32(c, (uint32_t)c->x[8], 0x1ull));
+    if (COND_NE(c)) goto L_70059081e0;
+    { uint64_t ea = c->x[21] + 0x1cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] != 0) goto L_70059081e0;
     c->x[8] = (uint64_t)(0x700590e000ull);
     c->x[8] = (uint64_t)(c->x[8] + 0x148ull);
     { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(0x2e70ull);
-    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x3a80000ull);
-    { uint64_t ea = c->x[8] + c->x[9]; uint64_t v = LD64(ea); c->x[22] = (uint64_t)(v); }
-    if (c->x[22] == 0) goto L_700590316c;
-    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[17] = (uint32_t)(0xf678ull);
+    c->x[17] = (uint32_t)((c->x[17] & 0xffffffff0000ffffull) | 0x3a60000ull);
+    c->x[8] = (uint64_t)(c->x[8] + c->x[17]);
+    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_70059081e0;
+    { uint64_t ea = c->x[8] + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    if (c->x[8] == 0) goto L_70059081e0;
+    { uint64_t ea = c->x[8] + 0x20ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + 0x28ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    if (c->x[10] == 0) goto L_70059081e0;
+    c->x[22] = (uint64_t)(0x700591a000ull);
+    c->x[22] = (uint64_t)(c->x[22] + 0x0ull);
+    c->x[23] = (uint32_t)(0u | 0u);
+L_70059080f4:;
+    { uint64_t ea = c->x[22] + 0x10ull; uint64_t v = LD32(ea); c->x[11] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_CS(c)) goto L_70059081e0;
+    c->x[12] = (uint32_t)(0x30ull);
+    c->x[11] = (uint64_t)(c->x[10] + (uint64_t)(uint32_t)c->x[11] * (uint64_t)(uint32_t)c->x[12]);
+    { uint64_t ea = c->x[11] + 0x10ull; uint64_t v = LD32(ea); c->x[11] = (uint64_t)(v); }
+    c->x[11] = (uint32_t)((uint32_t)c->x[11] - 0x1eull);
+    (void)(subs32(c, (uint32_t)c->x[11], 0x1ull));
+    if (COND_HI(c)) goto L_70059081e0;
+    c->x[22] = (uint64_t)(c->x[22] + 0x20ull);
+    c->x[23] = (uint32_t)((uint32_t)c->x[23] + 0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[23], 0x1ccull));
+    if (COND_CC(c)) goto L_70059080f4;
+    c->x[22] = (uint64_t)(0x700591a000ull);
+    c->x[22] = (uint64_t)(c->x[22] + 0x0ull);
+    c->x[23] = (uint32_t)(0u | 0u);
+L_7005908134:;
+    { uint64_t ea = c->x[22] + 0; u128 a = LD32(ea), b = LD32(ea + 4); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->x[22] + 0x8ull; c->v[2] = LD32(ea); }
+    { uint64_t ea = c->x[21] + 0x10ull; ST32(ea, VS32(0)); }
+    c->v[2] = VS32(2) ^ 0x80000000u;
+    { uint64_t ea = c->x[21] + 0x14ull; ST32(ea, VS32(2)); }
+    { uint64_t ea = c->x[22] + 0x10ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x18ull; ST32(ea, (uint32_t)c->x[8]); }
+    c->x[8] = (uint32_t)(0x0ull);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0xb1480000ull);
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | (uint32_t)c->x[23]);
+    { uint64_t ea = c->x[21] + 0x1cull; ST32(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->x[22] + 0xcull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[21] + 0x20ull; ST32(ea, (uint32_t)c->x[8]); }
+    c->x[8] = (uint32_t)(toint_s(c, VSF32(0), 3, 0, 32, 0));
+    c->x[9] = (uint32_t)(toint_s(c, VSF32(2), 3, 0, 32, 0));
+    c->x[10] = (uint32_t)(0xaull);
+    c->x[8] = (uint32_t)(sdiv32((uint32_t)c->x[8], (uint32_t)c->x[10]));
+    c->x[9] = (uint32_t)(sdiv32((uint32_t)c->x[9], (uint32_t)c->x[10]));
+    { uint64_t ea = c->x[21] + 0x24ull; ST16(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->x[21] + 0x26ull; ST16(ea, (uint32_t)c->x[9]); }
+    { uint64_t ea = c->x[22] + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0x50ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 0x58ull; ST32(ea, (uint32_t)c->x[9]); }
+    c->x[0] = (uint64_t)(c->sp + 0x50ull);
+    c->x[1] = (uint32_t)(0x1ull);
     c->x[16] = (uint64_t)(0x700590e000ull);
     c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
     { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->x[17] = (uint32_t)(0xf208ull);
-    c->x[17] = (uint32_t)((c->x[17] & 0xffffffff0000ffffull) | 0x2180000ull);
+    c->x[17] = (uint32_t)(0x1ad0ull);
+    c->x[17] = (uint32_t)((c->x[17] & 0xffffffff0000ffffull) | 0x400000ull);
     c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
-    c->pc = c->x[16]; c->x[30] = 0x7005903094ull; rt_dispatch(c); c->pc = 0;
-    c->x[8] = (uint64_t)(c->x[22] + 0x660ull);
-    c->x[9] = (uint64_t)(c->x[22] + 0x6acull);
-    (void)(subs32(c, (uint32_t)c->x[0], 0x0ull));
-    c->x[8] = (uint64_t)((COND_NE(c)) ? c->x[9] : (uint64_t)(c->x[8]));
-    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[8] + 0x8ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x30ull; ST64(ea, c->x[9]); }
-    { uint64_t ea = c->sp + 0x38ull; ST32(ea, (uint32_t)c->x[10]); }
-    { uint64_t ea = c->sp + 0x34ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    c->x[10] = (uint32_t)(0x7f800000ull);
-    c->x[11] = (uint32_t)((uint32_t)c->x[8] & (uint32_t)c->x[10]);
-    (void)(subs32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_EQ(c)) goto L_700590316c;
-    c->x[11] = (uint32_t)((uint32_t)c->x[9] & (uint32_t)c->x[10]);
-    (void)(subs32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_EQ(c)) goto L_700590316c;
-    c->v[0] = (uint32_t)c->x[8];
-    c->v[1] = (uint32_t)c->x[9];
-    c->v[2] = VS32(0) & ~0x80000000u;
-    c->v[3] = VS32(1) & ~0x80000000u;
-    c->x[10] = (uint32_t)(0x48000000ull);
-    c->v[4] = (uint32_t)c->x[10];
-    c->nzcv = cmp_s(c, VSF32(2), VSF32(4));
-    if (COND_HI(c)) goto L_700590316c;
-    c->nzcv = cmp_s(c, VSF32(3), VSF32(4));
-    if (COND_HI(c)) goto L_700590316c;
-    fp_op_s(c, FOP_SUB, 0, 1, 0);
-    { uint64_t ea = c->sp + 0x44ull; ST32(ea, VS32(0)); }
-    c->x[21] = (uint32_t)(0x2ull);
-    c->v[1] = 0x41200000ull;
-    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
-    if (COND_GT(c)) goto L_700590312c;
-    c->v[1] = VS32(1) ^ 0x80000000u;
-    c->nzcv = cmp_s(c, VSF32(0), VSF32(1));
-    if (COND_GE(c)) goto L_700590316c;
-    c->x[21] = (uint32_t)(0x1ull);
-    goto L_7005903130;
-L_700590312c:;
-    c->x[21] = (uint32_t)(0u | 0u);
-L_7005903130:;
-    { uint64_t ea = c->x[19] + 0x44ull; c->v[0] = LD32(ea); }
-    c->v[1] = VS32(0) & ~0x80000000u;
-    c->v[4] = (uint32_t)c->x[10];
-    c->nzcv = cmp_s(c, VSF32(1), VSF32(4));
-    if (COND_HI(c)) goto L_7005903168;
-    c->v[0] = 0u;
-    if ((uint32_t)c->x[21] == 0) goto L_7005903158;
-    c->x[8] = (uint32_t)(0x43340000ull);
-    c->v[1] = (uint32_t)c->x[8];
-    fp_op_s(c, FOP_ADD, 0, 0, 1);
-L_7005903158:;
-    { uint64_t ea = c->x[20] + 0x44ull; ST32(ea, VS32(0)); }
-    c->v[0] = 0x3f800000ull;
-    { uint64_t ea = c->x[20] + 72; ST32(ea, VS32(0)); ST32(ea + 4, VS32(0)); }
-    goto L_700590316c;
-L_7005903168:;
-    c->x[21] = (uint32_t)(0x3ull);
-L_700590316c:;
-    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[21]);
-    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x34ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x44ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
-    c->x[30] = 0x7005903180ull; f_7005905000(c);
+    c->pc = c->x[16]; c->x[30] = 0x70059081b4ull; rt_dispatch(c); c->pc = 0;
+    { uint64_t ea = c->x[21] + 0x28ull; ST8(ea, (uint32_t)c->x[0]); }
+    c->x[21] = (uint64_t)(c->x[21] + 0x30ull);
+    c->x[22] = (uint64_t)(c->x[22] + 0x20ull);
+    c->x[23] = (uint32_t)((uint32_t)c->x[23] + 0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[23], 0x1ccull));
+    if (COND_CC(c)) goto L_7005908134;
+    c->x[0] = (uint32_t)(0x9ull);
+    c->x[1] = (uint32_t)(0x1ccull);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[20]);
+    c->x[3] = (uint32_t)(0x1ull);
+    c->x[30] = 0x70059081e0ull; f_7005905000(c);
+L_70059081e0:;
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 96; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
+    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 112; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
     c->pc = 0; return;
 }
 
-void f_7005905000(Cpu *c) {
-    { uint64_t ea = c->sp - 48; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+void f_700590a800(Cpu *c) {
+    { uint64_t ea = c->x[0] + 0x14ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] != 0) goto L_700590a838;
+    (void)(subs32(c, (uint32_t)c->x[1], 0x0ull));
+    if (COND_EQ(c)) goto L_700590a848;
+    (void)(subs32(c, (uint32_t)c->x[1], 0x4ull));
+    if (COND_EQ(c)) goto L_700590a848;
+    { uint64_t ea = c->x[0] + 0xcull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0x8ull);
+    (void)(subs32(c, (uint32_t)c->x[1], 0x3ull));
+    c->x[3] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
+    c->x[3] = (uint32_t)(ROR32((uint32_t)c->x[3], 31) & 0xfffffffeull);
+    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[2]);
+    c->x[2] = (uint32_t)(0u | 0u);
+    f_7005905000(c); return;
+L_700590a838:;
+    { uint64_t ea = c->x[2] + 0x1cull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
+    c->x[2] = (uint32_t)((uint32_t)c->x[2] & 0xffffull);
+    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[8]);
+    goto L_700590b000;
+L_700590a848:;
+    c->pc = 0; return;
+L_700590b000:;
+    { uint64_t ea = c->sp - 64; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
-    c->x[19] = (uint32_t)(0u | (uint32_t)c->x[0]);
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
+    c->x[19] = (uint32_t)(ROR32((uint32_t)c->x[0], 29) & 0xfffffff8ull);
+    c->x[19] = (uint32_t)((uint32_t)c->x[19] + (uint32_t)c->x[1]);
     c->x[20] = (uint64_t)(0x700590e000ull);
     c->x[20] = (uint64_t)(c->x[20] + 0x180ull);
     { uint64_t ea = c->x[20] + 0x0ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[20] + (c->x[19] << 2));
-L_700590501c:;
+    c->x[8] = (uint64_t)(c->x[20] + 0xc000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x300ull);
+    c->x[8] = (uint64_t)(c->x[8] + (c->x[19] << 2));
+L_700590b02c:;
     c->x[9] = (uint64_t)(ldx32(c, c->x[8]));
     c->x[10] = (uint32_t)((uint32_t)c->x[9] + 0x1ull);
     { uint32_t st = stx32(c, c->x[8], c->x[10]); c->x[11] = (uint32_t)(st); }
-    if ((uint32_t)c->x[11] != 0) goto L_700590501c;
-    { uint64_t ea = c->sp + 0x20ull; ST32(ea, (uint32_t)c->x[10]); }
-    c->x[8] = (uint64_t)(c->x[20] + 0x40ull);
+    if ((uint32_t)c->x[11] != 0) goto L_700590b02c;
+    c->x[8] = (uint64_t)(c->x[20] + 0xc000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x400ull);
     c->x[8] = (uint64_t)(c->x[8] + (c->x[19] << 4));
-    { uint64_t ea = c->x[8] + 0; ST32(ea, (uint32_t)c->x[1]); ST32(ea + 4, (uint32_t)c->x[2]); }
-    { uint64_t ea = c->x[8] + 8; ST32(ea, (uint32_t)c->x[3]); ST32(ea + 4, (uint32_t)c->x[10]); }
+    { uint64_t ea = c->x[8] + 0; ST32(ea, (uint32_t)c->x[2]); ST32(ea + 4, (uint32_t)c->x[3]); }
+    { uint64_t ea = c->x[8] + 8; ST32(ea, (uint32_t)c->x[1]); ST32(ea + 4, (uint32_t)c->x[10]); }
+    (void)(subs32(c, (uint32_t)c->x[1], 0x4ull));
+    if (COND_EQ(c)) goto L_700590b068;
+    c->x[8] = (uint64_t)(c->x[20] + 0xd000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x0ull);
+    c->x[9] = (uint32_t)((uint32_t)c->x[1] + 0x1ull);
+    { uint64_t ea = c->x[8] + (c->x[2] << 2); ST32(ea, (uint32_t)c->x[9]); }
+L_700590b068:;
     (void)(subs32(c, (uint32_t)c->x[10], 0x4ull));
-    if (COND_LS(c)) goto L_7005905054;
+    if (COND_LS(c)) goto L_700590b07c;
     c->x[9] = (uint32_t)((uint32_t)c->x[10] - 0x1ull);
     (void)(logic32(c, (uint32_t)((uint32_t)c->x[10] & (uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_700590507c;
-L_7005905054:;
-    c->x[8] = (uint64_t)(0x7005907000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x80ull);
+    if (COND_NE(c)) goto L_700590b0a4;
+L_700590b07c:;
+    c->x[8] = (uint64_t)(0x700590b000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x800ull);
     { uint64_t ea = c->x[8] + (c->x[19] << 2); uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
     c->x[0] = (uint64_t)(0x7005900000ull);
     c->x[0] = (uint64_t)(c->x[0] + 0x0ull);
@@ -10854,217 +11237,16 @@ L_7005905054:;
     c->x[16] = (uint64_t)(0x700590e000ull);
     c->x[16] = (uint64_t)(c->x[16] + 0x0ull);
     { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x700590507cull; rt_dispatch(c); c->pc = 0;
-L_700590507c:;
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 48; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-}
-
-void f_7005908c00(Cpu *c) {
-    { uint64_t ea = c->sp - 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 0x10ull; ST64(ea, c->x[19]); }
-    c->x[19] = (uint32_t)(0u | (uint32_t)c->x[2]);
-    c->x[2] = (uint32_t)(0x1ull);
-    c->x[30] = 0x7005908c14ull; f_7005909800(c);
-    if (c->x[0] == 0) goto L_7005908c34;
-    c->x[8] = (uint32_t)(0x3f800000ull);
-    (void)(subs32(c, (uint32_t)c->x[19], 0x0ull));
-    c->x[8] = (uint32_t)((COND_NE(c)) ? (uint32_t)c->x[8] : (uint32_t)(0u));
-    { uint64_t ea = c->x[0] + 72; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[8]); }
-    { uint64_t ea = c->x[0] + 0x58ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] | 0x10ull);
-    { uint64_t ea = c->x[0] + 0x58ull; ST8(ea, (uint32_t)c->x[8]); }
-L_7005908c34:;
-    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[19] = (uint64_t)(v); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 32; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-}
-
-void f_7005909800(Cpu *c) {
-    { uint64_t ea = c->sp - 64; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[23]); ST64(ea + 8, c->x[24]); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[20] = (uint64_t)(0ull | c->x[1]);
-    c->x[16] = (uint64_t)(0x700590e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
-    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->x[17] = (uint32_t)(0x6f80ull);
-    c->x[17] = (uint32_t)((c->x[17] & 0xffffffff0000ffffull) | 0x10d0000ull);
-    c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
-    c->pc = c->x[16]; c->x[30] = 0x7005909834ull; rt_dispatch(c); c->pc = 0;
-    if (c->x[0] != 0) goto L_70059098fc;
-    c->x[21] = (uint64_t)(0ull | 0ull);
-    { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[22] = (uint64_t)(v); }
-    if (c->x[22] == 0) goto L_70059098e8;
-    { uint64_t ea = c->x[22] + 0x100ull; uint64_t v = LD64(ea); c->x[23] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(0x700590e000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x180ull);
-    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint64_t)(c->x[8] + 0x190ull);
-L_7005909858:;
-    c->x[10] = (uint64_t)(ldx32(c, c->x[9]));
-    if ((uint32_t)c->x[10] != 0) goto L_70059098a4;
-    c->x[10] = (uint32_t)(0x1ull);
-    { uint32_t st = stx32(c, c->x[9], c->x[10]); c->x[11] = (uint32_t)(st); }
-    if ((uint32_t)c->x[11] != 0) goto L_7005909858;
-    c->x[21] = (uint64_t)(0ull | c->x[9]);
-    { uint64_t ea = c->x[21] + 0x8ull; ST64(ea, c->x[19]); }
-    { uint64_t ea = c->x[21] + 16; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->x[19] + 0x28ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 32; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->x[19] + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->x[19] + 0xc0ull; uint64_t v = LD64(ea); c->x[12] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 48; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->x[21] + 0x40ull; ST64(ea, c->x[12]); }
-    { uint64_t ea = c->x[20] + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->x[20] + 0x10ull; uint64_t v = LD64(ea); c->x[12] = (uint64_t)(v); }
-    { uint64_t ea = c->x[21] + 88; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->x[21] + 0x68ull; ST64(ea, c->x[12]); }
-L_70059098a4:;
-    c->x[24] = (uint64_t)(0x700590e000ull);
-    c->x[24] = (uint64_t)(c->x[24] + 0x148ull);
-    { uint64_t ea = c->x[24] + 0x0ull; uint64_t v = LD64(ea); c->x[24] = (uint64_t)(v); }
-    (void)(logic64(c, c->x[23] & 0x3ull));
-    if (COND_NE(c)) goto L_70059098e8;
-    (void)(subs64(c, c->x[23], (uint64_t)(c->x[24])));
-    if (COND_CC(c)) goto L_70059098e8;
-    c->x[9] = (uint32_t)(0x9c00ull);
-    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x2bb0000ull);
-    c->x[9] = (uint64_t)(c->x[24] + c->x[9]);
-    (void)(subs64(c, c->x[23], (uint64_t)(c->x[9])));
-    if (COND_CS(c)) goto L_70059098e8;
-    c->x[0] = (uint64_t)(0ull | c->x[19]);
-    c->x[1] = (uint64_t)(0ull | c->x[20]);
-    c->x[2] = (uint32_t)(0x1ull);
-    c->pc = c->x[23]; c->x[30] = 0x70059098e4ull; rt_dispatch(c); c->pc = 0;
-    goto L_70059098ec;
-L_70059098e8:;
-    c->x[0] = (uint64_t)(0ull | 0ull);
-L_70059098ec:;
-    if (c->x[21] == 0) goto L_70059098fc;
-    { uint64_t ea = c->x[21] + 0x48ull; ST64(ea, c->x[0]); }
-    c->x[8] = (uint32_t)(0x2ull);
-    stl32(c->x[21], c->x[8]);
-L_70059098fc:;
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
+    c->pc = c->x[16]; c->x[30] = 0x700590b0a4ull; rt_dispatch(c); c->pc = 0;
+L_700590b0a4:;
     { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
     { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 64; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
     c->pc = 0; return;
 }
 
-void f_700590a000(Cpu *c) {
-    goto L_7005918000;
-L_7005918000:;
-    { uint64_t ea = c->sp - 80; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
-    c->x[19] = (uint64_t)(0ull | c->x[0]);
-    c->x[8] = (uint64_t)(0x700591a000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x0ull);
-    c->x[9] = (uint64_t)(c->x[19] - c->x[8]);
-    (void)(logic64(c, c->x[9] & 0x1full));
-    if (COND_NE(c)) goto L_7005918158;
-    c->x[9] = (uint64_t)(ROR64(c->x[9], 5) & 0x7ffffffffffffffull);
-    (void)(subs64(c, c->x[9], 0x1ccull));
-    if (COND_CS(c)) goto L_7005918158;
-    c->x[21] = (uint64_t)(0x7005916000ull);
-    c->x[21] = (uint64_t)(c->x[21] + 0x0ull);
-    c->x[21] = (uint64_t)(c->x[21] + (c->x[9] << 4));
-    c->x[8] = (uint64_t)(0x700590e000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x148ull);
-    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[17] = (uint32_t)(0x66b0ull);
-    c->x[17] = (uint32_t)((c->x[17] & 0xffffffff0000ffffull) | 0x3ad0000ull);
-    c->x[8] = (uint64_t)(c->x[8] + c->x[17]);
-    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[20] = (uint64_t)(v); }
-    if (c->x[20] == 0) goto L_7005918158;
-    { uint64_t ea = c->sp + 0x40ull; ST32(ea, 0u); }
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[1] = (uint64_t)(c->sp + 0x40ull);
-    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    if (((c->x[8] >> 0) & 1) != 0) goto L_700591807c;
-    { uint64_t ea = c->x[19] + 0x14ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x3ull));
-    if (COND_CS(c)) goto L_70059180a0;
-L_700591807c:;
-    { uint64_t ea = c->x[19] + 0xcull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
-    c->x[16] = (uint64_t)(0x700590e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
-    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->x[17] = (uint32_t)(0x561cull);
-    c->x[17] = (uint32_t)((c->x[17] & 0xffffffff0000ffffull) | 0x40000ull);
-    c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
-    c->pc = c->x[16]; c->x[30] = 0x700591809cull; rt_dispatch(c); c->pc = 0;
-    goto L_70059180c0;
-L_70059180a0:;
-    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    c->x[16] = (uint64_t)(0x700590e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
-    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->x[17] = (uint32_t)(0x6c98ull);
-    c->x[17] = (uint32_t)((c->x[17] & 0xffffffff0000ffffull) | 0x2ab0000ull);
-    c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
-    c->pc = c->x[16]; c->x[30] = 0x70059180c0ull; rt_dispatch(c); c->pc = 0;
-L_70059180c0:;
-    if (((c->x[0] >> 0) & 1) == 0) goto L_7005918158;
-    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD8(ea); c->x[1] = (uint64_t)(v); }
-    if ((uint32_t)c->x[1] != 0) goto L_7005918150;
-    { uint64_t ea = c->x[21] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)(ROR32((uint32_t)c->x[8], 8) & 0x3ull);
-    if ((uint32_t)c->x[8] == 0) goto L_7005918144;
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[1] = (uint64_t)(c->sp + 0x40ull);
-    { uint64_t ea = c->x[21] + 0x4ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
-    if (COND_NE(c)) goto L_7005918114;
-    c->x[16] = (uint64_t)(0x700590e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
-    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->x[17] = (uint32_t)(0x561cull);
-    c->x[17] = (uint32_t)((c->x[17] & 0xffffffff0000ffffull) | 0x40000ull);
-    c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
-    c->pc = c->x[16]; c->x[30] = 0x7005918108ull; rt_dispatch(c); c->pc = 0;
-    if (((c->x[0] >> 0) & 1) == 0) goto L_7005918158;
-    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
-    goto L_7005918138;
-L_7005918114:;
-    c->x[16] = (uint64_t)(0x700590e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
-    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->x[17] = (uint32_t)(0xf57cull);
-    c->x[17] = (uint32_t)((c->x[17] & 0xffffffff0000ffffull) | 0x3c0000ull);
-    c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
-    c->pc = c->x[16]; c->x[30] = 0x7005918130ull; rt_dispatch(c); c->pc = 0;
-    if (((c->x[0] >> 0) & 1) == 0) goto L_7005918158;
-    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-L_7005918138:;
-    { uint64_t ea = c->x[21] + 0x8ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_7005918158;
-L_7005918144:;
-    c->x[0] = (uint32_t)(0u | 0u);
-    c->x[1] = (uint32_t)(0u | 0u);
-    goto L_7005918160;
-L_7005918150:;
-    c->x[0] = (uint32_t)(0x1ull);
-    goto L_7005918160;
-L_7005918158:;
-    c->x[0] = (uint32_t)(0x2ull);
-    c->x[1] = (uint32_t)(0u | 0u);
-L_7005918160:;
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 80; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->pc = 0; return;
-}
-
-void f_7005a01400(Cpu *c) {
-    c->x[1] = (uint32_t)((uint32_t)c->x[8] - (uint32_t)c->x[27]);
+void f_7005a01000(Cpu *c) {
+    c->x[9] = (uint32_t)((uint32_t)c->x[8] + (uint32_t)c->x[9]);
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -11100,27 +11282,47 @@ void f_7005a01400(Cpu *c) {
     { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
     { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    { uint64_t ea = c->sp + 0x398ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    c->x[10] = (uint64_t)(0x7005a0b000ull);
-    c->x[10] = (uint64_t)(c->x[10] + 0x820ull);
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_EQ(c)) goto L_7005a014e0;
-    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x0ull));
-    if (COND_LE(c)) goto L_7005a014e0;
-    { uint64_t ea = c->sp + 0xd8ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    c->x[10] = (uint32_t)(0x423full);
-    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0xf0000ull);
-    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_CS(c)) goto L_7005a014e0;
-    { uint64_t ea = c->sp + 0x8ull; ST64(ea, c->x[8]); }
-    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[8]);
-    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[8]);
-    c->x[3] = (uint32_t)(0u | (uint32_t)c->x[9]);
-    c->x[4] = (uint64_t)(0ull | 0ull);
-    c->x[0] = (uint32_t)(0x14ull);
-    c->x[30] = 0x7005a014e0ull; f_7005a0b000(c);
-L_7005a014e0:;
+    { uint64_t ea = c->sp + 0x48ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[9], 0x0ull));
+    if (COND_LE(c)) goto L_7005a01118;
+    { uint64_t ea = c->sp + 0x98ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + 0x18ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    if (c->x[10] == 0) goto L_7005a01118;
+    { uint64_t ea = c->x[10] + 0x228ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    if (c->x[10] == 0) goto L_7005a01118;
+    { uint64_t ea = c->x[10] + 0x208ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    if (c->x[11] == 0) goto L_7005a01118;
+    { uint64_t ea = c->x[10] + 0x438ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    if (c->x[11] != 0) goto L_7005a010dc;
+    { uint64_t ea = c->x[10] + 0x150ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    if (c->x[11] != 0) goto L_7005a010e4;
+    { uint64_t ea = c->x[10] + 0x508ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    if (c->x[11] == 0) goto L_7005a01118;
+    c->x[0] = (uint32_t)(0x2ull);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[9]);
+    goto L_7005a010f0;
+L_7005a010dc:;
+    c->x[0] = (uint32_t)(0x0ull);
+    goto L_7005a010e8;
+L_7005a010e4:;
+    c->x[0] = (uint32_t)(0x1ull);
+L_7005a010e8:;
+    { uint64_t ea = c->sp + 0x48ull; ST64(ea, 0ull); }
+    c->x[2] = (uint32_t)(0u | 0u);
+L_7005a010f0:;
+    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[9]);
+    { uint64_t ea = c->x[8] + 0x1830ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    c->x[3] = (uint32_t)(0u | 0u);
+    if (c->x[10] == 0) goto L_7005a01104;
+    { uint64_t ea = c->x[10] + 0x8ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
+L_7005a01104:;
+    { uint64_t ea = c->x[8] + 0x1840ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    c->x[4] = (uint32_t)(0u | 0u);
+    if (c->x[10] == 0) goto L_7005a01114;
+    { uint64_t ea = c->x[10] + 0x8ull; uint64_t v = LD32(ea); c->x[4] = (uint64_t)(v); }
+L_7005a01114:;
+    c->x[30] = 0x7005a01118ull; f_7005a0b000(c);
+L_7005a01118:;
     /* hint */
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
@@ -11157,10 +11359,11 @@ L_7005a014e0:;
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x7000921a10ull; return;
+    { uint64_t ea = c->x[19] + 0x18e8ull; ST32(ea, (uint32_t)c->x[9]); }
+    c->pc = 0x70004403a4ull; return;
 }
 
-void f_7005a01c00(Cpu *c) {
+void f_7005a02000(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -11200,47 +11403,47 @@ void f_7005a01c00(Cpu *c) {
     { uint64_t ea = c->x[8] + 0x4f8ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
     { uint64_t ea = c->sp + 0x310ull; ST32(ea, (uint32_t)c->x[9]); }
     { uint64_t ea = c->x[8] + 0x18ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    if (c->x[0] == 0) goto L_7005a01d80;
+    if (c->x[0] == 0) goto L_7005a02180;
     { uint64_t ea = c->x[0] + 0x218ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    if (c->x[0] == 0) goto L_7005a01d80;
+    if (c->x[0] == 0) goto L_7005a02180;
     c->x[1] = (uint32_t)(0u | 0u);
     c->x[16] = (uint64_t)(0x7005a0e000ull);
     c->x[16] = (uint64_t)(c->x[16] + 0x100ull);
     { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x7005a01cbcull; rt_dispatch(c); c->pc = 0;
+    c->pc = c->x[16]; c->x[30] = 0x7005a020bcull; rt_dispatch(c); c->pc = 0;
     { uint64_t ea = c->sp + 0x300ull; ST32(ea, (uint32_t)c->x[0]); }
     c->x[0] = (uint64_t)(0x7005a0e000ull);
     c->x[0] = (uint64_t)(c->x[0] + 0x110ull);
     { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
     { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    if (c->x[0] == 0) goto L_7005a01d80;
+    if (c->x[0] == 0) goto L_7005a02180;
     c->x[16] = (uint64_t)(0x7005a0e000ull);
     c->x[16] = (uint64_t)(c->x[16] + 0x108ull);
     { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x7005a01ce4ull; rt_dispatch(c); c->pc = 0;
+    c->pc = c->x[16]; c->x[30] = 0x7005a020e4ull; rt_dispatch(c); c->pc = 0;
     c->x[2] = (uint32_t)((uint32_t)c->x[0] & 0x1ull);
     { uint64_t ea = c->sp + 0x304ull; ST32(ea, (uint32_t)c->x[2]); }
     c->x[0] = (uint64_t)(c->sp + 0x308ull);
     { uint64_t ea = c->x[0] + 0x0ull; ST32(ea, 0u); }
     { uint64_t ea = c->sp + 0x300ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
     c->x[16] = (uint64_t)(0x7005a0e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x120ull);
+    c->x[16] = (uint64_t)(c->x[16] + 0x128ull);
     { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x7005a01d08ull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] != 0) goto L_7005a01d2c;
+    c->pc = c->x[16]; c->x[30] = 0x7005a02108ull; rt_dispatch(c); c->pc = 0;
+    if ((uint32_t)c->x[0] != 0) goto L_7005a0212c;
     { uint64_t ea = c->sp + 0x304ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
     c->x[2] = (uint32_t)((uint32_t)c->x[2] ^ 0x1ull);
     c->x[0] = (uint64_t)(c->sp + 0x308ull);
     { uint64_t ea = c->sp + 0x300ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
     c->x[16] = (uint64_t)(0x7005a0e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x120ull);
+    c->x[16] = (uint64_t)(c->x[16] + 0x128ull);
     { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x7005a01d2cull; rt_dispatch(c); c->pc = 0;
-L_7005a01d2c:;
+    c->pc = c->x[16]; c->x[30] = 0x7005a0212cull; rt_dispatch(c); c->pc = 0;
+L_7005a0212c:;
     (void)(subs32(c, (uint32_t)c->x[0], 0x1ull));
-    if (COND_CC(c)) goto L_7005a01d68;
+    if (COND_CC(c)) goto L_7005a02168;
     (void)(subs32(c, (uint32_t)c->x[0], 0xbull));
-    if (COND_HI(c)) goto L_7005a01d68;
+    if (COND_HI(c)) goto L_7005a02168;
     { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
     { uint64_t ea = c->sp + 0x308ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
     { uint64_t ea = c->x[8] + 0x4f8ull; ST32(ea, (uint32_t)c->x[0]); }
@@ -11249,17 +11452,17 @@ L_7005a01d2c:;
     { uint64_t ea = c->sp + 0x310ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
     c->x[3] = (uint32_t)(0u | (uint32_t)c->x[9]);
     { uint64_t ea = c->sp + 0x300ull; uint64_t v = LD32(ea); c->x[4] = (uint64_t)(v); }
-    c->x[0] = (uint32_t)(0x9ull);
-    c->x[30] = 0x7005a01d64ull; f_7005a0b000(c);
-    goto L_7005a01d80;
-L_7005a01d68:;
+    c->x[0] = (uint32_t)(0xaull);
+    c->x[30] = 0x7005a02164ull; f_7005a0b000(c);
+    goto L_7005a02180;
+L_7005a02168:;
     c->x[2] = (uint32_t)(0u | (uint32_t)c->x[0]);
     { uint64_t ea = c->sp + 0x310ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
     { uint64_t ea = c->sp + 0x300ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
     c->x[4] = (uint64_t)(0ull | 0ull);
     c->x[0] = (uint32_t)(0xbull);
-    c->x[30] = 0x7005a01d80ull; f_7005a0b000(c);
-L_7005a01d80:;
+    c->x[30] = 0x7005a02180ull; f_7005a0b000(c);
+L_7005a02180:;
     /* hint */
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
@@ -11297,11 +11500,11 @@ L_7005a01d80:;
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
     { uint64_t ea = c->x[0] + 0x4f8ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->pc = 0x700209ea0cull; return;
+    c->pc = 0x700209ebdcull; return;
 }
 
-void f_7005a02c00(Cpu *c) {
-    { uint64_t ea = c->sp + 0x168ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+void f_7005a03000(Cpu *c) {
+    { uint64_t ea = c->sp + 0x170ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -11338,18 +11541,18 @@ void f_7005a02c00(Cpu *c) {
     { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
     { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(0x141cull);
-    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x76980000ull);
+    c->x[9] = (uint32_t)(0xc430ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x8a880000ull);
     (void)(subs32(c, (uint32_t)c->x[1], (uint32_t)((uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_7005a02cc0;
+    if (COND_NE(c)) goto L_7005a030c0;
     c->x[2] = (uint32_t)(0xec02ull);
     c->x[2] = (uint32_t)((c->x[2] & 0xffffffff0000ffffull) | 0x18180000ull);
     { uint64_t ea = c->sp + 0x40ull; ST64(ea, c->x[2]); }
     c->x[3] = (uint64_t)(0ull | 0ull);
     c->x[4] = (uint64_t)(0ull | 0ull);
-    c->x[0] = (uint32_t)(0x19ull);
-    c->x[30] = 0x7005a02cc0ull; f_7005a0b000(c);
-L_7005a02cc0:;
+    c->x[0] = (uint32_t)(0x1aull);
+    c->x[30] = 0x7005a030c0ull; f_7005a0b000(c);
+L_7005a030c0:;
     /* hint */
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
@@ -11386,10 +11589,10 @@ L_7005a02cc0:;
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x7002156b40ull; return;
+    c->pc = 0x7002157800ull; return;
 }
 
-void f_7005a04000(Cpu *c) {
+void f_7005a04400(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -11425,112 +11628,60 @@ void f_7005a04000(Cpu *c) {
     { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
     { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    c->x[16] = (uint64_t)(0x7005a0e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x140ull);
-    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x7005a0409cull; rt_dispatch(c); c->pc = 0;
-    { uint64_t ea = c->sp + 0x300ull; ST64(ea, c->x[0]); }
-    c->x[8] = (uint32_t)(ROR32((uint32_t)c->x[0], 16) & 0xffffull);
-    c->x[18] = (uint32_t)(0xa5d0ull);
-    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[18])));
-    if (COND_EQ(c)) goto L_7005a040b4;
-    goto L_7005a040d0;
-L_7005a040b4:;
-    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    { uint64_t ea = c->sp + 0xb8ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    c->x[3] = (uint64_t)(0ull | 0ull);
-    c->x[4] = (uint64_t)(0ull | 0ull);
-    c->x[0] = (uint32_t)(0x4ull);
-    c->x[30] = 0x7005a040ccull; f_7005a0b000(c);
-    goto L_7005a041f4;
-L_7005a040d0:;
-    (void)(adds32(c, (uint32_t)c->x[0], 0x1ull));
-    if (COND_LT(c)) goto L_7005a041cc;
-    c->x[8] = (uint32_t)(0xfffeull);
-    (void)(subs32(c, (uint32_t)c->x[0], (uint32_t)((uint32_t)c->x[8])));
-    if (COND_GT(c)) goto L_7005a041cc;
-    { uint64_t ea = c->sp + 0xb8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[8] + 0x228ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_7005a041d4;
-    { uint64_t ea = c->x[8] + 0x2f8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    if (c->x[8] == 0) goto L_7005a041d4;
-    { uint64_t ea = c->x[8] + 0x1830ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    if (c->x[9] == 0) goto L_7005a041d4;
-    { uint64_t ea = c->x[9] + 0x8ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[9], 0x0ull));
-    if (COND_LE(c)) goto L_7005a041d4;
-    { uint64_t ea = c->sp + 0x308ull; ST32(ea, (uint32_t)c->x[9]); }
-    { uint64_t ea = c->x[8] + 0x1840ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    if (c->x[10] == 0) goto L_7005a041d4;
-    { uint64_t ea = c->sp + 0x320ull; ST64(ea, c->x[10]); }
-    { uint64_t ea = c->x[10] + 0x8ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[10], 0x0ull));
-    if (COND_LT(c)) goto L_7005a041d4;
-    { uint64_t ea = c->sp + 0x30cull; ST32(ea, (uint32_t)c->x[10]); }
-    c->x[11] = (uint32_t)(adds32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_VS(c)) goto L_7005a041d4;
-    (void)(subs32(c, (uint32_t)c->x[11], 0x0ull));
-    if (COND_LE(c)) goto L_7005a041d4;
-    { uint64_t ea = c->sp + 0x310ull; ST32(ea, (uint32_t)c->x[11]); }
-    c->x[12] = (uint32_t)(0x3fffffffull);
-    (void)(subs32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[12])));
-    if (COND_HI(c)) goto L_7005a041d4;
-    c->x[1] = (uint32_t)(adds32(c, (uint32_t)c->x[11], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_VS(c)) goto L_7005a041d4;
-    { uint64_t ea = c->sp + 0x314ull; ST32(ea, (uint32_t)c->x[1]); }
-    { uint64_t ea = c->sp + 0xa8ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->x[2] - 0x20ull);
-    c->x[3] = (uint32_t)(0xedbeull);
-    c->x[3] = (uint32_t)((c->x[3] & 0xffffffff0000ffffull) | 0x54d0000ull);
-    c->x[16] = (uint64_t)(0x7005a0e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x138ull);
-    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x7005a0417cull; rt_dispatch(c); c->pc = 0;
-    if ((uint32_t)c->x[0] == 0) goto L_7005a041dc;
-    { uint64_t ea = c->sp + 0x300ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
-    c->x[9] = (uint32_t)(0xa5d00000ull);
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] | (uint32_t)c->x[9]);
+    c->x[8] = (uint64_t)(0x7005a0b000ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0xc00ull);
     { uint64_t ea = c->sp + 0x300ull; ST64(ea, c->x[8]); }
-    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->x[9] + 0x4c8ull; ST32(ea, (uint32_t)c->x[8]); }
-    { uint64_t ea = c->sp + 0x320ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x314ull; uint64_t v = LD32(ea); c->x[11] = (uint64_t)(v); }
-    c->x[10] = (uint64_t)(c->x[10] + 0x8ull);
-    stl32(c->x[10], c->x[11]);
-    { uint64_t ea = c->sp + 0x310ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->x[10] + 0x0ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x308ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
-    c->x[2] = (uint32_t)((uint32_t)c->x[2] + (uint32_t)c->x[3]);
-    c->x[4] = (uint32_t)(0u | (uint32_t)c->x[8]);
-    c->x[0] = (uint32_t)(0x3ull);
-    c->x[30] = 0x7005a041c8ull; f_7005a0b000(c);
-    goto L_7005a041f4;
-L_7005a041cc:;
-    c->x[1] = (uint32_t)(0x1ull);
-    goto L_7005a041e0;
-L_7005a041d4:;
-    c->x[1] = (uint32_t)(0x2ull);
-    goto L_7005a041e0;
-L_7005a041dc:;
+    c->x[8] = (uint32_t)(0x4ull);
+    { uint64_t ea = c->sp + 0x308ull; ST32(ea, (uint32_t)c->x[8]); }
+    { uint64_t ea = c->sp + 0x30cull; ST32(ea, 0u); }
+    c->x[8] = (uint64_t)(0xffffffffffffffffull);
+    { uint64_t ea = c->sp + 0x310ull; ST64(ea, c->x[8]); }
+    c->x[2] = (uint32_t)(0x1dull);
+    c->x[3] = (uint64_t)(c->sp + 0x300ull);
+    c->x[16] = (uint64_t)(0x7005a0e000ull);
+    c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
+    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->x[17] = (uint64_t)(0x3788ull);
+    c->x[17] = (uint64_t)((c->x[17] & 0xffffffff0000ffffull) | 0x2110000ull);
+    c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
+    c->pc = c->x[16]; c->x[30] = 0x7005a044d0ull; rt_dispatch(c); c->pc = 0;
+    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[8]);
     c->x[1] = (uint32_t)(0x3ull);
-L_7005a041e0:;
-    { uint64_t ea = c->sp + 0xb8ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
+    c->x[2] = (uint32_t)(0u | 0u);
     c->x[3] = (uint64_t)(0ull | 0ull);
-    c->x[4] = (uint64_t)(0ull | 0ull);
-    c->x[0] = (uint32_t)(0x5ull);
-    c->x[30] = 0x7005a041f4ull; f_7005a0b000(c);
-L_7005a041f4:;
-    { uint64_t ea = c->sp + 0x300ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x0ull; ST64(ea, c->x[8]); }
-    c->x[8] = (uint64_t)(0x7005a0e000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x148ull);
-    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[17] = (uint64_t)(0xdf34ull);
-    c->x[17] = (uint64_t)((c->x[17] & 0xffffffff0000ffffull) | 0x2090000ull);
-    c->x[8] = (uint64_t)(c->x[8] + c->x[17]);
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[8]); }
+    c->x[16] = (uint64_t)(0x7005a0e000ull);
+    c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
+    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->x[17] = (uint64_t)(0x3788ull);
+    c->x[17] = (uint64_t)((c->x[17] & 0xffffffff0000ffffull) | 0x2110000ull);
+    c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
+    c->pc = c->x[16]; c->x[30] = 0x7005a04500ull; rt_dispatch(c); c->pc = 0;
+    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint32_t)(0x3ull);
+    c->x[2] = (uint32_t)(0x1ull);
+    c->x[16] = (uint64_t)(0x7005a0e000ull);
+    c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
+    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->x[17] = (uint64_t)(0x3874ull);
+    c->x[17] = (uint64_t)((c->x[17] & 0xffffffff0000ffffull) | 0x2110000ull);
+    c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
+    c->pc = c->x[16]; c->x[30] = 0x7005a04528ull; rt_dispatch(c); c->pc = 0;
+    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
+    c->x[1] = (uint32_t)(0x2ull);
+    c->x[16] = (uint64_t)(0x7005a0e000ull);
+    c->x[16] = (uint64_t)(c->x[16] + 0x148ull);
+    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->x[17] = (uint64_t)(0x3774ull);
+    c->x[17] = (uint64_t)((c->x[17] & 0xffffffff0000ffffull) | 0x2110000ull);
+    c->x[16] = (uint64_t)(c->x[16] + c->x[17]);
+    c->pc = c->x[16]; c->x[30] = 0x7005a0454cull; rt_dispatch(c); c->pc = 0;
+    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint32_t)(0x6ull);
+    c->x[3] = (uint32_t)(0x2ull);
+    c->x[4] = (uint32_t)(0x1dull);
+    c->x[0] = (uint32_t)(0x22ull);
+    c->x[30] = 0x7005a04564ull; f_7005a0b000(c);
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -11566,10 +11717,25 @@ L_7005a041f4:;
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x700209df34ull; return;
+    c->pc = 0x700217947cull; return;
 }
 
-void f_7005a06000(Cpu *c) {
+void f_7005a05800(Cpu *c) {
+    { uint64_t ea = c->x[0] + 0x4ccull; uint64_t v = LD8(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[0] + 0x4c8ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    c->x[16] = (uint32_t)(ROR32((uint32_t)c->x[9], 16) & 0xffffull);
+    c->x[17] = (uint32_t)(0xa5d0ull);
+    (void)(subs32(c, (uint32_t)c->x[16], (uint32_t)((uint32_t)c->x[17])));
+    if (COND_NE(c)) goto L_7005a05820;
+    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[9]);
+    c->pc = 0; return;
+L_7005a05820:;
+    (void)(subs32(c, (uint32_t)c->x[8], 0x0ull));
+    c->x[0] = (uint32_t)((COND_NE(c)) ? (uint32_t)c->x[9] : (uint32_t)(~0u));
+    c->pc = 0; return;
+}
+
+void f_7005a05c00(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -11605,22 +11771,26 @@ void f_7005a06000(Cpu *c) {
     { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
     { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(ROR32((uint32_t)c->x[8], 16) & 0xffffull);
-    c->x[18] = (uint32_t)(0xa5d0ull);
-    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[18])));
-    if (COND_EQ(c)) goto L_7005a060a4;
-    goto L_7005a060ac;
-L_7005a060a4:;
-    { uint64_t ea = c->sp + 0x8ull; ST64(ea, c->x[8]); }
-    goto L_7005a060bc;
-L_7005a060ac:;
     { uint64_t ea = c->sp + 0x48ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[9], 0x0ull));
-    c->x[8] = (uint32_t)((COND_NE(c)) ? (uint32_t)c->x[8] : (uint32_t)(~0u));
-    { uint64_t ea = c->sp + 0x8ull; ST64(ea, c->x[8]); }
-L_7005a060bc:;
-    /* hint */
+    c->x[10] = (uint32_t)(ROR32((uint32_t)c->x[9], 16) & 0xffffull);
+    c->x[18] = (uint32_t)(0xa5d0ull);
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[18])));
+    if (COND_EQ(c)) goto L_7005a05ca4;
+    goto L_7005a05d68;
+L_7005a05ca4:;
+    { uint64_t ea = c->sp + 0x98ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + 0x4c8ull; ST32(ea, (uint32_t)c->x[9]); }
+    c->x[10] = (uint32_t)((uint32_t)c->x[9] & 0xffffull);
+    c->x[10] = (uint32_t)((uint32_t)c->x[10] - 0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[10], 0x0ull));
+    c->x[11] = (uint32_t)((COND_LT(c)) ? 0u : (uint32_t)(0u + 1));
+    { uint64_t ea = c->x[8] + 0x4ccull; ST8(ea, (uint32_t)c->x[11]); }
+    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[9]);
+    c->x[2] = (uint64_t)(((uint64_t)(-(int64_t)((c->x[10] >> 31) & 1)) & 0xffffffff00000000ull) | (c->x[10] & 0xffffffffull));
+    c->x[3] = (uint64_t)(0ull | c->x[8]);
+    c->x[4] = (uint64_t)(0ull | 0ull);
+    c->x[0] = (uint32_t)(0x6ull);
+    c->x[30] = 0x7005a05cd8ull; f_7005a0b000(c);
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -11656,10 +11826,51 @@ L_7005a060bc:;
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x7000282a5cull; return;
+    c->pc = 0x7000aab284ull; return;
+L_7005a05d68:;
+    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->nzcv = c->x[16] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x340ull);
+    if (((c->x[9] >> 31) & 1) == 0) goto L_7005a05dfc;
+    c->pc = 0x7000aab27cull; return;
+L_7005a05dfc:;
+    c->pc = 0x7000aac4fcull; return;
 }
 
-void f_7005a06800(Cpu *c) {
+void f_7005a06c00(Cpu *c) {
+    c->x[8] = (uint32_t)((COND_LT(c)) ? 0u : (uint32_t)((uint32_t)c->x[8]));
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -11700,13 +11911,17 @@ void f_7005a06800(Cpu *c) {
     c->x[9] = (uint32_t)(ROR32((uint32_t)c->x[9], 16) & 0xffffull);
     c->x[10] = (uint32_t)(0xa5d0ull);
     (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
-    { uint64_t ea = c->sp + 0xa0ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    if (COND_NE(c)) goto L_7005a068b4;
-    c->x[9] = (uint32_t)((uint32_t)c->x[9] + 0x1ull);
-    c->x[10] = (uint32_t)(0xa5d00000ull);
-    c->x[9] = (uint32_t)((uint32_t)c->x[9] | (uint32_t)c->x[10]);
-L_7005a068b4:;
-    { uint64_t ea = c->x[8] + 0x4c8ull; ST32(ea, (uint32_t)c->x[9]); }
+    if (COND_NE(c)) goto L_7005a06cc0;
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
+    c->x[9] = (uint32_t)(0xa5d00000ull);
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] | (uint32_t)c->x[9]);
+    { uint64_t ea = c->sp + 0x40ull; ST64(ea, c->x[8]); }
+    goto L_7005a06cc4;
+L_7005a06cc0:;
+    /* hint */
+L_7005a06cc4:;
+    /* hint */
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -11742,11 +11957,10 @@ L_7005a068b4:;
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x7000b21a50ull; return;
+    c->pc = 0x7000457308ull; return;
 }
 
-void f_7005a08400(Cpu *c) {
-    { uint64_t ea = c->x[19] + 252; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[8]); }
+void f_7005a08800(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -11782,13 +11996,13 @@ void f_7005a08400(Cpu *c) {
     { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
     { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    { uint64_t ea = c->sp + 0x98ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[8] + 0xfcull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->x[8] + 0x100ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
-    c->x[3] = (uint64_t)(0ull | c->x[8]);
+    { uint64_t ea = c->sp + 0xe8ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[8] + 0x1cull; uint64_t v = LD8(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint32_t)(0x1ull);
+    c->x[3] = (uint64_t)(0ull | 0ull);
     c->x[4] = (uint64_t)(0ull | 0ull);
-    c->x[0] = (uint32_t)(0x16ull);
-    c->x[30] = 0x7005a084acull; f_7005a0b000(c);
+    c->x[0] = (uint32_t)(0x17ull);
+    c->x[30] = 0x7005a088a8ull; f_7005a0b000(c);
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -11824,10 +12038,11 @@ void f_7005a08400(Cpu *c) {
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x70023bcd30ull; return;
+    c->x[8] = (uint32_t)(0x1ull);
+    c->pc = 0x7001fa872cull; return;
 }
 
-void f_7005a09000(Cpu *c) {
+void f_7005a09400(Cpu *c) {
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -11865,12 +12080,12 @@ void f_7005a09000(Cpu *c) {
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
     { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
     (void)(subs32(c, (uint32_t)c->x[1], 0x0ull));
-    if (COND_LE(c)) goto L_7005a0913c;
+    if (COND_LE(c)) goto L_7005a0953c;
     c->x[2] = (uint32_t)(0x1ull);
     c->x[3] = (uint64_t)(0ull | 0ull);
     c->x[4] = (uint64_t)(0ull | 0ull);
-    c->x[0] = (uint32_t)(0x11ull);
-    c->x[30] = 0x7005a090acull; f_7005a0b000(c);
+    c->x[0] = (uint32_t)(0x12ull);
+    c->x[30] = 0x7005a094acull; f_7005a0b000(c);
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -11906,8 +12121,8 @@ void f_7005a09000(Cpu *c) {
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x70020b2a98ull; return;
-L_7005a0913c:;
+    c->pc = 0x70020a6ec0ull; return;
+L_7005a0953c:;
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -11943,19 +12158,14 @@ L_7005a0913c:;
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    if (COND_GT(c)) goto L_7005a091d0;
-    c->pc = 0x70020b2a3cull; return;
-L_7005a091d0:;
-    c->pc = 0x70020b2a98ull; return;
+    if (COND_GT(c)) goto L_7005a095d0;
+    c->pc = 0x70020a760cull; return;
+L_7005a095d0:;
+    c->pc = 0x70020a6ec0ull; return;
 }
 
-void f_7005a0a000(Cpu *c) {
-    { uint64_t ea = c->sp - 48; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    c->pc = 0x7002a9f6fcull; f_7002a9f6f8(c); c->pc = 0; return;
-}
-
-void f_7005a0a100(Cpu *c) {
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+void f_7005a0a500(Cpu *c) {
+    c->x[1] = (uint32_t)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
     c->sp = (uint64_t)(c->sp - 0x340ull);
     { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
     { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
@@ -11992,463 +12202,103 @@ void f_7005a0a100(Cpu *c) {
     { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
     { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
     { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    c->x[9] = (uint32_t)(ROR32((uint32_t)c->x[8], 16) & 0xffffull);
-    c->x[10] = (uint32_t)(0xa5d0ull);
-    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
-    if (COND_NE(c)) goto L_7005a0a1b0;
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] & 0xffffull);
-    c->x[8] = (uint32_t)((uint32_t)c->x[8] - 0x1ull);
-    { uint64_t ea = c->sp + 0x40ull; ST64(ea, c->x[8]); }
-L_7005a0a1b0:;
-    /* hint */
-    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->nzcv = c->x[16] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x7002176450ull; return;
-}
-
-void f_7005a0b000(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x1c0ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[19]); ST64(ea + 8, c->x[20]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[21]); ST64(ea + 8, c->x[22]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[23]); ST64(ea + 8, c->x[24]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[25]); ST64(ea + 8, c->x[26]); }
-    c->x[19] = (uint32_t)(0u | (uint32_t)c->x[0]);
-    c->x[20] = (uint64_t)(0ull | c->x[1]);
-    c->x[21] = (uint64_t)(0ull | c->x[2]);
-    c->x[22] = (uint64_t)(0ull | c->x[3]);
-    c->x[23] = (uint64_t)(0ull | c->x[4]);
-    c->x[26] = (uint64_t)(0x7005a0e000ull);
-    c->x[26] = (uint64_t)(c->x[26] + 0x180ull);
-    { uint64_t ea = c->x[26] + 0x0ull; uint64_t v = LD64(ea); c->x[26] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[26] + 0xfcull);
-L_7005a0b03c:;
-    c->x[9] = (uint64_t)(ldx32(c, c->x[8]));
-    if ((uint32_t)c->x[9] != 0) goto L_7005a0b03c;
-    c->x[9] = (uint32_t)(0x1ull);
-    { uint32_t st = stx32(c, c->x[8], c->x[9]); c->x[10] = (uint32_t)(st); }
-    if ((uint32_t)c->x[10] != 0) goto L_7005a0b03c;
-    c->x[9] = (uint64_t)(c->x[26] + (c->x[19] << 2));
-    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD32(ea); c->x[25] = (uint64_t)(v); }
-    c->x[25] = (uint32_t)((uint32_t)c->x[25] + 0x1ull);
-    { uint64_t ea = c->x[9] + 0x0ull; ST32(ea, (uint32_t)c->x[25]); }
-    c->x[10] = (uint64_t)(c->x[26] + 0x100ull);
-    c->x[10] = (uint64_t)(c->x[10] + (c->x[19] << 5));
-    { uint64_t ea = c->x[10] + 0; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->x[10] + 16; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    stl32(c->x[8], 0ull);
-    (void)(subs32(c, (uint32_t)c->x[25], 0x4ull));
-    if (COND_LS(c)) goto L_7005a0b088;
-    c->x[9] = (uint32_t)((uint32_t)c->x[25] - 0x1ull);
-    (void)(logic32(c, (uint32_t)((uint32_t)c->x[25] & (uint32_t)c->x[9])));
-    if (COND_NE(c)) goto L_7005a0b15c;
-L_7005a0b088:;
-    c->x[8] = (uint64_t)(0x7005a0f000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x0ull);
-    { uint64_t ea = c->x[8] + (c->x[19] << 2); uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(0x7005a00000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x0ull);
-    c->x[8] = (uint64_t)(c->x[8] + c->x[9]);
-    c->x[1] = (uint64_t)(c->sp + 0x80ull);
-L_7005a0b0a4:;
-    { uint64_t ea = c->x[8]; uint64_t v = LD8(ea); c->x[8] = c->x[8] + 1; c->x[9] = (uint64_t)(v); }
-    if ((uint32_t)c->x[9] == 0) goto L_7005a0b0b4;
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[9]); c->x[1] = c->x[1] + 1; }
-    goto L_7005a0b0a4;
-L_7005a0b0b4:;
-    c->x[0] = (uint64_t)(0ull | c->x[25]);
-    c->x[30] = 0x7005a0b0bcull; f_7005a0b178(c);
-    c->x[8] = (uint32_t)(0x20ull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[8] = (uint32_t)(0x61ull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[8] = (uint32_t)(0x3dull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[0] = (uint64_t)(0ull | c->x[20]);
-    c->x[30] = 0x7005a0b0dcull; f_7005a0b178(c);
-    c->x[8] = (uint32_t)(0x20ull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[8] = (uint32_t)(0x62ull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[8] = (uint32_t)(0x3dull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[0] = (uint64_t)(0ull | c->x[21]);
-    c->x[30] = 0x7005a0b0fcull; f_7005a0b178(c);
-    c->x[8] = (uint32_t)(0x20ull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[8] = (uint32_t)(0x63ull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[8] = (uint32_t)(0x3dull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[0] = (uint64_t)(0ull | c->x[22]);
-    c->x[30] = 0x7005a0b11cull; f_7005a0b178(c);
-    c->x[8] = (uint32_t)(0x20ull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[8] = (uint32_t)(0x64ull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[8] = (uint32_t)(0x3dull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    c->x[0] = (uint64_t)(0ull | c->x[23]);
-    c->x[30] = 0x7005a0b13cull; f_7005a0b178(c);
-    c->x[8] = (uint32_t)(0xaull);
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[8]); c->x[1] = c->x[1] + 1; }
-    { uint64_t ea = c->x[1] + 0x0ull; ST8(ea, 0u); }
-    c->x[0] = (uint64_t)(c->sp + 0x80ull);
-    c->x[16] = (uint64_t)(0x7005a0e000ull);
-    c->x[16] = (uint64_t)(c->x[16] + 0x0ull);
-    { uint64_t ea = c->x[16] + 0x0ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->pc = c->x[16]; c->x[30] = 0x7005a0b15cull; rt_dispatch(c); c->pc = 0;
-L_7005a0b15c:;
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[25] = (uint64_t)(a); c->x[26] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[23] = (uint64_t)(a); c->x[24] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[21] = (uint64_t)(a); c->x[22] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[19] = (uint64_t)(a); c->x[20] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
-    c->sp = (uint64_t)(c->sp + 0x1c0ull);
-    c->pc = 0; return;
-}
-
-void f_7005a0b178(Cpu *c) {
-    c->x[2] = (uint32_t)(0x10ull);
-L_7005a0b17c:;
-    c->x[3] = (uint64_t)(ROR64(c->x[0], 60) & 0xfull);
-    c->x[4] = (uint32_t)((uint32_t)c->x[3] + 0x30ull);
-    c->x[5] = (uint32_t)((uint32_t)c->x[3] + 0x57ull);
-    (void)(subs32(c, (uint32_t)c->x[3], 0x9ull));
-    c->x[4] = (uint32_t)((COND_LS(c)) ? (uint32_t)c->x[4] : (uint32_t)((uint32_t)c->x[5]));
-    { uint64_t ea = c->x[1]; ST8(ea, (uint32_t)c->x[4]); c->x[1] = c->x[1] + 1; }
-    c->x[0] = (uint64_t)(ROR64(c->x[0], 60) & 0xfffffffffffffff0ull);
-    c->x[2] = (uint32_t)(subs32(c, (uint32_t)c->x[2], 0x1ull));
-    if (COND_NE(c)) goto L_7005a0b17c;
-    c->pc = 0; return;
-}
-
-void f_7005a0b300(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x340ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
-    c->x[16] = (uint64_t)(c->nzcv);
-    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
-    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
-    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
-    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
-    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
-    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
-    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
-    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
-    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
-    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
-    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
-    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
-    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
-    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
-    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    { uint64_t ea = c->x[19] + 0x308ull; uint64_t v = LD8(ea); c->x[9] = (uint64_t)(v); }
-    if ((uint32_t)c->x[9] == 0) goto L_7005a0b3b0;
-    c->x[8] = (uint64_t)(0x7005a0e000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x180ull);
-    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    c->x[8] = (uint64_t)(c->x[8] + 0x10000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x40ull);
-    c->x[9] = (uint32_t)(0x1ull);
-    { uint64_t ea = c->x[8] + 0x4ull; ST32(ea, (uint32_t)c->x[9]); }
-L_7005a0b3b0:;
-    /* hint */
-    { uint64_t ea = c->x[19] + 0x308ull; ST8(ea, 0u); }
-    c->x[8] = (uint64_t)(0x7005a0e000ull);
-    c->x[8] = (uint64_t)(c->x[8] + 0x180ull);
-    { uint64_t ea = c->x[8] + 0x0ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
-    { uint64_t ea = c->x[8] + 0x800ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
-    { uint64_t ea = c->sp + 0x98ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
-    if (COND_NE(c)) goto L_7005a0b3f0;
-    { uint64_t ea = c->x[8] + 0x800ull; ST64(ea, 0ull); }
-    { uint64_t ea = c->x[8] + 0x808ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
-    { uint64_t ea = c->x[10] + 0x258ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
-    c->x[3] = (uint64_t)(0ull | c->x[10]);
-    c->x[4] = (uint64_t)(0ull | 0ull);
-    c->x[0] = (uint32_t)(0x25ull);
-    c->x[30] = 0x7005a0b3f0ull; f_7005a0b000(c);
-L_7005a0b3f0:;
-    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
-    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
-    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
-    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
-    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
-    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
-    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
-    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
-    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
-    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
-    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
-    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
-    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
-    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
-    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
-    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
-    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
-    c->nzcv = c->x[16] & 0xf0000000ull;
-    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
-    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
-    c->sp = (uint64_t)(c->sp + 0x340ull);
-    c->pc = 0x700216feccull; return;
-}
-
-void f_7005a1097c(Cpu *c) {
-    { uint64_t ea = c->sp - 48; ST64(ea, c->x[23]); c->sp = ea; }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
-    c->x[12] = (uint32_t)(0x4000000ull);
-    c->x[10] = (uint32_t)(0x4240ull);
-    c->x[15] = (uint64_t)(0ull | 0x7ffffe0000ull);
-    c->x[9] = (uint64_t)(0ull | 0ull);
-    c->x[8] = (uint32_t)(0u | 0u);
-    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0xf0000ull);
-    c->x[11] = (uint64_t)(c->x[2] + 0x40ull);
-    c->x[12] = (uint64_t)(c->x[0] + c->x[12]);
-    c->x[13] = (uint32_t)(0x1cull);
-    /* hint */
-    c->x[14] = (uint64_t)(0x7005a10f08ull);
-    c->x[15] = (uint64_t)((c->x[15] & 0xffffffffffff0000ull) | 0xffffull);
-    c->x[16] = (uint32_t)(0x200ull);
-    c->x[17] = (uint64_t)(0ull | 0x7fffff0000ull);
-L_7005a109c0:;
-    c->x[18] = (uint64_t)(c->x[14] + c->x[9] * c->x[13]);
-    { uint64_t ea = c->x[18] + 0x0ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
-    c->x[3] = (uint64_t)(c->x[3] + c->x[1]);
-    { uint64_t ea = c->x[3] + 0x8ull; uint64_t v = LD32(ea); c->x[4] = (uint64_t)(v); }
-    { uint64_t ea = c->x[3] + 0x24ull; uint64_t v = LD32(ea); c->x[5] = (uint64_t)(v); }
-    { uint64_t ea = c->x[3] + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[3] = (uint64_t)(a); c->x[6] = (uint64_t)(b); }
-    c->x[7] = (uint32_t)((uint32_t)c->x[4] - 0x1ull);
-    c->x[19] = (uint32_t)((uint32_t)c->x[5] - 0x1ull);
-    (void)(subs32(c, (uint32_t)c->x[7], (uint32_t)((uint32_t)c->x[10])));
-    c->x[7] = (uint64_t)(c->x[6] - 0x10000ull);
-    if (COND_CC(c)) (void)subs32(c, (uint32_t)c->x[19], (uint32_t)c->x[10]); else c->nzcv = 0x20000000ull;
-    c->x[19] = (uint64_t)(c->x[3] - 0x10000ull);
-    if (COND_CC(c)) (void)subs64(c, c->x[7], c->x[15]); else c->nzcv = 0x20000000ull;
-    if (COND_LS(c)) (void)subs64(c, c->x[19], c->x[15]); else c->nzcv = 0x20000000ull;
-    if (COND_HI(c)) goto L_7005a10af8;
-    { uint64_t ea = c->x[18] + 0x4ull; uint64_t v = LD32(ea); c->x[19] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[5], 0x200ull));
-    c->x[7] = (uint32_t)(0u | 0u);
-    c->x[21] = (uint32_t)((COND_CC(c)) ? (uint32_t)c->x[5] : (uint32_t)((uint32_t)c->x[16]));
-    c->x[20] = (uint32_t)(udiv32((uint32_t)c->x[19], (uint32_t)c->x[5]));
-    c->x[20] = (uint32_t)((uint32_t)c->x[19] - (uint32_t)c->x[20] * (uint32_t)c->x[5]);
-L_7005a10a14:;
-    c->x[22] = (uint32_t)((uint32_t)c->x[7] + (uint32_t)c->x[20]);
-    c->x[23] = (uint32_t)(udiv32((uint32_t)c->x[22], (uint32_t)c->x[5]));
-    c->x[22] = (uint32_t)((uint32_t)c->x[22] - (uint32_t)c->x[23] * (uint32_t)c->x[5]);
-    c->x[22] = (uint64_t)(c->x[6] + ((uint64_t)(uint32_t)c->x[22] << 3));
-    { uint64_t ea = c->x[22] + 0x0ull; uint64_t v = LD32(ea); c->x[23] = (uint64_t)(v); }
-    if ((uint32_t)c->x[23] == 0) goto L_7005a10af8;
-    (void)(subs32(c, (uint32_t)c->x[23], (uint32_t)((uint32_t)c->x[19])));
-    if (COND_EQ(c)) goto L_7005a10a44;
-    c->x[21] = (uint32_t)(subs32(c, (uint32_t)c->x[21], 0x1ull));
-    c->x[7] = (uint32_t)((uint32_t)c->x[7] + 0x1ull);
-    if (COND_NE(c)) goto L_7005a10a14;
-    goto L_7005a10af8;
-L_7005a10a44:;
-    { uint64_t ea = c->x[22] + 0x4ull; uint64_t v = LD32(ea); c->x[5] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[5], (uint32_t)((uint32_t)c->x[4])));
-    if (COND_CS(c)) goto L_7005a10af8;
-    { uint64_t ea = c->x[18] + 0x8ull; uint64_t v = LD32(ea); c->x[4] = (uint64_t)(v); }
-    c->x[3] = (uint64_t)(c->x[3] + (uint64_t)(uint32_t)c->x[4] * (uint64_t)(uint32_t)c->x[5]);
-    { uint64_t ea = c->x[11] + (c->x[9] << 3); ST64(ea, c->x[3]); }
-    { uint64_t ea = c->x[3] + 0x0ull; uint64_t v = LD64(ea); c->x[4] = (uint64_t)(v); }
-    (void)(subs64(c, c->x[4], (uint64_t)(c->x[0])));
-    if (COND_CS(c)) (void)subs64(c, c->x[4], c->x[12]); else c->nzcv = 0x20000000ull;
-    if (COND_CS(c)) goto L_7005a10af8;
-    { uint64_t ea = c->x[18] + 0x18ull; uint64_t v = LD32(ea); c->x[5] = (uint64_t)(v); }
-    { uint64_t ea = c->x[4] + 0x20ull; uint64_t v = LD64(ea); c->x[4] = (uint64_t)(v); }
-    c->x[5] = (uint64_t)(c->x[5] + c->x[0]);
-    (void)(subs64(c, c->x[4], (uint64_t)(c->x[5])));
-    if (COND_NE(c)) goto L_7005a10af8;
-    { uint64_t ea = c->x[3] + 0x10ull; uint64_t v = LD32(ea); c->x[4] = (uint64_t)(v); }
-    { uint64_t ea = c->x[18] + 0x14ull; uint64_t v = LD32(ea); c->x[5] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[4], (uint32_t)((uint32_t)c->x[5])));
-    if (COND_NE(c)) goto L_7005a10af8;
-    { uint64_t ea = c->x[3] + 0x14ull; uint64_t v = LD32(ea); c->x[4] = (uint64_t)(v); }
-    if ((uint32_t)c->x[4] != 0) goto L_7005a10af8;
-    { uint64_t ea = c->x[18] + 12; uint64_t a = LD32(ea), b = LD32(ea + 4); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
-    { uint64_t ea = c->x[3] + c->x[4]; uint64_t v = LD32(ea); c->x[18] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[18], (uint32_t)((uint32_t)c->x[5])));
-    if (COND_NE(c)) goto L_7005a10af8;
-    c->x[5] = (uint32_t)((uint32_t)c->x[4] + 0x10ull);
-    { uint64_t ea = c->x[3] + (uint64_t)(uint32_t)c->x[5]; uint64_t v = LD32(ea); c->x[5] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[5], (uint32_t)((uint32_t)c->x[18])));
-    if (COND_NE(c)) goto L_7005a10af8;
-    c->x[18] = (uint32_t)((uint32_t)c->x[4] + 0x8ull);
-    { uint64_t ea = c->x[3] + (uint64_t)(uint32_t)c->x[18]; uint64_t v = LD64(ea); c->x[18] = (uint64_t)(v); }
-    { uint64_t ea = c->x[2] + (c->x[9] << 3); ST64(ea, c->x[18]); }
-    c->x[5] = (uint64_t)(c->x[18] - 0x10000ull);
-    (void)(subs64(c, c->x[5], (uint64_t)(c->x[15])));
-    if (COND_HI(c)) goto L_7005a10af8;
-    c->x[18] = (uint32_t)((uint32_t)c->x[4] + 0x18ull);
-    { uint64_t ea = c->x[3] + (uint64_t)(uint32_t)c->x[18]; uint64_t v = LD64(ea); c->x[18] = (uint64_t)(v); }
-    c->x[18] = (uint64_t)(c->x[18] - 0x10000ull);
-    (void)(subs64(c, c->x[18], (uint64_t)(c->x[17])));
-    if (COND_CS(c)) goto L_7005a10af8;
-    (void)(subs64(c, c->x[9], 0x6ull));
-    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
-    c->x[8] = (uint32_t)((COND_LS(c)) ? 0u : (uint32_t)(0u + 1));
-    (void)(subs64(c, c->x[9], 0x8ull));
-    if (COND_NE(c)) goto L_7005a109c0;
-L_7005a10af8:;
-    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
-    c->x[0] = (uint32_t)((uint32_t)c->x[8] & 0x1ull);
-    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
-    { uint64_t ea = c->sp; uint64_t v = LD64(ea); c->sp = c->sp + 48; c->x[23] = (uint64_t)(v); }
-    c->pc = 0; return;
-}
-
-void f_7005a10d50(Cpu *c) {
-    { uint64_t ea = c->x[0] + 0x40ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[11] + 0x70ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[8], 0x78ull));
-    if (COND_NE(c)) goto L_7005a10dc0;
-    c->x[8] = (uint32_t)(0u | 0u);
-    c->x[9] = (uint64_t)(0ull | 0ull);
-    c->x[13] = (uint32_t)(0x70ull);
-    c->x[10] = (uint64_t)(0x7005a10000ull);
-    c->x[10] = (uint64_t)(c->x[10] + 0xf34ull);
-    c->x[12] = (uint64_t)(0ull | c->x[0]);
-L_7005a10d78:;
-    c->x[13] = (uint32_t)((uint32_t)c->x[13] + 0x8ull);
-    { uint64_t ea = c->x[11] + (uint64_t)(uint32_t)c->x[13]; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    { uint64_t ea = c->x[12]; uint64_t v = LD64(ea); c->x[12] = c->x[12] + 8; c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], 0x0ull));
+    if (COND_LE(c)) goto L_7005a0a7e8;
+    { uint64_t ea = c->sp + 0x48ull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[10], 0x0ull));
+    if (COND_LE(c)) goto L_7005a0a7e8;
+    { uint64_t ea = c->sp + 0x4f8ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    c->x[12] = (uint64_t)(0x7005a0e000ull);
+    c->x[12] = (uint64_t)(c->x[12] + 0x148ull);
+    { uint64_t ea = c->x[12] + 0x0ull; uint64_t v = LD64(ea); c->x[12] = (uint64_t)(v); }
+    c->x[11] = (uint64_t)(c->x[11] - c->x[12]);
+    c->x[13] = (uint32_t)(0x98e0ull);
+    c->x[13] = (uint32_t)((c->x[13] & 0xffffffff0000ffffull) | 0x890000ull);
     (void)(subs64(c, c->x[11], (uint64_t)(c->x[13])));
-    if (COND_NE(c)) goto L_7005a10dc4;
-    (void)(subs64(c, c->x[9], 0x6ull));
-    c->x[8] = (uint32_t)((COND_LS(c)) ? 0u : (uint32_t)(0u + 1));
-    (void)(subs64(c, c->x[9], 0x7ull));
-    if (COND_EQ(c)) goto L_7005a10dc4;
-    { uint64_t ea = c->x[10] - 4; uint64_t a = LD32(ea), b = LD32(ea + 4); c->x[13] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
-    { uint64_t ea = c->x[0] + 0x48ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
-    c->x[10] = (uint64_t)(c->x[10] + 0x1cull);
-    c->x[9] = (uint64_t)(c->x[9] + 0x1ull);
-    c->x[0] = (uint64_t)(0ull | c->x[12]);
-    { uint64_t ea = c->x[11] + c->x[13]; uint64_t v = LD32(ea); c->x[14] = (uint64_t)(v); }
-    (void)(subs32(c, (uint32_t)c->x[14], (uint32_t)((uint32_t)c->x[15])));
-    if (COND_EQ(c)) goto L_7005a10d78;
-    goto L_7005a10dc4;
-L_7005a10dc0:;
-    c->x[8] = (uint32_t)(0u | 0u);
-L_7005a10dc4:;
-    c->x[0] = (uint32_t)((uint32_t)c->x[8] & 0x1ull);
-    c->pc = 0; return;
-}
-
-void f_7005a1c000(Cpu *c) {
-    c->sp = (uint64_t)(c->sp - 0x340ull);
-    { uint64_t ea = c->sp + 0; ST64(ea, c->x[0]); ST64(ea + 8, c->x[1]); }
-    { uint64_t ea = c->sp + 16; ST64(ea, c->x[2]); ST64(ea + 8, c->x[3]); }
-    { uint64_t ea = c->sp + 32; ST64(ea, c->x[4]); ST64(ea + 8, c->x[5]); }
-    { uint64_t ea = c->sp + 48; ST64(ea, c->x[6]); ST64(ea + 8, c->x[7]); }
-    { uint64_t ea = c->sp + 64; ST64(ea, c->x[8]); ST64(ea + 8, c->x[9]); }
-    { uint64_t ea = c->sp + 80; ST64(ea, c->x[10]); ST64(ea + 8, c->x[11]); }
-    { uint64_t ea = c->sp + 96; ST64(ea, c->x[12]); ST64(ea + 8, c->x[13]); }
-    { uint64_t ea = c->sp + 112; ST64(ea, c->x[14]); ST64(ea + 8, c->x[15]); }
-    { uint64_t ea = c->sp + 128; ST64(ea, c->x[16]); ST64(ea + 8, c->x[17]); }
-    { uint64_t ea = c->sp + 144; ST64(ea, c->x[18]); ST64(ea + 8, c->x[19]); }
-    { uint64_t ea = c->sp + 160; ST64(ea, c->x[20]); ST64(ea + 8, c->x[21]); }
-    { uint64_t ea = c->sp + 176; ST64(ea, c->x[22]); ST64(ea + 8, c->x[23]); }
-    { uint64_t ea = c->sp + 192; ST64(ea, c->x[24]); ST64(ea + 8, c->x[25]); }
-    { uint64_t ea = c->sp + 208; ST64(ea, c->x[26]); ST64(ea + 8, c->x[27]); }
-    { uint64_t ea = c->sp + 224; ST64(ea, c->x[28]); ST64(ea + 8, c->x[29]); }
-    { uint64_t ea = c->sp + 0xf0ull; ST64(ea, c->x[30]); }
-    c->x[16] = (uint64_t)(c->nzcv);
-    { uint64_t ea = c->sp + 0xf8ull; ST64(ea, c->x[16]); }
-    { uint64_t ea = c->sp + 256; ST128(ea, c->v[0]); ST128(ea + 16, c->v[1]); }
-    { uint64_t ea = c->sp + 288; ST128(ea, c->v[2]); ST128(ea + 16, c->v[3]); }
-    { uint64_t ea = c->sp + 320; ST128(ea, c->v[4]); ST128(ea + 16, c->v[5]); }
-    { uint64_t ea = c->sp + 352; ST128(ea, c->v[6]); ST128(ea + 16, c->v[7]); }
-    { uint64_t ea = c->sp + 384; ST128(ea, c->v[8]); ST128(ea + 16, c->v[9]); }
-    { uint64_t ea = c->sp + 416; ST128(ea, c->v[10]); ST128(ea + 16, c->v[11]); }
-    { uint64_t ea = c->sp + 448; ST128(ea, c->v[12]); ST128(ea + 16, c->v[13]); }
-    { uint64_t ea = c->sp + 480; ST128(ea, c->v[14]); ST128(ea + 16, c->v[15]); }
-    { uint64_t ea = c->sp + 512; ST128(ea, c->v[16]); ST128(ea + 16, c->v[17]); }
-    { uint64_t ea = c->sp + 544; ST128(ea, c->v[18]); ST128(ea + 16, c->v[19]); }
-    { uint64_t ea = c->sp + 576; ST128(ea, c->v[20]); ST128(ea + 16, c->v[21]); }
-    { uint64_t ea = c->sp + 608; ST128(ea, c->v[22]); ST128(ea + 16, c->v[23]); }
-    { uint64_t ea = c->sp + 640; ST128(ea, c->v[24]); ST128(ea + 16, c->v[25]); }
-    { uint64_t ea = c->sp + 672; ST128(ea, c->v[26]); ST128(ea + 16, c->v[27]); }
-    { uint64_t ea = c->sp + 704; ST128(ea, c->v[28]); ST128(ea + 16, c->v[29]); }
-    { uint64_t ea = c->sp + 736; ST128(ea, c->v[30]); ST128(ea + 16, c->v[31]); }
-    c->x[0] = (uint64_t)(0x7005a0e000ull);
-    c->x[0] = (uint64_t)(c->x[0] + 0x148ull);
-    { uint64_t ea = c->x[0] + 0x0ull; uint64_t v = LD64(ea); c->x[0] = (uint64_t)(v); }
-    c->x[1] = (uint64_t)(0x7005a00000ull);
-    c->x[1] = (uint64_t)(c->x[1] + 0x0ull);
-    c->x[2] = (uint64_t)(0x7005a0e000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0x180ull);
-    { uint64_t ea = c->x[2] + 0x0ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); }
-    c->x[2] = (uint64_t)(c->x[2] + 0x10000ull);
-    c->x[2] = (uint64_t)(c->x[2] + 0x40ull);
-    { uint64_t ea = c->sp + 0x0ull; uint64_t v = LD64(ea); c->x[3] = (uint64_t)(v); }
-    c->x[30] = 0x7005a1c0bcull; f_7005a10234(c);
+    if (COND_EQ(c)) goto L_7005a0a6e4;
+    c->x[13] = (uint32_t)(0x858ull);
+    c->x[13] = (uint32_t)((c->x[13] & 0xffffffff0000ffffull) | 0x20b0000ull);
+    (void)(subs64(c, c->x[11], (uint64_t)(c->x[13])));
+    if (COND_NE(c)) goto L_7005a0a6e4;
+    { uint64_t ea = c->sp + 0x558ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    c->x[11] = (uint64_t)(c->x[11] - c->x[12]);
+    c->x[13] = (uint32_t)(0x5d10ull);
+    c->x[13] = (uint32_t)((c->x[13] & 0xffffffff0000ffffull) | 0x2510000ull);
+    (void)(subs64(c, c->x[11], (uint64_t)(c->x[13])));
+    if (COND_NE(c)) goto L_7005a0a6e4;
+    { uint64_t ea = c->sp + 0x398ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    if (c->x[11] == 0) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x0ull; uint64_t v = LD64(ea); c->x[11] = (uint64_t)(v); }
+    if (c->x[11] == 0) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x0ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x49ull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x1ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x74ull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x2ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x65ull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x3ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x6dull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x4ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x5full));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x5ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x45ull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x6ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x6eull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x7ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x65ull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x8ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x6dull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0x9ull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x79ull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0xaull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x5full));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0xbull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x31ull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0xcull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[13], 0x33ull));
+    if (COND_NE(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0xdull; uint64_t v = LD8(ea); c->x[14] = (uint64_t)(v); }
+    c->x[13] = (uint32_t)((uint32_t)c->x[14] - 0x30ull);
+    (void)(subs32(c, (uint32_t)c->x[13], 0x1ull));
+    if (COND_HI(c)) goto L_7005a0a7a4;
+    { uint64_t ea = c->x[11] + 0xeull; uint64_t v = LD8(ea); c->x[13] = (uint64_t)(v); }
+    if ((uint32_t)c->x[13] != 0) goto L_7005a0a7a4;
+    c->x[14] = (uint32_t)((uint32_t)c->x[14] + 0x52ull);
+    { uint64_t ea = c->sp + 0x300ull; ST64(ea, c->x[8]); }
+    { uint64_t ea = c->sp + 0x308ull; ST64(ea, c->x[10]); }
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[1]);
+    { uint64_t ea = c->sp + 0x48ull; uint64_t v = LD32(ea); c->x[3] = (uint64_t)(v); }
+    c->x[4] = (uint32_t)(0u | (uint32_t)c->x[14]);
+    c->x[0] = (uint32_t)(0x26ull);
+    c->x[30] = 0x7005a0a6dcull; f_7005a0b000(c);
+    { uint64_t ea = c->sp + 0x300ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x308ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+L_7005a0a6e4:;
+    /* hint */
+    { uint64_t ea = c->sp + 0x8ull; ST64(ea, c->x[8]); }
+    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[8]);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[8]);
+    c->x[3] = (uint32_t)(0u | (uint32_t)c->x[10]);
+    { uint64_t ea = c->sp + 0x4f8ull; uint64_t v = LD64(ea); c->x[4] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0x7005a0e000ull);
+    c->x[9] = (uint64_t)(c->x[9] + 0x148ull);
+    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[4] = (uint64_t)(c->x[4] - c->x[9]);
+    c->x[0] = (uint32_t)(0x1full);
+    c->x[30] = 0x7005a0a714ull; f_7005a0b000(c);
     { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
     { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
     { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
@@ -12484,135 +12334,573 @@ void f_7005a1c000(Cpu *c) {
     { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
     { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
     c->sp = (uint64_t)(c->sp + 0x340ull);
-    { uint64_t ea = c->sp - 112; ST64(ea, VS64(9)); ST64(ea + 8, VS64(8)); c->sp = ea; }
-    c->pc = 0x7000896194ull; return;
+    c->pc = 0x700209bba0ull; return;
+L_7005a0a7a4:;
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD32(ea); c->x[1] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x48ull; uint64_t v = LD32(ea); c->x[2] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x4f8ull; uint64_t v = LD64(ea); c->x[3] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(0x7005a0e000ull);
+    c->x[9] = (uint64_t)(c->x[9] + 0x148ull);
+    { uint64_t ea = c->x[9] + 0x0ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[3] = (uint64_t)(c->x[3] - c->x[9]);
+    c->x[4] = (uint64_t)(0ull | 0ull);
+    c->x[10] = (uint32_t)(0x858ull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x20b0000ull);
+    (void)(subs64(c, c->x[3], (uint64_t)(c->x[10])));
+    if (COND_NE(c)) goto L_7005a0a7dc;
+    { uint64_t ea = c->sp + 0x558ull; uint64_t v = LD64(ea); c->x[4] = (uint64_t)(v); }
+    c->x[4] = (uint64_t)(c->x[4] - c->x[9]);
+L_7005a0a7dc:;
+    /* hint */
+    c->x[0] = (uint32_t)(0x21ull);
+    c->x[30] = 0x7005a0a7e8ull; f_7005a0b000(c);
+L_7005a0a7e8:;
+    { uint64_t ea = c->sp + 256; u128 a = LD128(ea), b = LD128(ea + 16); c->v[0] = a; c->v[1] = b; }
+    { uint64_t ea = c->sp + 288; u128 a = LD128(ea), b = LD128(ea + 16); c->v[2] = a; c->v[3] = b; }
+    { uint64_t ea = c->sp + 320; u128 a = LD128(ea), b = LD128(ea + 16); c->v[4] = a; c->v[5] = b; }
+    { uint64_t ea = c->sp + 352; u128 a = LD128(ea), b = LD128(ea + 16); c->v[6] = a; c->v[7] = b; }
+    { uint64_t ea = c->sp + 384; u128 a = LD128(ea), b = LD128(ea + 16); c->v[8] = a; c->v[9] = b; }
+    { uint64_t ea = c->sp + 416; u128 a = LD128(ea), b = LD128(ea + 16); c->v[10] = a; c->v[11] = b; }
+    { uint64_t ea = c->sp + 448; u128 a = LD128(ea), b = LD128(ea + 16); c->v[12] = a; c->v[13] = b; }
+    { uint64_t ea = c->sp + 480; u128 a = LD128(ea), b = LD128(ea + 16); c->v[14] = a; c->v[15] = b; }
+    { uint64_t ea = c->sp + 512; u128 a = LD128(ea), b = LD128(ea + 16); c->v[16] = a; c->v[17] = b; }
+    { uint64_t ea = c->sp + 544; u128 a = LD128(ea), b = LD128(ea + 16); c->v[18] = a; c->v[19] = b; }
+    { uint64_t ea = c->sp + 576; u128 a = LD128(ea), b = LD128(ea + 16); c->v[20] = a; c->v[21] = b; }
+    { uint64_t ea = c->sp + 608; u128 a = LD128(ea), b = LD128(ea + 16); c->v[22] = a; c->v[23] = b; }
+    { uint64_t ea = c->sp + 640; u128 a = LD128(ea), b = LD128(ea + 16); c->v[24] = a; c->v[25] = b; }
+    { uint64_t ea = c->sp + 672; u128 a = LD128(ea), b = LD128(ea + 16); c->v[26] = a; c->v[27] = b; }
+    { uint64_t ea = c->sp + 704; u128 a = LD128(ea), b = LD128(ea + 16); c->v[28] = a; c->v[29] = b; }
+    { uint64_t ea = c->sp + 736; u128 a = LD128(ea), b = LD128(ea + 16); c->v[30] = a; c->v[31] = b; }
+    { uint64_t ea = c->sp + 0xf8ull; uint64_t v = LD64(ea); c->x[16] = (uint64_t)(v); }
+    c->nzcv = c->x[16] & 0xf0000000ull;
+    { uint64_t ea = c->sp + 0; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[0] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[4] = (uint64_t)(a); c->x[5] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[6] = (uint64_t)(a); c->x[7] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[10] = (uint64_t)(a); c->x[11] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 96; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[12] = (uint64_t)(a); c->x[13] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 112; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[14] = (uint64_t)(a); c->x[15] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 128; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[16] = (uint64_t)(a); c->x[17] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 144; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[18] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 160; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 176; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 192; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 208; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 224; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[29] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0xf0ull; uint64_t v = LD64(ea); c->x[30] = (uint64_t)(v); }
+    c->sp = (uint64_t)(c->sp + 0x340ull);
+    if (COND_LE(c)) goto L_7005a0a87c;
+    c->pc = 0x700209bba0ull; return;
+L_7005a0a87c:;
+    c->pc = 0x700209bec8ull; return;
 }
 
-static uint64_t g_ascend_owner = 0;
-static float g_ascend_player_pos[3] = {0.0f, 0.0f, 0.0f};
-static int g_ascend_player_valid = 0;
-
-static int wxlm_ascend_plausible(float v) {
-    return (v == v) && (v > -100000.0f) && (v < 100000.0f);
-}
-
-static float wxlm_ascend_read_f32(uint64_t addr) {
-    uint32_t bits = LD32(addr);
-    float f = 0.0f;
-    __builtin_memcpy(&f, &bits, sizeof(f));
-    return f;
-}
-
-static uint32_t wxlm_ascend_f32_bits(float f) {
-    uint32_t bits = 0;
-    __builtin_memcpy(&bits, &f, sizeof(bits));
-    return bits;
-}
-
-void f_7005c01000(Cpu *c) {
-    c->x[8] = 0x461c3e00ull;
-    { uint64_t ea = c->x[24] + 0x2b4ull; c->v[10] = LD32(ea); }
-    c->pc = 0x7001d4c7f4ull; return;
-}
-
-void f_7005c01010(Cpu *c) {
-    c->x[27] = 0x461c3e00ull;
-    c->x[28] = 0x1f75ull;
-    c->pc = 0x7001d4ca18ull; return;
-}
-
-void f_7005c01020(Cpu *c) {
-    c->v[0] = 0x461c4000ull;
+void f_7005a10234(Cpu *c) {
+    { uint64_t ea = c->sp - 96; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
+    { uint64_t ea = c->sp + 16; ST64(ea, c->x[28]); ST64(ea + 8, c->x[27]); }
+    { uint64_t ea = c->sp + 32; ST64(ea, c->x[26]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->sp + 48; ST64(ea, c->x[24]); ST64(ea + 8, c->x[23]); }
+    { uint64_t ea = c->sp + 64; ST64(ea, c->x[22]); ST64(ea + 8, c->x[21]); }
+    { uint64_t ea = c->sp + 80; ST64(ea, c->x[20]); ST64(ea + 8, c->x[19]); }
+    c->sp = (uint64_t)(c->sp - 0x5a0ull);
+    c->x[8] = (uint64_t)(0ull | 0x7ffffe0000ull);
+    c->x[9] = (uint64_t)(c->x[1] - 0x10000ull);
+    c->x[24] = (uint32_t)(0u | 0u);
+    c->x[8] = (uint64_t)((c->x[8] & 0xffffffffffff0000ull) | 0xffffull);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    if (COND_HI(c)) goto L_7005a10390;
+    c->x[9] = (uint64_t)(c->x[0] - 0x10000ull);
+    c->x[23] = (uint64_t)(0ull | c->x[0]);
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    if (COND_HI(c)) goto L_7005a10390;
+    c->x[19] = (uint64_t)(0ull | c->x[2]);
+    if (c->x[2] == 0) goto L_7005a10390;
+    c->x[9] = (uint64_t)(0ull | 0x7ffffe0000ull);
+    c->x[8] = (uint64_t)(c->x[3] - 0x10000ull);
+    c->x[22] = (uint64_t)(0ull | c->x[3]);
+    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0xffffull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_HI(c)) goto L_7005a10390;
+    c->x[8] = (uint64_t)(c->x[1] - c->x[23]);
+    c->x[20] = (uint64_t)(0ull | c->x[1]);
+    c->x[24] = (uint32_t)(0u | 0u);
+    (void)(logic64(c, c->x[8] & 0x3ull));
+    if (COND_NE(c)) goto L_7005a10390;
+    c->x[9] = (uint32_t)(0x7908ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x5560000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    c->x[9] = (uint64_t)(ROR64(c->x[9], 28) & 0xfffffffffull);
+    if (c->x[9] != 0) goto L_7005a10390;
+    c->x[9] = (uint32_t)(0x7908ull);
+    c->x[10] = (uint32_t)(0xf6f8ull);
+    c->x[11] = (uint32_t)(0x14000000ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0xd560000ull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x2a90000ull);
+    c->x[24] = (uint32_t)(0u | 0u);
+    c->x[9] = (uint32_t)((uint32_t)c->x[8] + (uint32_t)c->x[9]);
+    { uint64_t ea = c->x[23] + c->x[10]; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    c->x[11] = (uint32_t)(((uint32_t)c->x[11] & 0xfc000000ull) | ((((uint32_t)c->x[11] & 0x3c000000ull) | (ROR32((uint32_t)c->x[9], 2) & 0xc3ffffffull)) & 0x3ffffffull));
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[11])));
+    if (COND_NE(c)) goto L_7005a10390;
+    c->x[9] = (uint32_t)(0x5068ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x5f50000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    c->x[9] = (uint64_t)(ROR64(c->x[9], 28) & 0xfffffffffull);
+    if (c->x[9] != 0) goto L_7005a10390;
+    c->x[9] = (uint32_t)(0x5068ull);
+    c->x[10] = (uint32_t)(0x3b98ull);
+    c->x[11] = (uint32_t)(0x14000000ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0xdf50000ull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x20b0000ull);
+    c->x[24] = (uint32_t)(0u | 0u);
+    c->x[9] = (uint32_t)((uint32_t)c->x[8] + (uint32_t)c->x[9]);
+    { uint64_t ea = c->x[23] + c->x[10]; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    c->x[11] = (uint32_t)(((uint32_t)c->x[11] & 0xfc000000ull) | ((((uint32_t)c->x[11] & 0x3c000000ull) | (ROR32((uint32_t)c->x[9], 2) & 0xc3ffffffull)) & 0x3ffffffull));
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[11])));
+    if (COND_NE(c)) goto L_7005a10390;
+    c->x[9] = (uint32_t)(0xf9f4ull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0x76d0000ull);
+    c->x[9] = (uint64_t)(c->x[8] + c->x[9]);
+    c->x[9] = (uint64_t)(ROR64(c->x[9], 28) & 0xfffffffffull);
+    if (c->x[9] != 0) goto L_7005a10390;
+    c->x[9] = (uint32_t)(0xf9f4ull);
+    c->x[10] = (uint32_t)(0x1a0cull);
+    c->x[9] = (uint32_t)((c->x[9] & 0xffffffff0000ffffull) | 0xf6d0000ull);
+    c->x[10] = (uint32_t)((c->x[10] & 0xffffffff0000ffffull) | 0x920000ull);
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + (uint32_t)c->x[9]);
+    c->x[9] = (uint32_t)(0x14000000ull);
+    { uint64_t ea = c->x[23] + c->x[10]; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    c->x[9] = (uint32_t)(((uint32_t)c->x[9] & 0xfc000000ull) | ((((uint32_t)c->x[9] & 0x3c000000ull) | (ROR32((uint32_t)c->x[8], 2) & 0xc3ffffffull)) & 0x3ffffffull));
+    (void)(subs32(c, (uint32_t)c->x[10], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005a1038c;
+    c->x[8] = (uint32_t)(0x1678ull);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3a80000ull);
+    { uint64_t ea = c->x[23] + c->x[8]; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
+    if (COND_NE(c)) goto L_7005a1038c;
+    c->x[8] = (uint32_t)(0xfcb4ull);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x10000ull);
+    { uint64_t ea = c->x[22] + c->x[8]; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_7005a103b4;
+L_7005a1038c:;
+    c->x[24] = (uint32_t)(0u | 0u);
+L_7005a10390:;
+    c->x[0] = (uint32_t)(0u | (uint32_t)c->x[24]);
+    c->sp = (uint64_t)(c->sp + 0x5a0ull);
+    { uint64_t ea = c->sp + 80; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[20] = (uint64_t)(a); c->x[19] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 64; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[22] = (uint64_t)(a); c->x[21] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 48; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[24] = (uint64_t)(a); c->x[23] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 32; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[26] = (uint64_t)(a); c->x[25] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 16; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[28] = (uint64_t)(a); c->x[27] = (uint64_t)(b); }
+    { uint64_t ea = c->sp; uint64_t a = LD64(ea), b = LD64(ea + 8); c->sp = ea + 96; c->x[29] = (uint64_t)(a); c->x[30] = (uint64_t)(b); }
     c->pc = 0; return;
-}
-
-void f_7005c01030(Cpu *c) {
-    c->v[3] = 0x461c38ccull;
-    { uint64_t ea = c->sp + 0x140ull; uint64_t v = LD16(ea); c->x[8] = (uint64_t)(v); }
-    c->pc = 0x700085e464ull; return;
-}
-
-void f_7005c01040(Cpu *c) {
-    uint64_t mgr = c->x[0];
-    c->sp = (uint64_t)(c->sp - 0x120ull);
-    c->pc = 0x7001d4c78cull;
-    f_7001d4c788(c);
-    c->pc = 0;
-    if ((c->x[0] & 0xffu) == 0 && mgr) {
-        uint16_t reason = LD16(mgr + 0x7cull);
-        uint16_t rejection = (uint16_t)(reason & ~0x0040u);
-        if ((rejection & 0x0408u) != 0 && (rejection & ~0x0408u) == 0) {
-            ST16(mgr + 0x7cull, (uint16_t)(reason & ~0x0408u));
-            c->x[0] = 1ull;
-        }
-    }
-}
-
-void f_7005c01050(Cpu *c) {
-    uint64_t mgr = c->x[0];
-    uint64_t uctx = c->x[1];
-    g_ascend_owner = 0;
-    g_ascend_player_valid = 0;
-    if (mgr && uctx) {
-        uint64_t actor = LD64(uctx + 8ull);
-        if (actor) {
-            float px = wxlm_ascend_read_f32(actor + 0x2b4ull);
-            float py = wxlm_ascend_read_f32(actor + 0x2b8ull);
-            float pz = wxlm_ascend_read_f32(actor + 0x2bcull);
-            if (wxlm_ascend_plausible(px) && wxlm_ascend_plausible(py) && wxlm_ascend_plausible(pz)) {
-                g_ascend_player_pos[0] = px;
-                g_ascend_player_pos[1] = py;
-                g_ascend_player_pos[2] = pz;
-                g_ascend_player_valid = 1;
-                g_ascend_owner = mgr;
-            }
-        }
-    }
-    { uint64_t ea = c->sp - 32; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); c->sp = ea; }
-    c->pc = 0x700085dffcull;
-    f_700085dff8(c);
-    c->pc = 0;
-    if (g_ascend_owner == mgr) {
-        g_ascend_owner = 0;
-    }
-    g_ascend_player_valid = 0;
-}
-
-void f_7005c01060(Cpu *c) {
-    uint64_t handle = c->x[0];
-    uint64_t pos = c->x[1];
-    { uint64_t ea = c->x[0] + 0x2ull; uint64_t v = (uint64_t)(int64_t)(int16_t)LD16(ea); c->x[8] = (uint64_t)(v); }
-    c->pc = 0x70006d25f8ull;
-    f_70006d25f4(c);
-    c->pc = 0;
-    uint64_t ret_x0 = c->x[0];
-    if (handle && pos && g_ascend_player_valid && g_ascend_owner) {
-        if (handle == g_ascend_owner + 0x3cull || handle == g_ascend_owner + 0x4cull ||
-            handle == g_ascend_owner + 0x5cull || handle == g_ascend_owner + 0x6cull) {
-            float dx = wxlm_ascend_read_f32(pos) - g_ascend_player_pos[0];
-            float dy = wxlm_ascend_read_f32(pos + 4ull) - g_ascend_player_pos[1];
-            float dz = wxlm_ascend_read_f32(pos + 8ull) - g_ascend_player_pos[2];
-            if (wxlm_ascend_plausible(dx) && wxlm_ascend_plausible(dy) && wxlm_ascend_plausible(dz)) {
-                float dist = __builtin_sqrtf(dx * dx + dy * dy + dz * dz);
-                float scale = 1.0f;
-                if ((dist == dist) && dist > 40.0f && dist <= 10000.0f) {
-                    scale = 1.0f + (dist - 40.0f) / 240.0f;
-                    if (scale > 4.0f) scale = 4.0f;
-                }
-                uint32_t sbits = wxlm_ascend_f32_bits(scale);
-                uint64_t scale_ea = c->sp - 16ull;
-                c->sp = scale_ea;
-                ST32(scale_ea, sbits);
-                ST32(scale_ea + 4ull, sbits);
-                ST32(scale_ea + 8ull, sbits);
-                c->x[0] = handle;
-                c->x[1] = pos;
-                c->x[2] = scale_ea;
-                f_70024382c4(c);
-                c->sp = scale_ea + 16ull;
-                c->x[0] = ret_x0;
-                c->pc = 0;
-            }
-        }
-    }
+L_7005a103b4:;
+    { uint64_t ea = c->x[22] + 0x188ull; uint64_t v = LD32(ea); c->x[21] = (uint64_t)(v); }
+    c->x[24] = (uint32_t)(0u | 0u);
+    (void)(subs32(c, (uint32_t)c->x[21], 0x1ull));
+    if (COND_HI(c)) goto L_7005a10390;
+    c->x[8] = (uint32_t)(0x66b0ull);
+    c->x[9] = (uint64_t)(0ull | 0x7ffffe0000ull);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3ad0000ull);
+    c->x[9] = (uint64_t)((c->x[9] & 0xffffffffffff0000ull) | 0xffffull);
+    { uint64_t ea = c->x[23] + c->x[8]; uint64_t v = LD64(ea); c->x[25] = (uint64_t)(v); }
+    c->x[8] = (uint64_t)(c->x[25] - 0x10000ull);
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_HI(c)) goto L_7005a10390;
+    c->x[8] = (uint64_t)(c->sp + 0x520ull);
+    c->x[9] = (uint32_t)(0x1ull);
+L_7005a103ec:;
+    c->x[10] = (uint64_t)(ldx32(c, c->x[19]));
+    if ((uint32_t)c->x[10] != 0) goto L_7005a10888;
+    { uint32_t st = stx32(c, c->x[19], c->x[9]); c->x[10] = (uint32_t)(st); }
+    if ((uint32_t)c->x[10] != 0) goto L_7005a103ec;
+    { uint64_t ea = c->x[19] + 0x10ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[22])));
+    if (COND_NE(c)) goto L_7005a10434;
+    { uint64_t ea = c->x[19] + 0x18ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[25])));
+    if (COND_NE(c)) goto L_7005a10434;
+    { uint64_t ea = c->x[19] + 0x20ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[21])));
+    if (COND_NE(c)) goto L_7005a10434;
+    c->x[9] = (uint64_t)(c->x[19] + 0x4ull);
+L_7005a10424:;
+    c->x[10] = (uint64_t)(ldx32(c, c->x[9]));
+    { uint32_t st = stx32(c, c->x[9], 0ull); c->x[11] = (uint32_t)(st); }
+    if ((uint32_t)c->x[11] != 0) goto L_7005a10424;
+    if ((uint32_t)c->x[10] == 0) goto L_7005a108bc;
+L_7005a10434:;
+    c->v[0] = 0x0ull;
+    c->x[9] = (uint64_t)(0x7005a10000ull);
+    c->x[2] = (uint64_t)(c->sp + 0x520ull);
+    { uint64_t ea = c->x[9] + 0xf00ull; c->v[1] = LD64(ea); }
+    c->x[0] = (uint64_t)(0ull | c->x[23]);
+    c->x[1] = (uint64_t)(0ull | c->x[25]);
+    { uint64_t ea = c->x[19] + 16; ST64(ea, c->x[22]); ST64(ea + 8, c->x[25]); }
+    { uint64_t ea = c->x[19] + 0x20ull; ST32(ea, (uint32_t)c->x[21]); }
+    { uint64_t ea = c->x[19] + 4; ST64(ea, VS64(1)); }
+    { uint64_t ea = c->x[8] + 0; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
+    { uint64_t ea = c->x[8] + 32; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
+    { uint64_t ea = c->x[8] + 64; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
+    { uint64_t ea = c->x[8] + 96; ST128(ea, c->v[0]); ST128(ea + 16, c->v[0]); }
+    c->x[30] = 0x7005a1046cull; f_7005a1097c(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a10894;
+    c->x[8] = (uint32_t)(0x60d0ull);
+    { uint64_t ea = c->sp + 0x30ull; ST64(ea, c->x[25]); }
+    c->x[24] = (uint64_t)(0ull | 0ull);
+    c->x[25] = (uint32_t)(0u | 0u);
+    c->x[27] = (uint64_t)(c->x[19] + 0x40ull);
+    c->x[28] = (uint64_t)(c->x[19] + c->x[8]);
+    c->x[8] = (uint64_t)(c->x[19] + 0x1d8ull);
+    c->x[29] = (uint32_t)(0x19cull);
+    { uint64_t ea = c->sp + 56; ST64(ea, c->x[8]); ST64(ea + 8, c->x[21]); }
+L_7005a10494:;
+    c->x[26] = (uint64_t)(c->x[27] + c->x[24] * c->x[29]);
+    c->x[0] = (uint64_t)(c->sp + 0x520ull);
+    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[21]);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[24]);
+    c->x[3] = (uint64_t)(0ull | c->x[26]);
+    c->x[30] = 0x7005a104acull; f_7005a10b0c(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a108a4;
+    { uint64_t ea = c->x[28] + (c->x[24] << 2); ST32(ea, (uint32_t)c->x[24]); }
+    { uint64_t ea = c->x[26] + 0x198ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_7005a10510;
+    c->x[25] = (uint32_t)((uint32_t)c->x[25] + 0x1ull);
+    if (c->x[24] == 0) goto L_7005a10510;
+    c->x[29] = (uint32_t)(0u | (uint32_t)c->x[25]);
+    { uint64_t ea = c->sp + 0x38ull; uint64_t v = LD64(ea); c->x[25] = (uint64_t)(v); }
+    c->x[21] = (uint64_t)(0ull | 0ull);
+L_7005a104d0:;
+    { uint64_t ea = c->x[25] + 0x0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_7005a104e8;
+    c->x[0] = (uint64_t)(c->x[25] - 0x198ull);
+    c->x[1] = (uint64_t)(0ull | c->x[26]);
+    c->x[30] = 0x7005a104e4ull; f_7005a10ca0(c);
+    if (((c->x[0] >> 0) & 1) != 0) goto L_7005a104fc;
+L_7005a104e8:;
+    c->x[21] = (uint64_t)(c->x[21] + 0x1ull);
+    c->x[25] = (uint64_t)(c->x[25] + 0x19cull);
+    (void)(subs64(c, c->x[24], (uint64_t)(c->x[21])));
+    if (COND_NE(c)) goto L_7005a104d0;
+    goto L_7005a10504;
+L_7005a104fc:;
+    { uint64_t ea = c->x[28] + (c->x[21] << 2); uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[28] + (c->x[24] << 2); ST32(ea, (uint32_t)c->x[8]); }
+L_7005a10504:;
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[21] = (uint64_t)(v); }
+    c->x[25] = (uint32_t)(0u | (uint32_t)c->x[29]);
+    c->x[29] = (uint32_t)(0x19cull);
+L_7005a10510:;
+    c->x[24] = (uint64_t)(c->x[24] + 0x1ull);
+    (void)(subs64(c, c->x[24], 0x3cull));
+    if (COND_NE(c)) goto L_7005a10494;
+    c->x[29] = (uint32_t)(0u | (uint32_t)c->x[25]);
+    c->x[24] = (uint64_t)(0ull | 0ull);
+    c->x[25] = (uint64_t)(c->x[19] + 0x1d8ull);
+L_7005a10528:;
+    c->x[0] = (uint64_t)(c->sp + 0x384ull);
+    c->x[1] = (uint32_t)(0u | 0u);
+    c->x[2] = (uint32_t)(0x19cull);
+    c->x[30] = 0x7005a10538ull; f_7005a1001c(c);
+    c->x[0] = (uint64_t)(c->sp + 0x520ull);
+    c->x[3] = (uint64_t)(c->sp + 0x384ull);
+    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[21]);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[24]);
+    c->x[30] = 0x7005a1054cull; f_7005a10b0c(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a108b0;
+    { uint64_t ea = c->sp + 0x51cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[25] + 0x0ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005a108b0;
+    { uint64_t ea = c->sp + 0x518ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->x[25] - 4; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[9], (uint32_t)((uint32_t)c->x[10])));
+    if (COND_NE(c)) goto L_7005a108b0;
+    if ((uint32_t)c->x[8] == 0) goto L_7005a10584;
+    c->x[1] = (uint64_t)(c->x[25] - 0x198ull);
+    c->x[0] = (uint64_t)(c->sp + 0x384ull);
+    c->x[30] = 0x7005a10580ull; f_7005a10ca0(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a108b0;
+L_7005a10584:;
+    c->x[24] = (uint64_t)(c->x[24] + 0x1ull);
+    c->x[25] = (uint64_t)(c->x[25] + 0x19cull);
+    (void)(subs64(c, c->x[24], 0x3cull));
+    if (COND_NE(c)) goto L_7005a10528;
+    c->x[0] = (uint64_t)(c->sp + 0x520ull);
+    c->x[30] = 0x7005a1059cull; f_7005a10d50(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a108d4;
+    c->x[8] = (uint32_t)(0x1678ull);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3a80000ull);
+    { uint64_t ea = c->x[23] + c->x[8]; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
+    if (COND_NE(c)) goto L_7005a108d4;
+    c->x[8] = (uint32_t)(0x66b0ull);
+    { uint64_t ea = c->sp + 0x30ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3ad0000ull);
+    { uint64_t ea = c->x[23] + c->x[8]; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005a108d4;
+    { uint64_t ea = c->x[22] + 0x188ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005a108d4;
+    c->x[8] = (uint32_t)(0xb800ull);
+    c->x[9] = (uint32_t)(0x61bcull);
+    c->x[27] = (uint64_t)(0ull | 0ull);
+    c->x[8] = (uint64_t)(c->x[20] + c->x[8]);
+    c->x[24] = (uint32_t)(0u | 0u);
+    { uint64_t ea = c->sp + 0x1cull; ST32(ea, 0u); }
+    { uint64_t ea = c->sp + 0x10ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint64_t)(c->x[19] + c->x[9]);
+    { uint64_t ea = c->sp + 0x20ull; ST64(ea, c->x[8]); }
+    c->x[8] = (uint32_t)(0x5f34ull);
+    c->x[26] = (uint64_t)(c->x[19] + c->x[8]);
+L_7005a10608:;
+    { uint64_t ea = c->x[26] + 0x198ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_7005a107d8;
+    { uint64_t ea = c->sp + 0x20ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[9] = (uint64_t)(c->x[27] + 0x3bull);
+    { uint64_t ea = c->sp + 0x28ull; ST64(ea, c->x[9]); }
+    { uint64_t ea = c->x[8] + (c->x[27] << 2); uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x38ull; ST64(ea, c->x[8]); }
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[8])));
+    { uint64_t ea = c->x[26] + 0x194ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[25] = (uint32_t)((COND_NE(c)) ? 0u : (uint32_t)(0u + 1));
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[25])));
+    if (COND_LE(c)) goto L_7005a107d8;
+    c->x[0] = (uint64_t)(c->sp + 0x384ull);
+    c->x[1] = (uint32_t)(0u | 0u);
+    c->x[2] = (uint32_t)(0x19cull);
+    c->x[30] = 0x7005a10648ull; f_7005a1001c(c);
+    c->x[0] = (uint64_t)(c->sp + 0x1e8ull);
+    c->x[1] = (uint32_t)(0u | 0u);
+    c->x[2] = (uint32_t)(0x19cull);
+    c->x[30] = 0x7005a10658ull; f_7005a1001c(c);
+    c->x[0] = (uint64_t)(c->sp + 0x520ull);
+    c->x[30] = 0x7005a10660ull; f_7005a10d50(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a10934;
+    c->x[2] = (uint64_t)(c->x[27] + 0x3bull);
+    c->x[0] = (uint64_t)(c->sp + 0x520ull);
+    c->x[3] = (uint64_t)(c->sp + 0x384ull);
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[21] = (uint64_t)(0ull | c->x[2]);
+    c->x[30] = 0x7005a1067cull; f_7005a10b0c(c);
+    c->x[28] = (uint32_t)(0x5ull);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a10938;
+    { uint64_t ea = c->sp + 0x51cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_7005a10938;
+    c->x[0] = (uint64_t)(c->sp + 0x384ull);
+    c->x[1] = (uint64_t)(0ull | c->x[26]);
+    c->x[30] = 0x7005a10698ull; f_7005a10ca0(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a10934;
+    { uint64_t ea = c->sp + 0x28ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x38ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_EQ(c)) goto L_7005a106dc;
+    c->x[0] = (uint64_t)(c->sp + 0x520ull);
+    c->x[3] = (uint64_t)(c->sp + 0x1e8ull);
+    { uint64_t ea = c->sp + 56; uint64_t a = LD64(ea), b = LD64(ea + 8); c->x[2] = (uint64_t)(a); c->x[1] = (uint64_t)(b); }
+    c->x[30] = 0x7005a106bcull; f_7005a10b0c(c);
+    c->x[28] = (uint32_t)(0x6ull);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a10938;
+    { uint64_t ea = c->sp + 0x380ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_7005a10938;
+    c->x[0] = (uint64_t)(c->sp + 0x1e8ull);
+    c->x[1] = (uint64_t)(c->sp + 0x384ull);
+    c->x[30] = 0x7005a106d8ull; f_7005a10ca0(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a10968;
+L_7005a106dc:;
+    { uint64_t ea = c->sp + 0x518ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[25] = (uint32_t)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[25])));
+    if (COND_LE(c)) goto L_7005a107d8;
+    { uint64_t ea = c->sp + 0x10ull; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint32_t)(0x6ull);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[21]);
+    c->x[3] = (uint32_t)(0u | (uint32_t)c->x[25]);
+    c->x[4] = (uint32_t)(0u | 0u);
+    c->x[5] = (uint32_t)(0x3ull);
+    c->pc = c->x[8]; c->x[30] = 0x7005a10708ull; rt_dispatch(c); c->pc = 0;
+    c->x[0] = (uint64_t)(c->sp + 0x4cull);
+    c->x[1] = (uint32_t)(0u | 0u);
+    c->x[2] = (uint32_t)(0x19cull);
+    c->x[30] = 0x7005a10718ull; f_7005a1001c(c);
+    c->x[0] = (uint64_t)(c->sp + 0x520ull);
+    c->x[30] = 0x7005a10720ull; f_7005a10d50(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a1091c;
+    c->x[8] = (uint32_t)(0x1678ull);
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3a80000ull);
+    { uint64_t ea = c->x[23] + c->x[8]; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[22])));
+    if (COND_NE(c)) goto L_7005a1091c;
+    c->x[8] = (uint32_t)(0x66b0ull);
+    { uint64_t ea = c->sp + 0x30ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((c->x[8] & 0xffffffff0000ffffull) | 0x3ad0000ull);
+    { uint64_t ea = c->x[23] + c->x[8]; uint64_t v = LD64(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[8], (uint64_t)(c->x[9])));
+    if (COND_NE(c)) goto L_7005a1091c;
+    { uint64_t ea = c->x[22] + 0x188ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], (uint32_t)((uint32_t)c->x[9])));
+    if (COND_NE(c)) goto L_7005a1091c;
+    c->x[0] = (uint64_t)(c->sp + 0x520ull);
+    c->x[3] = (uint64_t)(c->sp + 0x4cull);
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[21]);
+    c->x[30] = 0x7005a10774ull; f_7005a10b0c(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a1091c;
+    { uint64_t ea = c->sp + 0x28ull; uint64_t v = LD64(ea); c->x[9] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x38ull; uint64_t v = LD64(ea); c->x[10] = (uint64_t)(v); }
+    { uint64_t ea = c->sp + 0x1e4ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs64(c, c->x[9], (uint64_t)(c->x[10])));
+    if (COND_NE(c)) goto L_7005a107b4;
+    c->x[28] = (uint32_t)(0x8ull);
+    if ((uint32_t)c->x[8] == 0) goto L_7005a10920;
+    { uint64_t ea = c->sp + 0x1e0ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    (void)(subs32(c, (uint32_t)c->x[8], 0x1ull));
+    if (COND_NE(c)) goto L_7005a10920;
+    c->x[0] = (uint64_t)(c->sp + 0x4cull);
+    c->x[1] = (uint64_t)(c->sp + 0x384ull);
+    c->x[30] = 0x7005a107acull; f_7005a10ca0(c);
+    if (((c->x[0] >> 0) & 1) != 0) goto L_7005a107c8;
+    goto L_7005a10974;
+L_7005a107b4:;
+    if ((uint32_t)c->x[8] == 0) goto L_7005a107c8;
+    c->x[0] = (uint64_t)(c->sp + 0x4cull);
+    c->x[1] = (uint64_t)(c->sp + 0x384ull);
+    c->x[30] = 0x7005a107c4ull; f_7005a10ca0(c);
+    if (((c->x[0] >> 0) & 1) != 0) goto L_7005a10974;
+L_7005a107c8:;
+    { uint64_t ea = c->sp + 0x1cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[24] = (uint32_t)((uint32_t)c->x[25] + (uint32_t)c->x[24]);
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
+    { uint64_t ea = c->sp + 0x1cull; ST32(ea, (uint32_t)c->x[8]); }
+L_7005a107d8:;
+    c->x[27] = (uint64_t)(c->x[27] - 0x1ull);
+    c->x[26] = (uint64_t)(c->x[26] - 0x19cull);
+    (void)(adds64(c, c->x[27], 0x3cull));
+    if (COND_NE(c)) goto L_7005a10608;
+    if ((uint32_t)c->x[24] == 0) goto L_7005a10814;
+    c->x[8] = (uint64_t)(c->x[23] + 0x924000ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint32_t)(0x6ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x3b8ull);
+    c->pc = c->x[8]; c->x[30] = 0x7005a10800ull; rt_dispatch(c); c->pc = 0;
+    { uint64_t ea = c->x[19] + 40; uint64_t a = LD32(ea), b = LD32(ea + 4); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0x1cull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + (uint32_t)c->x[10]);
+    c->x[9] = (uint32_t)((uint32_t)c->x[9] + (uint32_t)c->x[24]);
+    { uint64_t ea = c->x[19] + 40; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[9]); }
+L_7005a10814:;
+    c->x[23] = (uint32_t)(0u | 0u);
+    c->x[22] = (uint32_t)(0u | 0u);
+    { uint64_t ea = c->x[19] + 48; ST32(ea, (uint32_t)c->x[29]); ST32(ea + 4, 0u); }
+L_7005a10820:;
+    c->x[0] = (uint64_t)(c->sp + 0x384ull);
+    c->x[1] = (uint32_t)(0u | 0u);
+    c->x[2] = (uint32_t)(0x19cull);
+    c->x[30] = 0x7005a10830ull; f_7005a1001c(c);
+    c->x[0] = (uint64_t)(c->sp + 0x520ull);
+    c->x[3] = (uint64_t)(c->sp + 0x384ull);
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); }
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[22]);
+    c->x[30] = 0x7005a10844ull; f_7005a10b0c(c);
+    if (((c->x[0] >> 0) & 1) == 0) goto L_7005a10858;
+    { uint64_t ea = c->sp + 0x51cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    if ((uint32_t)c->x[8] == 0) goto L_7005a10858;
+    c->x[23] = (uint32_t)((uint32_t)c->x[23] + 0x1ull);
+    { uint64_t ea = c->x[19] + 0x34ull; ST32(ea, (uint32_t)c->x[23]); }
+L_7005a10858:;
+    c->x[22] = (uint32_t)((uint32_t)c->x[22] + 0x1ull);
+    (void)(subs32(c, (uint32_t)c->x[22], 0x3cull));
+    if (COND_NE(c)) goto L_7005a10820;
+    { uint64_t ea = c->x[19] + 0x24ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    { uint64_t ea = c->x[19] + 0xcull; ST32(ea, 0u); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
+    { uint64_t ea = c->x[19] + 0x24ull; ST32(ea, (uint32_t)c->x[8]); }
+    if ((uint32_t)c->x[24] == 0) goto L_7005a10914;
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[21] = (uint64_t)(v); }
+    c->x[0] = (uint32_t)(0x27ull);
+    c->x[28] = (uint32_t)(0u | (uint32_t)c->x[29]);
+    goto L_7005a108fc;
+L_7005a10888:;
+    c->x[24] = (uint32_t)(0u | 0u);
+    c->excl_addr = ~0ull;
+    goto L_7005a10390;
+L_7005a10894:;
+    c->x[24] = (uint32_t)(0u | 0u);
+    c->x[25] = (uint32_t)(0u | 0u);
+    c->x[28] = (uint32_t)(0x1ull);
+    goto L_7005a108e4;
+L_7005a108a4:;
+    c->x[24] = (uint32_t)(0u | 0u);
+    c->x[28] = (uint32_t)(0x2ull);
+    goto L_7005a108e4;
+L_7005a108b0:;
+    c->x[24] = (uint32_t)(0u | 0u);
+    c->x[28] = (uint32_t)(0x3ull);
+    goto L_7005a108e0;
+L_7005a108bc:;
+    { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }
+    if ((uint32_t)c->x[9] == 0) goto L_7005a10434;
+    c->x[8] = (uint32_t)((uint32_t)c->x[9] - 0x1ull);
+    c->x[24] = (uint32_t)(0u | 0u);
+    { uint64_t ea = c->x[19] + 0x8ull; ST32(ea, (uint32_t)c->x[8]); }
+    goto L_7005a10914;
+L_7005a108d4:;
+    c->x[24] = (uint32_t)(0u | 0u);
+    c->x[28] = (uint32_t)(0x4ull);
+L_7005a108dc:;
+    { uint64_t ea = c->sp + 0x40ull; uint64_t v = LD64(ea); c->x[21] = (uint64_t)(v); }
+L_7005a108e0:;
+    c->x[25] = (uint32_t)(0u | (uint32_t)c->x[29]);
+L_7005a108e4:;
+    { uint64_t ea = c->x[19] + 0x38ull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[23] = (uint32_t)(0u | (uint32_t)c->x[25]);
+    { uint64_t ea = c->x[19] + 0xcull; ST32(ea, (uint32_t)c->x[28]); }
+    c->x[0] = (uint32_t)(0x28ull);
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
+    { uint64_t ea = c->x[19] + 0x38ull; ST32(ea, (uint32_t)c->x[8]); }
+L_7005a108fc:;
+    c->x[1] = (uint32_t)(0u | (uint32_t)c->x[28]);
+    c->x[2] = (uint32_t)(0u | (uint32_t)c->x[23]);
+    c->x[3] = (uint32_t)(0u | (uint32_t)c->x[24]);
+    c->x[8] = (uint64_t)(c->x[20] + 0xb000ull);
+    c->x[4] = (uint64_t)(0ull | c->x[21]);
+    c->pc = c->x[8]; c->x[30] = 0x7005a10914ull; rt_dispatch(c); c->pc = 0;
+L_7005a10914:;
+    stl32(c->x[19], 0ull);
+    goto L_7005a10390;
+L_7005a1091c:;
+    c->x[28] = (uint32_t)(0x7ull);
+L_7005a10920:;
+    { uint64_t ea = c->x[19] + 0x3cull; uint64_t v = LD32(ea); c->x[8] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + 0x1ull);
+    { uint64_t ea = c->x[19] + 0x3cull; ST32(ea, (uint32_t)c->x[8]); }
+    if ((uint32_t)c->x[24] != 0) goto L_7005a1093c;
+    goto L_7005a108dc;
+L_7005a10934:;
+    c->x[28] = (uint32_t)(0x5ull);
+L_7005a10938:;
+    if ((uint32_t)c->x[24] == 0) goto L_7005a108dc;
+L_7005a1093c:;
+    c->x[8] = (uint64_t)(c->x[23] + 0x924000ull);
+    c->x[0] = (uint64_t)(0ull | c->x[22]);
+    c->x[1] = (uint32_t)(0x6ull);
+    c->x[8] = (uint64_t)(c->x[8] + 0x3b8ull);
+    c->pc = c->x[8]; c->x[30] = 0x7005a10950ull; rt_dispatch(c); c->pc = 0;
+    { uint64_t ea = c->x[19] + 40; uint64_t a = LD32(ea), b = LD32(ea + 4); c->x[8] = (uint64_t)(a); c->x[9] = (uint64_t)(b); }
+    { uint64_t ea = c->sp + 0x1cull; uint64_t v = LD32(ea); c->x[10] = (uint64_t)(v); }
+    c->x[8] = (uint32_t)((uint32_t)c->x[8] + (uint32_t)c->x[10]);
+    c->x[9] = (uint32_t)((uint32_t)c->x[9] + (uint32_t)c->x[24]);
+    { uint64_t ea = c->x[19] + 40; ST32(ea, (uint32_t)c->x[8]); ST32(ea + 4, (uint32_t)c->x[9]); }
+    goto L_7005a108dc;
+L_7005a10968:;
+    c->x[28] = (uint32_t)(0x6ull);
+    if ((uint32_t)c->x[24] != 0) goto L_7005a1093c;
+    goto L_7005a108dc;
+L_7005a10974:;
+    c->x[28] = (uint32_t)(0x8ull);
+    goto L_7005a10920;
 }
